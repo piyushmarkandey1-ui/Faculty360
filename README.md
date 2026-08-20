@@ -1,74 +1,56 @@
 # A³P-Web
-
 **AI-Enabled Academic Profile Analytics Using Multi-Source Public Web and Institutional Data**
 
 Smart India Hackathon 2026 — Problem Statement PS64
 
+> 🚀 **Live Demo:** [Deploying to Vercel...] *(See deployment instructions below)*
+
 ---
 
-## What is A³P-Web?
+## 📖 What is A³P-Web?
 
-A³P-Web resolves fragmented faculty information — scattered across Google Scholar, ResearchGate, and institutional systems — into a single, evidence-backed, assessable academic profile.
+A³P-Web resolves fragmented faculty information — scattered across Google Scholar, ResearchGate, and institutional systems — into a single, evidence-backed, assessable academic profile. It provides academic institutions with an auditable platform to assess research output, track performance, and resolve data conflicts.
 
 **Core Principle:**
+> RULES CALCULATE.
+> AI INTERPRETS.
+> HUMANS DECIDE.
 
-```
-RULES CALCULATE.
-AI INTERPRETS.
-HUMANS DECIDE.
-```
-
-The rule engine computes all scores. The LLM generates interpretive narrative only. Humans make all consequential decisions.
+The deterministic rule engine computes all scores. The AI LLM generates interpretive narrative only. Humans make all consequential decisions.
 
 ---
 
-## Repository Structure
+## ✨ Prototype Features (Frontend MVP)
 
-```
-/
-├── docs/                     # Architecture, design, and product specifications
-│   ├── A3P_MASTER_SPEC.md
-│   ├── DESIGN_SYSTEM.md
-│   ├── ARCHITECTURE.md
-│   ├── DATABASE.md
-│   ├── API.md
-│   ├── DATA_SOURCES.md
-│   ├── ASSESSMENT_ENGINE.md
-│   └── MVP_SCOPE.md
-│
-├── frontend/                 # Next.js 14 + TypeScript + Tailwind CSS
-│   ├── app/
-│   ├── components/
-│   ├── lib/
-│   ├── types/
-│   └── styles/
-│
-├── backend/                  # FastAPI + PostgreSQL (not yet implemented)
-│
-├── CONVENTIONS.md            # Coding standards and commit conventions
-└── README.md
-```
+This repository contains the **Frontend-only Prototype** for the SIH 2026 submission. It utilizes deterministic mock data to demonstrate the platform's vision without requiring the backend AI or database dependencies.
+
+- **Cinematic Landing Experience:** A pinned, scroll-driven visual story explaining the data pipeline (Ingestion → Resolution → Assessment).
+- **Institution Dashboard:** A comprehensive view of the entire faculty network, data completeness, and overall assessment metrics.
+- **Faculty Directory & Profiles:** Individual, detailed views for professors, tracking canonical publications vs. scraped data.
+- **Conflict Resolution Engine:** Visual interface showing exactly where Google Scholar data conflicts with Institutional ERP data.
+- **Deterministic Assessment Breakdown:** Transparent score rings and parameter bars explaining precisely *why* a faculty member received their assessment score.
+- **Fully Responsive & Accessible:** Honors `prefers-reduced-motion` and scales perfectly from mobile to ultra-wide desktop.
 
 ---
 
-## Tech Stack
+## 🛠 Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS |
-| Animation | Framer Motion |
-| Charts | Recharts |
-| Icons | Lucide React |
-| Backend | FastAPI (Python) — planned |
-| Database | PostgreSQL / Supabase — planned |
-| Ingestion | Apify — planned |
-| AI | LLM API (advisory only) — planned |
+| **Frontend Framework** | Next.js 16 (App Router), React 19, TypeScript |
+| **Styling** | Tailwind CSS 4, CSS Variables for "Premium Academic Theme" |
+| **Animation Engine** | Framer Motion (Scroll-linked pipelines & micro-interactions) |
+| **Charts & Viz** | Recharts, SVG inline visualization |
+| **Icons** | Lucide React |
+| **Backend** | *FastAPI (Python) — planned for Phase 2* |
+| **Database** | *PostgreSQL / Supabase — planned for Phase 2* |
+| **Ingestion** | *Apify — planned for Phase 2* |
 
 ---
 
-## Getting Started
+## 🚀 Getting Started (Local Development)
 
-### Frontend
+### 1. Run the Frontend Locally
 
 ```bash
 cd frontend
@@ -76,29 +58,66 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Backend
+### 2. Environment Variables
 
-> Not yet implemented. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the planned FastAPI setup.
+The current frontend prototype requires **no environment variables** to run. All mock data is bundled locally for demonstration purposes.
+
+A template for future backend variables can be found in `frontend/.env.example`.
 
 ---
 
-## Documentation
+## ☁️ Deployment to Vercel
+
+This repository is **Vercel Production Ready**.
+
+1. Navigate to your [Vercel Dashboard](https://vercel.com/dashboard).
+2. Click **Add New... > Project** and import this GitHub repository.
+3. **CRITICAL SETTINGS:**
+   - **Framework Preset**: Select `Next.js`
+   - **Root Directory**: Type `frontend` and save.
+4. Leave all build commands (`npm run build`) as default.
+5. Click **Deploy**.
+
+For more details, see [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md).
+
+---
+
+## 📂 Repository Structure
+
+```
+/
+├── docs/                     # Architecture, design, and product specifications
+│   ├── A3P_MASTER_SPEC.md
+│   ├── DESIGN_SYSTEM.md
+│   ├── ARCHITECTURE.md
+│   ├── VERCEL_DEPLOYMENT.md
+│   └── MVP_SCOPE.md
+│
+├── frontend/                 # Next.js 16 Application
+│   ├── app/                  # Application Routes (Landing, Dashboard, Faculty, Login)
+│   ├── components/           # Shared UI, Layouts, and Landing Page Modules
+│   ├── lib/                  # Utilities, Motion configs, Route definitions
+│   └── styles/               # Global CSS and Design Tokens
+│
+├── mock-data/                # Deterministic JSON datasets for the MVP prototype
+└── README.md
+```
+
+---
+
+## 📚 Technical Documentation
 
 | Document | Purpose |
 |---|---|
 | [A3P_MASTER_SPEC.md](docs/A3P_MASTER_SPEC.md) | Product specification, pipeline, personas |
-| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Color system, typography, motion rules |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Color system (Navy, Teal, Gold), typography, motion rules |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Frontend and backend architecture |
 | [DATABASE.md](docs/DATABASE.md) | PostgreSQL schema (boundary doc) |
-| [API.md](docs/API.md) | FastAPI endpoint contracts (boundary doc) |
-| [DATA_SOURCES.md](docs/DATA_SOURCES.md) | Apify integration, source registry, normalization |
-| [ASSESSMENT_ENGINE.md](docs/ASSESSMENT_ENGINE.md) | Rule engine, KPI framework, AI boundary |
 | [MVP_SCOPE.md](docs/MVP_SCOPE.md) | SIH hackathon scope, demo requirements |
 
 ---
 
-## Team
-
-SIH 2026 Team — National Institute of Technology / [Institution Name]
+## 👥 Team
+**SIH 2026 Team** — National Institute of Technology / [Institution Name]

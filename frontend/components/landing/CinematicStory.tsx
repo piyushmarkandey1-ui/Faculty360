@@ -390,27 +390,27 @@ export function CinematicStory() {
 
         {/* ACT 04: EXPLAIN */}
         {opExp > 0 && (
-          <div className="absolute inset-0 flex flex-col pt-24 items-center z-40"
+          <div className="absolute inset-0 flex flex-col pt-16 md:pt-24 items-center z-40"
                style={{ opacity: opExp, transform: `scale(${scExp})` }}>
-            <h2 className="text-2xl md:text-4xl font-extrabold text-[#17233C] mb-12 tracking-tight">
+            <h2 className="text-xl md:text-3xl font-extrabold text-[#17233C] mb-8 tracking-tight">
               EVERY SCORE SHOULD HAVE A STORY.
             </h2>
             
             <div className="w-full max-w-5xl flex justify-between relative">
               {/* Evidence Chain */}
-              <div className="w-[400px] h-[500px] relative">
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 500">
-                  <path d="M 200 60 L 200 450" fill="none" stroke={BORDER} strokeWidth="4" />
-                  <path d="M 200 60 L 200 450" fill="none" stroke={TEAL} strokeWidth="4"
-                        strokeDasharray="390" strokeDashoffset={390 * (1 - eLineSp)} />
+              <div className="w-[400px] h-[350px] relative">
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 350">
+                  <path d="M 200 30 L 200 310" fill="none" stroke={BORDER} strokeWidth="4" />
+                  <path d="M 200 30 L 200 310" fill="none" stroke={TEAL} strokeWidth="4"
+                        strokeDasharray="280" strokeDashoffset={280 * (1 - eLineSp)} />
                 </svg>
 
                 {[
-                  { text: 'Score: 84.7 / 100', y: 60, color: TEAL },
-                  { text: 'Parameter: Research — 81.5', y: 157.5, color: BLUE },
-                  { text: 'KPI: Publication Output', y: 255, color: GOLD },
-                  { text: 'Metric: 87 Canonical Publications', y: 352.5, color: NAVY },
-                  { text: 'Source: Google Scholar + Institutional', y: 450, color: EMERALD },
+                  { text: 'Score: 84.7 / 100', y: 30, color: TEAL },
+                  { text: 'Parameter: Research — 81.5', y: 100, color: BLUE },
+                  { text: 'KPI: Publication Output', y: 170, color: GOLD },
+                  { text: 'Metric: 87 Canonical Publications', y: 240, color: NAVY },
+                  { text: 'Source: Google Scholar + Institutional', y: 310, color: EMERALD },
                 ].map((node, i) => {
                   const nodeActive = sp(p, [0.80 + i * 0.03, 0.82 + i * 0.03]) > 0
                   return (
@@ -434,7 +434,7 @@ export function CinematicStory() {
               </div>
 
               {/* AI Advisory */}
-              <div className="flex-1 max-w-sm flex flex-col justify-center space-y-4">
+              <div className="flex-1 max-w-sm flex flex-col justify-center space-y-2.5">
                 {[
                   { tag: 'TREND', text: 'Research output increased significantly', color: 'text-blue-600', bg: 'bg-blue-50' },
                   { tag: 'STRENGTH', text: 'Teaching contribution consistently above benchmark', color: 'text-emerald-600', bg: 'bg-emerald-50' },

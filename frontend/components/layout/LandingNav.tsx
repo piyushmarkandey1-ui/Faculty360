@@ -1,110 +1,106 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ROUTES } from "@/lib/constants/routes";
+import React, { useState } from 'react'
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
+import Link from 'next/link'
+import { ArrowRight, Box } from 'lucide-react'
 
-const navLinks = [
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "The Pipeline", href: "#pipeline" },
-  { label: "Assessment", href: "#assessment" },
-  { label: "Platform", href: ROUTES.dashboard },
-];
+// Assuming ROUTES is defined here. We fall back gracefully just in case.
+const ROUTES = {
+  dashboard: '/dashboard',
+  login: '/login'
+}
 
 export function LandingNav() {
+  const { scrollY } = useScroll()
+  const prefersReducedMotion = useReducedMotion()
+
+  const bg = useTransform(scrollY, [0, 80], ['rgba(247,248,245,0)', 'rgba(255,255,255,0.97)'])
+  const borderColor = useTransform(scrollY, [0, 80], ['rgba(228,232,239,0)', 'rgba(228,232,239,1)'])
+  const boxShadow = useTransform(scrollY, [0, 80], ['0px 4px 20px rgba(23,35,60,0)', '0px 4px 20px rgba(23,35,60,0.08)'])
+  const backdropFilter = useTransform(scrollY, [0, 80], ['blur(0px)', 'blur(12px)'])
+
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null)
+
+  const navLinks = [
+    { label: 'How It Works', href: '#how-it-works' },
+    { label: 'The Pipeline', href: '#story-section' },
+    { label: 'Assessment', href: '#assessment-section' },
+    { label: 'Platform', href: ROUTES.dashboard },
+  ]
+
   return (
     <motion.header
-      initial={{ opacity: 0, y: -16 }}
+      className="fixed top-0 left-0 right-0 z-50"
+      initial={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.0, 0.0, 0.2, 1] }}
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-200"
-      style={{
-        background: "rgba(247, 248, 245, 0.90)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid var(--border-default)",
-        boxShadow: "var(--shadow-sm)",
+      transition={{ duration: 0.5, ease: [0, 0, 0.2, 1] }}
+      style={prefersReducedMotion ? {
+        backgroundColor: 'rgba(255,255,255,0.97)',
+        borderBottom: '1px solid rgba(228,232,239,1)',
+        boxShadow: '0px 4px 20px rgba(23,35,60,0.08)',
+        backdropFilter: 'blur(12px)'
+      } : {
+        backgroundColor: bg,
+        borderBottomWidth: '1px',
+        borderBottomStyle: 'solid',
+        borderBottomColor: borderColor,
+        boxShadow,
+        backdropFilter,
+        WebkitBackdropFilter: backdropFilter
       }}
     >
-      <div className="container-page flex items-center h-16 gap-8">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div
-            className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shadow-sm"
-            style={{
-              background: "var(--accent)",
-              color: "var(--text-inverse)",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            A³
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="text-[#0F8B8D] p-1.5 rounded-lg bg-[#0F8B8D]/10 group-hover:bg-[#0F8B8D]/20 transition-colors">
+            <Box className="w-6 h-6" />
           </div>
-          <span
-            className="text-base font-bold tracking-tight"
-            style={{ color: "var(--text-primary)" }}
-          >
-            A³P-Web
-          </span>
+          <span className="font-bold text-xl text-[#17233C] tracking-tight">A³P-Web</span>
         </Link>
 
-        {/* Nav links */}
-        <nav className="hidden md:flex items-center gap-7 flex-1">
+        <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
             <Link
-              key={link.href}
+              key={link.label}
               href={link.href}
-              className="text-sm font-medium transition-colors duration-150"
-              style={{ color: "var(--text-secondary)" }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--accent)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--text-secondary)")
-              }
+              className="text-sm font-medium text-[#5D6B82] transition-colors relative"
+              onMouseEnter={() => setHoveredLink(link.label)}
+              onMouseLeave={() => setHoveredLink(null)}
+              style={{
+                color: hoveredLink === link.label ? '#0F8B8D' : '#5D6B82'
+              }}
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        {/* CTA */}
-        <div className="flex items-center gap-3 ml-auto">
+        <div className="flex items-center gap-4">
           <Link
             href={ROUTES.login}
-            className="text-sm font-medium px-4 py-2 rounded-lg border transition-all duration-150"
-            style={{
-              color: "var(--text-primary)",
-              borderColor: "var(--border-default)",
-              background: "var(--bg-surface)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
-              (e.currentTarget as HTMLElement).style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)";
-              (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-            }}
+            className="hidden sm:block text-sm font-medium text-[#5D6B82] hover:text-[#17233C] transition-colors"
           >
             Sign In
           </Link>
-          <Link
-            href={ROUTES.dashboard}
-            className="text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-150 shadow-sm"
-            style={{
-              background: "var(--text-primary)", // Deep Navy
-              color: "var(--text-inverse)",
-            }}
-            onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.background = "var(--accent)")
-            }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.background = "var(--text-primary)")
-            }
-          >
-            Explore Platform
-          </Link>
+          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
+            <Link
+              href={ROUTES.dashboard}
+              className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#17233C] text-white text-sm font-medium hover:bg-[#0F8B8D] transition-colors shadow-sm"
+            >
+              <span>Explore Platform</span>
+              <motion.div
+                className="flex items-center justify-center"
+                variants={{
+                  hover: { x: 3 }
+                }}
+                transition={{ duration: 0.2 }}
+              >
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-[3px]" />
+              </motion.div>
+            </Link>
+          </motion.div>
         </div>
       </div>
     </motion.header>
-  );
+  )
 }

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { LandingNav } from "@/components/layout/LandingNav";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { ProblemSection } from "@/components/landing/ProblemSection";
-import { PipelineSection } from "@/components/landing/PipelineSection";
-import { ProfileSection } from "@/components/landing/ProfileSection";
-import { AssessmentSection } from "@/components/landing/AssessmentSection";
-import { ExplainSection } from "@/components/landing/ExplainSection";
-import { InsightsSection } from "@/components/landing/InsightsSection";
+import { LandingHero } from "@/components/landing/LandingHero";
+import { LandingProblem } from "@/components/landing/LandingProblem";
+import { CinematicStory } from "@/components/landing/CinematicStory";
+import { ProfileShowcase } from "@/components/landing/ProfileShowcase";
+import { AssessmentShowcase } from "@/components/landing/AssessmentShowcase";
+import { PlatformPreview } from "@/components/landing/PlatformPreview";
 import { CTASection } from "@/components/landing/CTASection";
 
 export const metadata: Metadata = {
@@ -18,14 +17,31 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
+      {/* Fixed navigation — always visible */}
       <LandingNav />
-      <HeroSection />
-      <ProblemSection />
-      <PipelineSection />
-      <ProfileSection />
-      <AssessmentSection />
-      <ExplainSection />
-      <InsightsSection />
+
+      {/* Top spacer for fixed nav */}
+      <div style={{ height: 64 }} />
+
+      {/* [01] Hero Section */}
+      <LandingHero />
+
+      {/* [02] The Problem */}
+      <LandingProblem />
+
+      {/* [03] Cinematic Pipeline (pinned 450vh) */}
+      <CinematicStory />
+
+      {/* [04] Unified Faculty Profile */}
+      <ProfileShowcase />
+
+      {/* [05] Explainable Assessment */}
+      <AssessmentShowcase />
+
+      {/* [06] Platform Preview */}
+      <PlatformPreview />
+
+      {/* [07] Final CTA */}
       <CTASection />
     </div>
   );

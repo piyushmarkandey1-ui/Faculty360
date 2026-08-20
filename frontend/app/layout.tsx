@@ -16,16 +16,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "A³P-Web — Academic Profile Analytics",
+    default: "A³P-Web | AI-Enabled Academic Profile Analytics",
     template: "%s | A³P-Web",
   },
   description:
-    "AI-Enabled Academic Profile Analytics Using Multi-Source Public Web and Institutional Data. Rules Calculate. AI Interprets. Humans Decide.",
+    "A³P-Web unifies fragmented academic data into evidence-based, explainable faculty profiles and institutional assessment.",
   keywords: ["academic", "faculty", "analytics", "assessment", "SIH 2026"],
   openGraph: {
-    title: "A³P-Web — Academic Profile Analytics",
+    title: "A³P-Web | AI-Enabled Academic Profile Analytics",
     description:
-      "From fragmented data to connected evidence to explainable insight.",
+      "A³P-Web unifies fragmented academic data into evidence-based, explainable faculty profiles and institutional assessment.",
     type: "website",
   },
 };

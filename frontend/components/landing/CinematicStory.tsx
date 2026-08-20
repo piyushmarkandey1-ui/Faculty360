@@ -421,14 +421,15 @@ export function CinematicStory() {
                            transform: 'translate(-50%, -50%)',
                            opacity: nodeActive ? 1 : 0 
                          }}>
-                      <div className="bg-white px-4 py-2 rounded-full shadow-md border font-bold text-sm whitespace-nowrap"
-                           style={{ borderColor: node.color, color: node.color }}>
+                      <div className={`bg-white px-4 py-2 rounded-full border font-bold text-sm whitespace-nowrap transition-all duration-300 ${nodeActive ? 'scale-105' : 'scale-100 shadow-sm'}`}
+                           style={{ 
+                             borderColor: node.color, 
+                             color: node.color,
+                             boxShadow: nodeActive ? `0 0 20px ${node.color}60` : undefined,
+                             backgroundColor: nodeActive ? '#ffffff' : '#f8fafc'
+                           }}>
                         {node.text}
                       </div>
-                      {nodeActive && (
-                        <div className="absolute left-1/2 top-1/2 w-4 h-4 rounded-full -translate-x-1/2 -translate-y-1/2 animate-pulse"
-                             style={{ backgroundColor: node.color }} />
-                      )}
                     </div>
                   )
                 })}

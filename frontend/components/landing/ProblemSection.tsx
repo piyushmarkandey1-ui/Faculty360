@@ -42,16 +42,16 @@ export function ProblemSection() {
     <section
       id="how-it-works"
       className="py-24"
-      style={{ borderTop: "1px solid var(--border-faint)" }}
+      style={{ background: "#FFFFFF", borderTop: "1px solid var(--border-default)" }}
     >
       <div className="container-page">
         {/* Section header */}
         <SectionReveal className="max-w-2xl mb-16">
           <div className="text-label mb-4">The Problem</div>
-          <h2 className="text-h1 mb-4" style={{ color: "var(--text-primary)" }}>
+          <h2 className="text-h1 mb-3" style={{ color: "var(--text-primary)" }}>
             Academic data is everywhere.
           </h2>
-          <h2 className="text-h1 mb-6" style={{ color: "var(--accent-light)" }}>
+          <h2 className="text-h1 mb-6" style={{ color: "var(--accent)" }}>
             The real problem is connecting it.
           </h2>
           <p className="text-base leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -59,51 +59,47 @@ export function ProblemSection() {
           </p>
         </SectionReveal>
 
-        {/* Problem cards */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {problems.map((problem, i) => {
-            const Icon = problem.icon;
+        {/* Problem cards grid */}
+        <div className="grid md:grid-cols-3 gap-8">
+          {problems.map((item, i) => {
+            const Icon = item.icon;
             return (
-              <SectionReveal key={problem.title} delay={i * 0.12}>
+              <SectionReveal key={item.title} delay={i * 0.15}>
                 <div
-                  className="rounded-xl p-6 h-full"
+                  className="p-8 rounded-2xl border transition-all duration-200 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between"
                   style={{
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-subtle)",
+                    background: "var(--bg-base)", // Warm Ivory
+                    borderColor: "var(--border-default)",
                   }}
                 >
-                  {/* Icon */}
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
-                    style={{ background: problem.colorMuted }}
-                  >
-                    <Icon size={18} style={{ color: problem.color }} />
+                  <div>
+                    {/* Header icon */}
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-6"
+                      style={{ background: item.colorMuted, color: item.color }}
+                    >
+                      <Icon size={24} />
+                    </div>
+
+                    <div className="text-label mb-2" style={{ color: item.color }}>
+                      {item.title}
+                    </div>
+
+                    <h3 className="text-xl font-bold mb-3" style={{ color: "var(--text-primary)" }}>
+                      {item.label}
+                    </h3>
+
+                    <p className="text-sm leading-relaxed mb-6" style={{ color: "var(--text-secondary)" }}>
+                      {item.description}
+                    </p>
                   </div>
 
-                  {/* Label */}
-                  <div className="text-label mb-2" style={{ color: problem.color }}>
-                    {problem.label}
-                  </div>
-
-                  <h3 className="text-h3 mb-3" style={{ color: "var(--text-primary)" }}>
-                    {problem.title}
-                  </h3>
-
-                  <p className="text-sm leading-relaxed mb-5" style={{ color: "var(--text-secondary)" }}>
-                    {problem.description}
-                  </p>
-
-                  {/* Items */}
-                  <div className="space-y-2">
-                    {problem.items.map((item) => (
-                      <div key={item} className="flex items-center gap-2">
-                        <div
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: problem.color, opacity: 0.6 }}
-                        />
-                        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                          {item}
-                        </span>
+                  {/* Bullet tags */}
+                  <div className="space-y-2 pt-4 border-t border-[var(--border-default)]">
+                    {item.items.map((point) => (
+                      <div key={point} className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: item.color }} />
+                        <span>{point}</span>
                       </div>
                     ))}
                   </div>

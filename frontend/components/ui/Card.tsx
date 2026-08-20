@@ -9,8 +9,8 @@ export function Card({ children, className, hover = false, onClick, ...props }: 
   return (
     <div
       className={cn(
-        "bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl overflow-hidden",
-        (hover || onClick) && "cursor-pointer transition-all duration-150 hover:border-[var(--border-default)] hover:-translate-y-px",
+        "bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl overflow-hidden shadow-[var(--shadow-sm)]",
+        (hover || onClick) && "cursor-pointer transition-all duration-200 hover:border-[var(--accent)]/50 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5",
         className
       )}
       onClick={onClick}

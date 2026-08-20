@@ -55,7 +55,7 @@ export function ExplainSection() {
   const visible = chain.slice(0, expandedIndex + 2);
 
   return (
-    <section className="py-24" style={{ borderTop: "1px solid var(--border-faint)" }}>
+    <section className="py-24" style={{ background: "#FFFFFF", borderTop: "1px solid var(--border-default)" }}>
       <div className="container-page">
         <SectionReveal className="max-w-xl mb-16">
           <div className="text-label mb-4">Explainability</div>

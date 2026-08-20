@@ -1,6 +1,5 @@
 import React from 'react';
 import { cn } from '@/lib/utils/cn';
-import { Badge } from './Badge';
 
 interface SourceBadgeProps {
   source: 'google_scholar' | 'researchgate' | 'institutional' | 'orcid';
@@ -25,13 +24,13 @@ const STATUS_COLORS = {
 
 export function SourceBadge({ source, status, lastSynced, className }: SourceBadgeProps) {
   return (
-    <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--bg-surface)] border border-[var(--border-subtle)]", className)}>
+    <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)]", className)}>
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-[var(--text-primary)]">{SOURCE_LABELS[source] || source}</span>
-        <div className={cn("w-2 h-2 rounded-full", STATUS_COLORS[status])} title={status} />
+        <span className="text-xs font-semibold text-[var(--text-primary)]">{SOURCE_LABELS[source] || source}</span>
+        <div className={cn("w-2 h-2 rounded-full shrink-0", STATUS_COLORS[status])} title={status} />
       </div>
       {lastSynced && status === 'active' && (
-        <span className="text-xs text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-2">
+        <span className="text-[11px] text-[var(--text-muted)] border-l border-[var(--border-default)] pl-2">
           {new Date(lastSynced).toLocaleDateString()}
         </span>
       )}

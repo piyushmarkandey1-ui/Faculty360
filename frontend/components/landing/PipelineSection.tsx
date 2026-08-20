@@ -249,7 +249,7 @@ export function PipelineSection() {
   const [active, setActive] = useState(0);
 
   return (
-    <section id="pipeline" className="py-24" style={{ borderTop: "1px solid var(--border-faint)" }}>
+    <section id="pipeline" className="py-24" style={{ background: "#F0F7F7", borderTop: "1px solid var(--border-default)" }}>
       <div className="container-page">
         {/* Header */}
         <SectionReveal className="max-w-xl mb-16">

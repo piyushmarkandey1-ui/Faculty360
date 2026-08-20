@@ -42,7 +42,7 @@ export function ProfileSection() {
     <section
       id="profile"
       className="py-24"
-      style={{ borderTop: "1px solid var(--border-faint)" }}
+      style={{ background: "#F7F8F5", borderTop: "1px solid var(--border-default)" }}
       ref={sectionRef}
     >
       <div className="container-page">

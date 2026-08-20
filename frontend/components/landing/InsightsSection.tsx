@@ -44,7 +44,7 @@ const insights = [
 
 export function InsightsSection() {
   return (
-    <section className="py-24" style={{ borderTop: "1px solid var(--border-faint)" }}>
+    <section className="py-24" style={{ background: "#F7F8F5", borderTop: "1px solid var(--border-default)" }}>
       <div className="container-page">
         {/* Header */}
         <SectionReveal className="max-w-2xl mb-6">

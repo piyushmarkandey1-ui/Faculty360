@@ -38,7 +38,7 @@ export function AssessmentSection() {
     <section
       id="assessment"
       className="py-24"
-      style={{ borderTop: "1px solid var(--border-faint)" }}
+      style={{ background: "#EEF4FF", borderTop: "1px solid var(--border-default)" }}
       ref={ref}
     >
       <div className="container-page">

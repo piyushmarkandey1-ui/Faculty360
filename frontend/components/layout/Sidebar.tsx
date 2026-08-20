@@ -73,7 +73,7 @@ export function Sidebar({ className }: { className?: string }) {
       {/* Logo */}
       <div
         className="px-5 py-5 border-b"
-        style={{ borderColor: "var(--border-subtle)" }}
+        style={{ borderColor: "var(--border-default)" }}
       >
         <Link href={ROUTES.dashboard}>
           <Logo />
@@ -122,7 +122,7 @@ export function Sidebar({ className }: { className?: string }) {
       {/* Footer */}
       <div
         className="px-5 py-4 border-t"
-        style={{ borderColor: "var(--border-subtle)" }}
+        style={{ borderColor: "var(--border-default)" }}
       >
         <div className="flex items-center gap-2.5">
           <div

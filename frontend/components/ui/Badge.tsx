@@ -17,14 +17,14 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center font-medium rounded-full border border-transparent",
-        size === 'sm' ? "text-xs px-2 py-0.5" : "text-sm px-3 py-1",
-        variant === 'success' && "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
-        variant === 'warning' && "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/20",
-        variant === 'danger' && "bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/20",
-        variant === 'info' && "bg-blue-500/10 text-blue-400 border-blue-500/20",
-        variant === 'neutral' && "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)]",
-        variant === 'accent' && "bg-[var(--accent-muted)] text-[var(--accent-light)] border-[var(--accent)]/20",
+        "inline-flex items-center justify-center font-semibold rounded-full border",
+        size === 'sm' ? "text-[11px] px-2.5 py-0.5" : "text-xs px-3 py-1",
+        variant === 'success' && "bg-[var(--success-muted)] text-[var(--success)] border-[var(--success)]/25",
+        variant === 'warning' && "bg-[var(--warning-muted)] text-[var(--warning)] border-[var(--warning)]/25",
+        variant === 'danger' && "bg-[var(--danger-muted)] text-[var(--danger)] border-[var(--danger)]/25",
+        variant === 'info' && "bg-[var(--info-muted)] text-[var(--info)] border-[var(--info)]/25",
+        variant === 'neutral' && "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-default)]",
+        variant === 'accent' && "bg-[var(--accent-muted)] text-[var(--accent)] border-[var(--accent)]/30",
         className
       )}
       {...props}

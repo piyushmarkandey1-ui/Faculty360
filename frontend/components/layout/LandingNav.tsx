@@ -15,10 +15,10 @@ export function LandingNav() {
   const { scrollY } = useScroll()
   const prefersReducedMotion = useReducedMotion()
 
-  const bg = useTransform(scrollY, [0, 80], ['rgba(255,255,255,0)', 'rgba(255,255,255,0.65)'])
-  const borderColor = useTransform(scrollY, [0, 80], ['rgba(228,232,239,0)', 'rgba(255,255,255,0.6)'])
-  const boxShadow = useTransform(scrollY, [0, 80], ['0px 4px 20px rgba(23,35,60,0)', '0px 12px 40px rgba(23,35,60,0.08)'])
-  const backdropFilter = useTransform(scrollY, [0, 80], ['blur(0px)', 'blur(16px)'])
+  const bg = useTransform(scrollY, [0, 80], ['rgba(255,255,255,0)', 'rgba(255,255,255,0.7)'])
+  const borderColor = useTransform(scrollY, [0, 80], ['rgba(228,232,239,0)', 'rgba(228,232,239,0.8)'])
+  const boxShadow = useTransform(scrollY, [0, 80], ['0px 4px 20px rgba(0,0,0,0)', '0px 4px 24px rgba(0,0,0,0.04)'])
+  const backdropFilter = useTransform(scrollY, [0, 80], ['blur(0px) saturate(100%)', 'blur(20px) saturate(180%)'])
 
   const [hoveredLink, setHoveredLink] = useState<string | null>(null)
 
@@ -31,26 +31,26 @@ export function LandingNav() {
 
   return (
     <motion.header
-      className="fixed top-2 md:top-6 left-4 right-4 md:left-8 md:right-8 z-50 max-w-7xl mx-auto rounded-full transition-all duration-300"
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       initial={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0, 0, 0.2, 1] }}
       style={prefersReducedMotion ? {
         backgroundColor: 'rgba(255,255,255,0.85)',
-        border: '1px solid rgba(255,255,255,0.6)',
-        boxShadow: '0px 12px 40px rgba(23,35,60,0.08)',
-        backdropFilter: 'blur(16px)'
+        borderBottom: '1px solid rgba(228,232,239,0.8)',
+        boxShadow: '0px 4px 24px rgba(0,0,0,0.04)',
+        backdropFilter: 'blur(20px) saturate(180%)'
       } : {
         backgroundColor: bg,
-        borderWidth: '1px',
-        borderStyle: 'solid',
-        borderColor: borderColor,
+        borderBottomWidth: '1px',
+        borderBottomStyle: 'solid',
+        borderBottomColor: borderColor,
         boxShadow,
         backdropFilter,
         WebkitBackdropFilter: backdropFilter
       }}
     >
-      <div className="w-full px-6 md:px-8 h-16 md:h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="text-[#0F8B8D] p-1.5 rounded-lg bg-[#0F8B8D]/10 group-hover:bg-[#0F8B8D]/20 transition-colors">
             <Box className="w-6 h-6" />

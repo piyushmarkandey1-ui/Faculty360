@@ -146,8 +146,8 @@ function HeroNetwork() {
   const handleNodeHover = useCallback((node: typeof SOURCE_NODES[0], svgX: number, svgY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // Convert SVG coords (viewBox 0 0 520 480) to percentage
-    const xPct = svgX / 520;
+    // Convert SVG coords (viewBox -100 0 720 480) to percentage
+    const xPct = (svgX + 100) / 720;
     const yPct = svgY / 480;
     setTooltip({
       nodeId: node.id,
@@ -168,7 +168,7 @@ function HeroNetwork() {
     >
       <svg
         ref={svgRef}
-        viewBox="0 0 520 480"
+        viewBox="-100 0 720 480"
         className="w-full h-full"
         aria-hidden="true"
         style={{ transition: "transform 0.4s cubic-bezier(0,0,0.2,1)" }}

@@ -176,8 +176,8 @@ export function CinematicStory() {
               </svg>
 
               {/* Cards */}
-              <div className="absolute top-[200px] left-[80px] w-[240px] bg-white p-5 rounded-xl shadow-lg border border-[#E4E8EF]"
-                   style={{ transform: `translateX(${(1 - cSp1) * -120}px)`, opacity: cSp1 }}>
+              <div className="absolute top-[300px] left-[5%] md:left-[80px] w-[200px] md:w-[240px] bg-white p-4 md:p-5 rounded-xl shadow-lg border border-[#E4E8EF]"
+                   style={{ transform: `translateX(${(1 - cSp1) * -80}px) translateY(-50%)`, opacity: cSp1 }}>
                 <div className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: TEAL }}>Google Scholar</div>
                 <div className="space-y-2 text-sm text-[#17233C]">
                   <div className="flex justify-between"><span>Publications</span><span className="font-semibold">87</span></div>
@@ -186,8 +186,8 @@ export function CinematicStory() {
                 </div>
               </div>
 
-              <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 w-[240px] bg-white p-5 rounded-xl shadow-lg border border-[#E4E8EF]"
-                   style={{ transform: `translate(-50%, ${(1 - cSp2) * 80}px)`, opacity: cSp2 }}>
+              <div className="absolute top-[500px] w-[200px] md:w-[240px] bg-white p-4 md:p-5 rounded-xl shadow-lg border border-[#E4E8EF]"
+                   style={{ left: '50%', transform: `translateX(-50%) translateY(${(1 - cSp2) * 80}px)`, opacity: cSp2 }}>
                 <div className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: BLUE }}>Institutional Data</div>
                 <div className="space-y-2 text-sm text-[#17233C]">
                   <div className="flex justify-between"><span>Teaching</span><span className="font-semibold">12 hrs/wk</span></div>
@@ -196,8 +196,8 @@ export function CinematicStory() {
                 </div>
               </div>
 
-              <div className="absolute top-[200px] right-[80px] w-[240px] bg-white p-5 rounded-xl shadow-lg border border-[#E4E8EF]"
-                   style={{ transform: `translateX(${(1 - cSp3) * 120}px)`, opacity: cSp3 }}>
+              <div className="absolute top-[300px] right-[5%] md:right-[80px] w-[200px] md:w-[240px] bg-white p-4 md:p-5 rounded-xl shadow-lg border border-[#E4E8EF]"
+                   style={{ transform: `translateX(${(1 - cSp3) * 80}px) translateY(-50%)`, opacity: cSp3 }}>
                 <div className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: GOLD }}>ResearchGate</div>
                 <div className="space-y-2 text-sm text-[#17233C]">
                   <div className="flex justify-between"><span>Activity</span><span className="font-semibold">High</span></div>
@@ -206,7 +206,8 @@ export function CinematicStory() {
               </div>
 
               {/* Center Node */}
-              <div className="absolute top-[330px] left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+              <div className="absolute top-[330px] flex items-center justify-center"
+                   style={{ left: '50%', transform: 'translate(-50%, -50%)' }}>
                 <div className="w-10 h-10 rounded-full bg-[#17233C] flex items-center justify-center shadow-[0_0_20px_rgba(23,35,60,0.3)] animate-pulse">
                   <span className="text-white font-bold text-sm">A³P</span>
                 </div>

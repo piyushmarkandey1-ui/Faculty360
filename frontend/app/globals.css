@@ -1,0 +1,303 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────
+   A³P-Web Design Tokens
+   ───────────────────────────────────────────── */
+
+:root {
+  /* Backgrounds */
+  --bg-base:       #0b0e14;
+  --bg-surface:    #12161f;
+  --bg-elevated:   #1a2030;
+  --bg-hover:      #1e2535;
+
+  /* Borders */
+  --border-faint:  rgba(255,255,255,0.05);
+  --border-subtle: rgba(255,255,255,0.09);
+  --border-default:rgba(255,255,255,0.14);
+  --border-strong: rgba(255,255,255,0.22);
+
+  /* Brand Copper/Terracotta */
+  --accent:        #c07a4f;
+  --accent-light:  #d4956a;
+  --accent-muted:  rgba(192,122,79,0.12);
+  --accent-subtle: rgba(192,122,79,0.06);
+
+  /* Semantic */
+  --success:       #3cb97a;
+  --success-muted: rgba(60,185,122,0.10);
+  --warning:       #d9923a;
+  --warning-muted: rgba(217,146,58,0.10);
+  --danger:        #d95555;
+  --danger-muted:  rgba(217,85,85,0.10);
+  --info:          #4a86d8;
+  --info-muted:    rgba(74,134,216,0.10);
+
+  /* Typography */
+  --text-primary:  #e4e8f0;
+  --text-secondary:#8a96a8;
+  --text-muted:    #4a5568;
+  --text-inverse:  #0b0e14;
+
+  /* Data viz palette */
+  --data-1: #c07a4f;
+  --data-2: #4a86d8;
+  --data-3: #3cb97a;
+  --data-4: #9b7fd4;
+  --data-5: #d9923a;
+  --data-6: #4ab8c4;
+
+  /* Spacing */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-inout:  cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Font */
+  --font-sans: var(--font-geist-sans), 'Inter', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), 'JetBrains Mono', monospace;
+}
+
+/* ─────────────────────────────────────────────
+   Tailwind v4 theme extension
+   ───────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --font-sans:        var(--font-geist-sans);
+  --font-mono:        var(--font-geist-mono);
+}
+
+/* ─────────────────────────────────────────────
+   Base Reset
+   ───────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--accent-muted);
+  color: var(--accent-light);
+}
+
+/* ─────────────────────────────────────────────
+   Focus Ring
+   ───────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─────────────────────────────────────────────
+   Scrollbar (webkit)
+   ───────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ─────────────────────────────────────────────
+   Typography utilities
+   ───────────────────────────────────────────── */
+
+.text-display {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.text-h1 {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.text-h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.text-h3 {
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.text-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+/* ─────────────────────────────────────────────
+   Surface utilities
+   ───────────────────────────────────────────── */
+
+.surface {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.surface-elevated {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+/* ─────────────────────────────────────────────
+   Accent utilities
+   ───────────────────────────────────────────── */
+
+.accent-text {
+  color: var(--accent);
+}
+
+.accent-border {
+  border-color: var(--accent);
+}
+
+/* ─────────────────────────────────────────────
+   Gradient utilities
+   ───────────────────────────────────────────── */
+
+.gradient-accent {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+}
+
+.gradient-text-accent {
+  background: linear-gradient(135deg, var(--accent-light) 0%, #e8b48a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─────────────────────────────────────────────
+   Reduced motion
+   ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Layout helpers
+   ───────────────────────────────────────────── */
+
+.container-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
+}
+
+@media (max-width: 768px) {
+  .container-page {
+    padding: 0 var(--space-4);
+  }
+}
+
+/* Sidebar layout */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.app-main {
+  margin-left: 240px;
+  flex: 1;
+  min-height: 100vh;
+  background: var(--bg-base);
+}
+
+@media (max-width: 1024px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    transition: transform 300ms var(--ease-inout);
+  }
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+  .app-main {
+    margin-left: 0;
+  }
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+}

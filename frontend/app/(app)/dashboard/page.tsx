@@ -1,0 +1,196 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell 
+} from 'recharts'
+import { ROUTES } from '@/lib/constants/routes'
+import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
+import { MOCK_DASHBOARD_SUMMARY, MOCK_FACULTY_LIST } from '@/mock-data'
+import { Badge } from '@/components/ui/Badge'
+
+export default function DashboardPage() {
+  const [isClient, setIsClient] = useState(false)
+  
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Distribution data
+  const distData = [
+    { name: '0-20', count: 5 },
+    { name: '20-40', count: 12 },
+    { name: '40-60', count: 35 },
+    { name: '60-80', count: 68 },
+    { name: '80-100', count: 28 },
+  ]
+
+  const qualityData = [
+    { name: 'Complete', value: 71.3, color: 'var(--success)' },
+    { name: 'Missing', value: 28.7, color: 'var(--border-default)' },
+  ]
+
+  if (!isClient) return null // avoid hydration mismatch on recharts
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Platform Overview</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Institutional academic profile analytics</p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Faculty', value: MOCK_DASHBOARD_SUMMARY.faculty_total, suffix: '' },
+          { label: 'Avg. Assessment Score', value: 81.2, suffix: '' },
+          { label: 'Avg. Completeness', value: MOCK_DASHBOARD_SUMMARY.avg_completeness, suffix: '%' },
+          { label: 'Pending Conflicts', value: MOCK_DASHBOARD_SUMMARY.pending_conflicts, suffix: '' },
+        ].map((stat, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="p-5 rounded-xl border flex flex-col"
+            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+          >
+            <span className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{stat.label}</span>
+            <div className="text-3xl font-bold flex items-baseline gap-1" style={{ color: 'var(--text-primary)' }}>
+              <AnimatedCounter value={stat.value} duration={1000} format={(n) => stat.value % 1 !== 0 ? n.toFixed(1) : Math.round(n).toLocaleString('en-IN')} />
+              <span className="text-lg">{stat.suffix}</span>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Recent Faculty Table */}
+        <div className="lg:col-span-3 rounded-xl border overflow-hidden flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+          <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: 'var(--border-subtle)' }}>
+            <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Faculty</h2>
+            <Link href={ROUTES.faculty.list} className="text-sm font-medium hover:underline" style={{ color: 'var(--accent)' }}>View All</Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-b border-[var(--border-subtle)]">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name & Dept</th>
+                  <th className="px-4 py-3 font-medium text-center">Completeness</th>
+                  <th className="px-4 py-3 font-medium text-center">Sources</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {MOCK_FACULTY_LIST.slice(0, 8).map((fac) => (
+                  <tr key={fac.id} className="hover:bg-[var(--bg-hover)] transition-colors group">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-[var(--text-primary)]">{fac.canonical_name}</div>
+                      <div className="text-xs text-[var(--text-muted)]">{fac.department}</div>
+                    </td>
+                    <td className="px-4 py-3 text-center text-[var(--text-primary)]">
+                      {fac.completeness_score}%
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-center gap-1">
+                        {fac.source_coverage.google_scholar && <div className="w-2 h-2 rounded-full bg-blue-500" title="Google Scholar" />}
+                        {fac.source_coverage.researchgate && <div className="w-2 h-2 rounded-full bg-green-500" title="ResearchGate" />}
+                        {fac.source_coverage.institutional && <div className="w-2 h-2 rounded-full bg-amber-500" title="Institutional" />}
+                        {fac.source_coverage.orcid && <div className="w-2 h-2 rounded-full bg-purple-500" title="ORCID" />}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={fac.onboarding_status === 'active' ? 'success' : fac.onboarding_status === 'pending' ? 'warning' : 'neutral'}>
+                        {fac.onboarding_status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link 
+                        href={ROUTES.faculty.profile(fac.id)}
+                        className="text-xs font-medium px-2 py-1 rounded bg-[var(--bg-elevated)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Right column - Source Health */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          <div className="rounded-xl border p-5 flex flex-col h-full" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Data Quality</h2>
+            <div className="flex-1 flex items-center justify-center min-h-[160px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={qualityData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={70}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {qualityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '8px' }}
+                    itemStyle={{ color: 'var(--text-primary)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="mt-4 space-y-3">
+              <h3 className="text-sm font-medium text-[var(--text-secondary)]">Source Sync Health</h3>
+              <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-elevated)]">
+                <span className="text-sm text-[var(--text-primary)]">Google Scholar</span>
+                <Badge variant="success">Healthy</Badge>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-elevated)]">
+                <span className="text-sm text-[var(--text-primary)]">Institutional DB</span>
+                <Badge variant="success">Healthy</Badge>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-[var(--bg-elevated)]">
+                <span className="text-sm text-[var(--text-primary)]">ORCID API</span>
+                <Badge variant="warning">Degraded</Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3 - Chart */}
+      <div className="rounded-xl border p-5" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+        <h2 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Assessment Score Distribution</h2>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={distData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip 
+                cursor={{ fill: 'var(--bg-hover)' }}
+                contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '8px' }}
+              />
+              <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  )
+}

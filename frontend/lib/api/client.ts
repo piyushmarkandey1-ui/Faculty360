@@ -1,0 +1,128 @@
+/**
+ * API client typed wrappers.
+ * All fetch calls go through these functions — never raw fetch in components.
+ * Types are sourced from /types — keeping API contract and UI types in sync.
+ */
+
+import { API_BASE_URL } from '@/lib/constants/config'
+import type { FacultySummary, FacultyProfileResponse, ProfileConflict, Publication } from '@/types/faculty'
+import type { Assessment, AssessmentSummary } from '@/types/assessment'
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      // TODO: inject Authorization header from session
+    },
+    ...options,
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: { message: res.statusText } }))
+    throw new Error(error?.error?.message ?? 'API request failed')
+  }
+
+  return res.json() as Promise<T>
+}
+
+// ── Faculty ────────────────────────────────────────────────────────────────
+
+export interface FacultyListParams {
+  page?: number
+  limit?: number
+  search?: string
+  department?: string
+  status?: string
+}
+
+export interface FacultyListResponse {
+  items: FacultySummary[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function getFacultyList(params: FacultyListParams = {}): Promise<FacultyListResponse> {
+  const qs = new URLSearchParams(
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, String(v)])
+  ).toString()
+  return apiFetch<FacultyListResponse>(`/faculty${qs ? `?${qs}` : ''}`)
+}
+
+export async function getFacultyProfile(id: string): Promise<FacultyProfileResponse> {
+  return apiFetch<FacultyProfileResponse>(`/faculty/${id}`)
+}
+
+export async function getFacultyConflicts(id: string): Promise<{ items: ProfileConflict[] }> {
+  return apiFetch<{ items: ProfileConflict[] }>(`/faculty/${id}/conflicts`)
+}
+
+export async function getFacultyPublications(id: string): Promise<{ items: Publication[] }> {
+  return apiFetch<{ items: Publication[] }>(`/faculty/${id}/publications`)
+}
+
+export async function resolveConflict(
+  facultyId: string,
+  conflictId: string,
+  resolution: 'source_a' | 'source_b' | 'manual'
+): Promise<ProfileConflict> {
+  return apiFetch<ProfileConflict>(`/faculty/${facultyId}/conflicts/${conflictId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ resolution }),
+  })
+}
+
+// ── Ingestion ──────────────────────────────────────────────────────────────
+
+export interface IngestionJobResponse {
+  job_id: string
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  estimated_duration_seconds?: number
+}
+
+export async function triggerIngestion(
+  facultyId: string,
+  source: string
+): Promise<IngestionJobResponse> {
+  return apiFetch<IngestionJobResponse>('/ingestion/trigger', {
+    method: 'POST',
+    body: JSON.stringify({ faculty_id: facultyId, source }),
+  })
+}
+
+export async function getIngestionStatus(jobId: string): Promise<IngestionJobResponse> {
+  return apiFetch<IngestionJobResponse>(`/ingestion/status/${jobId}`)
+}
+
+// ── Assessment ─────────────────────────────────────────────────────────────
+
+export async function runAssessment(facultyId: string): Promise<AssessmentSummary> {
+  return apiFetch<AssessmentSummary>('/assessment/run', {
+    method: 'POST',
+    body: JSON.stringify({ faculty_id: facultyId }),
+  })
+}
+
+export async function getAssessment(assessmentId: string): Promise<Assessment> {
+  return apiFetch<Assessment>(`/assessment/${assessmentId}`)
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+  faculty_total: number
+  faculty_active: number
+  assessments_this_cycle: number
+  avg_completeness: number
+  pending_conflicts: number
+  last_ingestion_at: string | null
+  source_health: Record<string, 'healthy' | 'degraded' | 'offline'>
+}
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  return apiFetch<DashboardSummary>('/dashboard/summary')
+}

@@ -21,13 +21,13 @@ const SLATE = "#5D6B82";
 
 // ─── SOURCE NODE CONFIG ───────────────────────────────────────────────────────
 const DRAG_SOURCES = [
-  { id: "scholar", label: "Google Scholar", icon: BookOpen, color: TEAL, cx: -200, cy: -150, details: "87 Publications · 1,842 Citations" },
-  { id: "orcid", label: "ORCID", icon: Fingerprint, color: "#7C3AED", cx: 200, cy: -130, details: "Research Identity · 31 Works" },
-  { id: "institutional", label: "Institutional Data", icon: Building2, color: BLUE, cx: -240, cy: 10, details: "Teaching · Mentoring · Service" },
-  { id: "researchgate", label: "ResearchGate", icon: Network, color: GOLD, cx: 240, cy: 30, details: "43 Publications · Activity" },
-  { id: "teaching", label: "Teaching Records", icon: GraduationCap, color: NAVY, cx: -180, cy: 160, details: "12 hrs/wk · 17 Mentored" },
-  { id: "hr", label: "HR / ERP", icon: Database, color: SLATE, cx: 180, cy: 170, details: "Employment · HR Records" },
-  { id: "awards", label: "Awards", icon: Award, color: "#D97706", cx: 0, cy: 200, details: "4 Awards · 2 Grants" },
+  { id: "scholar", label: "Google Scholar", icon: BookOpen, color: TEAL, cx: -168, cy: -126, details: "87 Publications · 1,842 Citations" },
+  { id: "orcid", label: "ORCID", icon: Fingerprint, color: "#7C3AED", cx: 168, cy: -109, details: "Research Identity · 31 Works" },
+  { id: "institutional", label: "Institutional Data", icon: Building2, color: BLUE, cx: -202, cy: 8, details: "Teaching · Mentoring · Service" },
+  { id: "researchgate", label: "ResearchGate", icon: Network, color: GOLD, cx: 202, cy: 25, details: "43 Publications · Activity" },
+  { id: "teaching", label: "Teaching Records", icon: GraduationCap, color: NAVY, cx: -151, cy: 134, details: "12 hrs/wk · 17 Mentored" },
+  { id: "hr", label: "HR / ERP", icon: Database, color: SLATE, cx: 151, cy: 143, details: "Employment · HR Records" },
+  { id: "awards", label: "Awards", icon: Award, color: "#D97706", cx: 0, cy: 168, details: "4 Awards · 2 Grants" },
 ];
 
 // ─── ANIMATED COUNTER ────────────────────────────────────────────────────────
@@ -70,8 +70,8 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
     if (!wrapperRef.current) return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0].contentRect.width;
-      if (width < 620 && width > 0) {
-        setScale(width / 620);
+      if (width < 520 && width > 0) {
+        setScale(width / 520);
       } else {
         setScale(1);
       }
@@ -119,10 +119,10 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
   };
 
   return (
-    <div ref={wrapperRef} className="relative w-full h-[380px] lg:h-[480px] flex items-center justify-center">
+    <div ref={wrapperRef} className="relative w-full h-[320px] lg:h-[400px] flex items-center justify-center">
       <div 
         ref={containerRef}
-        className="relative w-[620px] h-[480px] flex items-center justify-center origin-center"
+        className="relative w-[520px] h-[400px] flex items-center justify-center origin-center"
         style={{ transform: `scale(${scale})` }}
       >
         {/* SVG Connection Lines */}
@@ -175,7 +175,7 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
               : "0 12px 40px rgba(23,35,60,0.08)",
           }}
           transition={{ duration: phase === "fusion" ? 1.4 : 0.4 }}
-          style={{ width: 240, height: 240, borderWidth: 2 }}
+          style={{ width: 200, height: 200, borderWidth: 2 }}
         >
           {phase === "collecting" && (
             <motion.div 
@@ -212,12 +212,12 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
           {/* Progress Ring */}
           {(phase === "collecting" || phase === "fusion") && (
             <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
-              <circle cx="120" cy="120" r="108" fill="none" stroke={BORDER} strokeWidth="4" opacity="0.5" />
+              <circle cx="100" cy="100" r="91" fill="none" stroke={BORDER} strokeWidth="4" opacity="0.5" />
               <motion.circle 
-                cx="120" cy="120" r="108" fill="none" stroke={TEAL} strokeWidth="4"
-                strokeDasharray="678.5" // 2 * pi * 108
-                initial={{ strokeDashoffset: 678.5 }}
-                animate={{ strokeDashoffset: 678.5 - (678.5 * connectedSources.length) / DRAG_SOURCES.length }}
+                cx="100" cy="100" r="91" fill="none" stroke={TEAL} strokeWidth="4"
+                strokeDasharray="571.8" // 2 * pi * 91
+                initial={{ strokeDashoffset: 571.8 }}
+                animate={{ strokeDashoffset: 571.8 - (571.8 * connectedSources.length) / DRAG_SOURCES.length }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               />
             </svg>
@@ -230,8 +230,8 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
               if (!source) return null;
               // Distribute tokens evenly around the ring
               const angle = (index / DRAG_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
-              const cx = Math.cos(angle) * 108;
-              const cy = Math.sin(angle) * 108;
+              const cx = Math.cos(angle) * 91;
+              const cy = Math.sin(angle) * 91;
               const Icon = source.icon;
 
               return (
@@ -240,7 +240,7 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
                   initial={{ scale: 0, x: 0, y: 0 }}
                   animate={{ scale: 1, x: cx, y: cy }}
                   exit={{ scale: 0, opacity: 0 }}
-                  className="absolute left-[104px] top-[104px] flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-md border"
+                  className="absolute left-[88px] top-[88px] flex items-center justify-center w-7 h-7 rounded-full bg-white shadow-md border"
                   style={{ borderColor: source.color, color: source.color, zIndex: 15 }}
                 >
                   <Icon size={14} />

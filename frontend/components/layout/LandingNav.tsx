@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight, Box } from 'lucide-react'
+import { Box } from 'lucide-react'
 
 // Assuming ROUTES is defined here. We fall back gracefully just in case.
 const ROUTES = {
@@ -78,27 +78,10 @@ export function LandingNav() {
         <div className="flex items-center gap-4">
           <Link
             href={ROUTES.login}
-            className="hidden sm:block text-sm font-medium text-[#5D6B82] hover:text-[#17233C] transition-colors"
+            className="text-sm font-medium text-[#5D6B82] hover:text-[#17233C] transition-colors"
           >
             Sign In
           </Link>
-          <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
-            <Link
-              href={ROUTES.dashboard}
-              className="group flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#17233C] text-white text-sm font-medium hover:bg-[#0F8B8D] transition-colors shadow-sm"
-            >
-              <span>Explore Platform</span>
-              <motion.div
-                className="flex items-center justify-center"
-                variants={{
-                  hover: { x: 3 }
-                }}
-                transition={{ duration: 0.2 }}
-              >
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-[3px]" />
-              </motion.div>
-            </Link>
-          </motion.div>
         </div>
       </div>
     </motion.header>

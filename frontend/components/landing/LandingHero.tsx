@@ -440,8 +440,8 @@ export function LandingHero() {
         <motion.div
           className="w-full lg:w-[45%] lg:pr-16 flex items-center"
           animate={{
-            opacity: isRevealed ? 0.2 : 1,
-            y: isRevealed ? -16 : 0,
+            opacity: isRevealed ? 0.45 : 1,
+            y: isRevealed ? -14 : 0,
           }}
           transition={{
             duration: shouldReduceMotion ? 0 : 0.55,
@@ -449,51 +449,109 @@ export function LandingHero() {
           }}
         >
           <div className="w-full">
-            {/* Line 1: FRAGMENTED DATA — primary visual hook, heaviest weight */}
+
+            {/* Eyebrow label */}
             <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.7, delay: 0.08, ease: [0, 0, 0.2, 1] }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.0, ease: "easeOut" }}
+              className="flex items-center gap-2 mb-6"
             >
               <span
-                className="block font-black leading-[1.05]"
-                style={{
-                  fontSize: "clamp(3.2rem, 5vw, 5.1rem)",
-                  color: NAVY,
-                  letterSpacing: "-0.035em",
-                }}
+                className="inline-block w-6 h-px"
+                style={{ backgroundColor: TEAL, opacity: 0.8 }}
+              />
+              <span
+                className="text-xs font-bold uppercase tracking-[0.18em]"
+                style={{ color: TEAL }}
               >
-                Fragmented Data
+                Smart India Hackathon 2026 · PS64
               </span>
             </motion.div>
 
-            {/* Line 2: to Explainable Insight — secondary emphasis via TEAL + Shuffle */}
-            <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: "blur(10px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.7, delay: 0.2, ease: [0, 0, 0.2, 1] }}
+            {/* Headline block — left border accent + two lines */}
+            <div
+              className="pl-5 border-l-4"
+              style={{ borderColor: TEAL }}
             >
-              <Shuffle
-                text="to Explainable Insight"
-                tag="span"
-                className="block font-bold leading-[1.05]"
-                style={{
-                  fontSize: "clamp(2.6rem, 3.9vw, 4.2rem)",
-                  color: TEAL,
-                  letterSpacing: "-0.03em",
+              {/* Line 1: FRAGMENTED DATA — primary visual hook, heaviest weight */}
+              <motion.div
+                initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.7, delay: 0.1, ease: [0, 0, 0.2, 1] }}
+              >
+                <span
+                  className="block font-black leading-[1.05]"
+                  style={{
+                    fontSize: "clamp(3.2rem, 5vw, 5.1rem)",
+                    color: NAVY,
+                    letterSpacing: "-0.035em",
+                  }}
+                >
+                  Fragmented Data
+                </span>
+              </motion.div>
+
+              {/* Line 2: to Explainable Insight — Shuffle animation in teal */}
+              <motion.div
+                initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ duration: 0.7, delay: 0.2, ease: [0, 0, 0.2, 1] }}
+              >
+                <Shuffle
+                  text="to Explainable Insight"
+                  tag="span"
+                  className="block font-bold leading-[1.05]"
+                  style={{
+                    fontSize: "clamp(2.6rem, 3.9vw, 4.2rem)",
+                    color: TEAL,
+                    letterSpacing: "-0.03em",
+                  }}
+                  textAlign="left"
+                  shuffleDirection="right"
+                  duration={0.38}
+                  animationMode="evenodd"
+                  shuffleTimes={1}
+                  ease="power3.out"
+                  stagger={0.025}
+                  threshold={0.15}
+                  triggerOnce={true}
+                  triggerOnHover={true}
+                  respectReducedMotion={true}
+                />
+              </motion.div>
+            </div>
+
+            {/* Descriptor + CTA — fills the empty space below */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.38, ease: "easeOut" }}
+              className="mt-8 pl-5 flex flex-col gap-5"
+            >
+              <p
+                className="text-sm leading-relaxed max-w-xs"
+                style={{ color: SLATE }}
+              >
+                Multi-source academic profile analytics. Deduplication, evidence scoring, and transparent AI assessment.
+              </p>
+
+              <Link
+                href={ROUTES.dashboard}
+                className="inline-flex items-center gap-2 self-start px-5 py-2.5 rounded-lg border text-sm font-semibold transition-all duration-200"
+                style={{ color: NAVY, borderColor: BORDER, background: WHITE }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = TEAL;
+                  (e.currentTarget as HTMLElement).style.color = TEAL;
                 }}
-                textAlign="left"
-                shuffleDirection="right"
-                duration={0.38}
-                animationMode="evenodd"
-                shuffleTimes={1}
-                ease="power3.out"
-                stagger={0.025}
-                threshold={0.15}
-                triggerOnce={true}
-                triggerOnHover={true}
-                respectReducedMotion={true}
-              />
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = BORDER;
+                  (e.currentTarget as HTMLElement).style.color = NAVY;
+                }}
+              >
+                Explore Platform
+                <ArrowRight size={14} />
+              </Link>
             </motion.div>
           </div>
         </motion.div>
@@ -511,4 +569,5 @@ export function LandingHero() {
     </section>
   );
 }
+
 

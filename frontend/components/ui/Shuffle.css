@@ -3,9 +3,10 @@
   white-space: normal;
   word-wrap: break-word;
   will-change: transform;
-  line-height: 1;
+  line-height: inherit;
   visibility: hidden;
 }
+
 
 .shuffle-parent.is-ready {
   visibility: visible;

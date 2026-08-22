@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { motion, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { 
-  ArrowRight, ChevronDown, BookOpen, Fingerprint, 
+  ArrowRight, BookOpen, Fingerprint, 
   Building2, Network, GraduationCap, Database, 
   Award, RefreshCw 
 } from "lucide-react";
@@ -57,7 +57,7 @@ function AnimatedCounter({ value, decimals = 0 }: { value: number, decimals?: nu
 }
 
 // ─── DRAG HERO COMPONENT ───────────────────────────────────────────────────────
-function DragHero() {
+function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "fusion" | "profile") => void }) {
   const shouldReduceMotion = useReducedMotion();
   const [connectedSources, setConnectedSources] = useState<string[]>([]);
   const [phase, setPhase] = useState<"collecting" | "fusion" | "profile">("collecting");
@@ -102,12 +102,19 @@ function DragHero() {
     setConnectedSources(next);
     if (next.length === DRAG_SOURCES.length) {
       setPhase("fusion");
-      setTimeout(() => setPhase("profile"), 1400); // 1.4s fusion sequence
+      onPhaseChange?.("fusion");
+      setTimeout(() => {
+        setPhase("profile");
+        onPhaseChange?.("profile");
+      }, 1400);
+    } else {
+      onPhaseChange?.("collecting");
     }
   };
 
   const reset = () => {
     setPhase("collecting");
+    onPhaseChange?.("collecting");
     setConnectedSources([]);
   };
 
@@ -384,37 +391,15 @@ function DragHero() {
 // ─── HERO SECTION ─────────────────────────────────────────────────────────────
 export function LandingHero() {
   const shouldReduceMotion = useReducedMotion();
-  const headlineRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
-  const isInView = useInView(containerRef, { once: true });
+  const [heroPhase, setHeroPhase] = useState<"collecting" | "fusion" | "profile">("collecting");
 
-  const HEADLINE_LINES = [
-    { text: "FROM FRAGMENTED", color: NAVY },
-    { text: "DATA", color: NAVY },
-    { text: "TO CONNECTED", color: NAVY },
-    { text: "EVIDENCE.", color: NAVY },
-    { text: "TO EXPLAINABLE", color: NAVY },
-    { text: "INSIGHT.", color: TEAL },
-  ];
-
-  const containerVariants = {
-    hidden: {},
-    visible: { transition: { staggerChildren: 0.09 } },
-  };
-
-  const lineVariant: any = {
-    hidden: shouldReduceMotion
-      ? { opacity: 0 }
-      : { opacity: 0, y: 28, filter: "blur(8px)" },
-    visible: shouldReduceMotion
-      ? { opacity: 1, transition: { duration: 0.3 } }
-      : { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.65, ease: [0, 0, 0.2, 1] } },
-  };
+  const isRevealed = heroPhase === "profile";
 
   return (
     <section
       ref={containerRef}
-      className="relative min-h-[92vh] flex items-center pt-24 pb-16 overflow-hidden"
+      className="relative min-h-[92vh] flex items-center pt-20 pb-16 overflow-hidden"
     >
       {/* Subtle grid background */}
       <div
@@ -450,139 +435,78 @@ export function LandingHero() {
         />
       </div>
 
-      <div className="container-page relative z-10 w-full grid lg:grid-cols-[1.15fr_0.85fr] gap-12 lg:gap-16 items-center">
-        {/* LEFT: Content */}
-        <div className="max-w-2xl relative z-20">
-          {/* Label */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-7 text-xs font-bold uppercase tracking-widest"
-            style={{ color: TEAL }}
-          >
-            Smart India Hackathon 2026 · PS64
-          </motion.div>
-
-          {/* Headline */}
-          <motion.div
-            ref={headlineRef}
-            className="space-y-0.5 mb-9"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {HEADLINE_LINES.map((line, i) => (
-              <motion.div
-                key={i}
-                variants={lineVariant}
-                className="block font-extrabold leading-[1.1]"
+      <div className="container-page relative z-10 w-full flex flex-col lg:flex-row items-center gap-10 lg:gap-0">
+        {/* LEFT: Minimal headline — 38% on desktop */}
+        <motion.div
+          className="w-full lg:w-[38%] lg:pr-10 flex items-center"
+          animate={{
+            opacity: isRevealed ? 0.35 : 1,
+            y: isRevealed ? -8 : 0,
+          }}
+          transition={{
+            duration: shouldReduceMotion ? 0 : 0.5,
+            ease: "easeInOut",
+          }}
+        >
+          <div className="w-full">
+            {/* Line 1 */}
+            <motion.div
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.65, delay: 0.1, ease: [0, 0, 0.2, 1] }}
+            >
+              <span
+                className="block font-extrabold leading-[1.08]"
                 style={{
-                  fontSize: "clamp(2.4rem, 4.2vw, 3.8rem)",
-                  color: line.color,
-                  letterSpacing: "-0.025em",
+                  fontSize: "clamp(2.6rem, 3.8vw, 4.4rem)",
+                  color: NAVY,
+                  letterSpacing: "-0.03em",
                 }}
               >
-                {line.text === "INSIGHT." ? (
-                  <Shuffle
-                    text="INSIGHT."
-                    shuffleDirection="right"
-                    duration={0.35}
-                    animationMode="evenodd"
-                    shuffleTimes={1}
-                    ease="power3.out"
-                    stagger={0.03}
-                    threshold={0.1}
-                    triggerOnce={true}
-                    triggerOnHover={true}
-                    respectReducedMotion={true}
-                  />
-                ) : (
-                  line.text
-                )}
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {/* Supporting text */}
-          <motion.p
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.75, ease: [0, 0, 0.2, 1] }}
-            className="text-lg max-w-md mb-10 leading-relaxed"
-            style={{ color: SLATE }}
-          >
-            Multi-source academic profile analytics built on evidence, deduplication, and transparent assessment.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.88 }}
-            className="flex flex-wrap items-center gap-4"
-          >
-            <Link
-              href={ROUTES.dashboard}
-              className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-semibold shadow-sm group relative overflow-hidden transition-all duration-200"
-              style={{ background: NAVY, color: WHITE }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(23,35,60,0.2)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "";
-              }}
-            >
-              Explore Platform
-              <span className="transition-transform duration-200 group-hover:translate-x-1">
-                <ArrowRight size={15} />
+                Fragmented Data to
               </span>
-            </Link>
-            <a
-              href="#story-section"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium border transition-all duration-200"
-              style={{ color: NAVY, borderColor: BORDER, background: WHITE }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = TEAL;
-                (e.currentTarget as HTMLElement).style.color = TEAL;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = BORDER;
-                (e.currentTarget as HTMLElement).style.color = NAVY;
-              }}
-            >
-              See How It Works
-            </a>
-          </motion.div>
-
-          {/* Scroll cue */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 1.4 }}
-            className="mt-16 flex items-center gap-2"
-            style={{ color: SLATE }}
-          >
-            <motion.div
-              animate={shouldReduceMotion ? {} : { y: [0, 5, 0] }}
-              transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
-            >
-              <ChevronDown size={16} />
             </motion.div>
-            <span className="text-xs font-medium">Scroll to see how it works</span>
-          </motion.div>
-        </div>
 
-        {/* RIGHT: Interactive Network */}
+            {/* Line 2 — slightly stronger emphasis via TEAL + Shuffle */}
+            <motion.div
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.65, delay: 0.22, ease: [0, 0, 0.2, 1] }}
+            >
+              <Shuffle
+                text="Explainable Insight"
+                tag="span"
+                className="block font-extrabold leading-[1.08]"
+                style={{
+                  fontSize: "clamp(2.6rem, 3.8vw, 4.4rem)",
+                  color: TEAL,
+                  letterSpacing: "-0.03em",
+                  visibility: "visible",
+                }}
+                textAlign="left"
+                shuffleDirection="right"
+                duration={0.38}
+                animationMode="evenodd"
+                shuffleTimes={1}
+                ease="power3.out"
+                stagger={0.028}
+                threshold={0.15}
+                triggerOnce={true}
+                triggerOnHover={true}
+                respectReducedMotion={true}
+              />
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* RIGHT: Interactive drag experience — 62% on desktop */}
         <motion.div
+          className="w-full lg:w-[62%]"
           initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.1, delay: 0.4, ease: "easeOut" }}
-          className="relative block w-full mt-10 lg:mt-0"
+          transition={{ duration: 1.1, delay: 0.35, ease: "easeOut" }}
         >
-          <DragHero />
+          <DragHero onPhaseChange={setHeroPhase} />
         </motion.div>
       </div>
     </section>

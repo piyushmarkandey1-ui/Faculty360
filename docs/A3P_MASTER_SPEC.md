@@ -1,4 +1,4 @@
-# A³P-Web — Master Product Specification
+# AcadLens — Master Product Specification
 
 > **Smart India Hackathon 2026 | Problem Statement PS64**
 > AI-Enabled Academic Profile Analytics Using Multi-Source Public Web and Institutional Data
@@ -22,9 +22,9 @@ This fragmentation produces:
 
 ---
 
-## 2. The A³P-Web Solution
+## 2. The AcadLens Solution
 
-**A³P-Web** (AI-Enabled Academic Profile Analytics Platform) resolves fragmented faculty data into a single, evidence-backed, assessable profile.
+**AcadLens** (AI-Enabled Academic Profile Analytics Platform) resolves fragmented faculty data into a single, evidence-backed, assessable profile.
 
 The platform:
 

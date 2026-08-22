@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('admin@a3pweb.ac.in')
+  const [email, setEmail] = useState('admin@acadlens.ac.in')
   const [password, setPassword] = useState('demo2026')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -48,7 +48,7 @@ export default function LoginPage() {
                 fontFamily: "var(--font-mono)",
               }}
             >
-              A³
+              AL
             </div>
             <span
               className="text-xl font-bold tracking-tight"
@@ -70,7 +70,7 @@ export default function LoginPage() {
               Humans Decide.
             </h1>
             <p className="text-base max-w-md leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              AI-Enabled Academic Profile Analytics Using Multi-Source Public Web and Institutional Data.
+              AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment.
             </p>
           </motion.div>
 
@@ -93,7 +93,7 @@ export default function LoginPage() {
               className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
               style={{ background: "var(--accent)", color: "var(--text-inverse)" }}
             >
-              A³
+              AL
             </div>
             <span className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
               {APP_NAME}
@@ -117,7 +117,7 @@ export default function LoginPage() {
                   borderColor: 'var(--border-default)',
                   color: 'var(--text-primary)'
                 }}
-                placeholder="admin@a3pweb.ac.in"
+                placeholder="admin@acadlens.ac.in"
               />
             </div>
 
@@ -150,7 +150,7 @@ export default function LoginPage() {
 
           <div className="mt-8 p-4 rounded-xl text-xs border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
             <p style={{ color: 'var(--accent)' }} className="mb-1 text-[11px] uppercase tracking-wider font-bold">Demo Credentials</p>
-            <p style={{ color: 'var(--text-primary)' }}><strong>Email:</strong> admin@a3pweb.ac.in</p>
+            <p style={{ color: 'var(--text-primary)' }}><strong>Email:</strong> admin@acadlens.ac.in</p>
             <p style={{ color: 'var(--text-primary)' }}><strong>Password:</strong> demo2026</p>
           </div>
         </motion.div>

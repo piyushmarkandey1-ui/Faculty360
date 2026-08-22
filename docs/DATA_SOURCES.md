@@ -1,4 +1,4 @@
-# A³P-Web — Data Sources & Ingestion Architecture
+# AcadLens — Data Sources & Ingestion Architecture
 
 ---
 

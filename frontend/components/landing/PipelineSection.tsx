@@ -253,7 +253,7 @@ export function PipelineSection() {
       <div className="container-page">
         {/* Header */}
         <SectionReveal className="max-w-xl mb-16">
-          <div className="text-label mb-4">The A³P Pipeline</div>
+          <div className="text-label mb-4">The AcadLens Pipeline</div>
           <h2 className="text-h1" style={{ color: "var(--text-primary)" }}>
             Six stages from raw data to explainable insight.
           </h2>

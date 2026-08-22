@@ -55,7 +55,7 @@ export function LandingNav() {
           <div className="text-[#0F8B8D] p-1.5 rounded-lg bg-[#0F8B8D]/10 group-hover:bg-[#0F8B8D]/20 transition-colors">
             <Box className="w-6 h-6" />
           </div>
-          <span className="font-bold text-xl text-[#17233C] tracking-tight">A³P-Web</span>
+          <span className="font-bold text-xl text-[#17233C] tracking-tight">AcadLens</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">

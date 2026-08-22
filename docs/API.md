@@ -1,4 +1,4 @@
-# A³P-Web — API Contract (Boundary Document)
+# AcadLens — API Contract (Boundary Document)
 
 > **Status**: Boundary document defining the contract between the Next.js frontend and the FastAPI backend.
 > The backend is not yet implemented. Frontend types and API client stubs are based on these contracts.

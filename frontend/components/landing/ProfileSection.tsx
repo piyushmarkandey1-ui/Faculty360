@@ -54,7 +54,7 @@ export function ProfileSection() {
             <span style={{ color: "var(--accent-light)" }}>One complete view.</span>
           </h2>
           <p className="mt-4 text-base leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            A³P-Web resolves sources into a single unified profile — showing metrics, contributions, and evidence in one place.
+            AcadLens resolves sources into a single unified profile — showing metrics, contributions, and evidence in one place.
           </p>
         </SectionReveal>
 

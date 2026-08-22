@@ -1,4 +1,4 @@
-# A³P-Web — MVP Scope
+# AcadLens — MVP Scope
 
 > **SIH 2026 | PS64** — This document defines what is in scope for the hackathon demonstration.
 

@@ -128,7 +128,7 @@ export default function SettingsPage() {
           <div className="p-4 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
             <div className="text-xs text-[var(--text-muted)] mb-1">Active Calculation Model</div>
             <div className="text-sm font-semibold text-[var(--text-primary)] mb-2">
-              A³P-Web Faculty Assessment Framework 2026
+              AcadLens Faculty Assessment Framework 2026
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="accent" size="sm">
@@ -312,7 +312,7 @@ export default function SettingsPage() {
           <div>
             <div className="text-xs text-[var(--text-muted)] mb-1">Current User</div>
             <div className="text-sm font-semibold text-[var(--text-primary)]">
-              admin@a3pweb.ac.in
+              admin@acadlens.ac.in
             </div>
           </div>
 

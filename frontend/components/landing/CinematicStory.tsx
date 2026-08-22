@@ -209,7 +209,7 @@ export function CinematicStory() {
               <div className="absolute top-[330px] flex items-center justify-center"
                    style={{ left: '50%', transform: 'translate(-50%, -50%)' }}>
                 <div className="w-10 h-10 rounded-full bg-[#17233C] flex items-center justify-center shadow-[0_0_20px_rgba(23,35,60,0.3)] animate-pulse">
-                  <span className="text-white font-bold text-sm">A³P</span>
+                  <span className="text-white font-bold text-[9px] tracking-tighter">AcadLens</span>
                 </div>
               </div>
 
@@ -362,7 +362,7 @@ export function CinematicStory() {
                 <span className="text-6xl font-extrabold text-[#0F8B8D]">
                   {(uSpB * 84.7).toFixed(1)}
                 </span>
-                <span className="text-sm font-bold text-[#5D6B82] uppercase tracking-wider mt-1">A³P Score</span>
+                <span className="text-sm font-bold text-[#5D6B82] uppercase tracking-wider mt-1">AcadLens Score</span>
               </div>
             </div>
 

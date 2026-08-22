@@ -1,4 +1,4 @@
-# A³P-Web — Design System
+# AcadLens — Design System
 
 > Premium Institutional Intelligence. Academic Analytics. Modern Data Visualization.
 
@@ -6,7 +6,7 @@
 
 ## 1. Design Philosophy
 
-A³P-Web must feel like a tool built for **institutions that take precision seriously**.
+AcadLens must feel like a tool built for **institutions that take precision seriously**.
 
 It is NOT:
 - A generic SaaS dashboard

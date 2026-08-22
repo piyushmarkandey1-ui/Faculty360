@@ -105,7 +105,7 @@ export function CTASection() {
               Precision you can audit.
             </h2>
             <p className="mt-4 text-base leading-relaxed max-w-lg" style={{ color: "var(--text-secondary)" }}>
-              A³P-Web distinguishes clearly between profile completeness, data quality, and assessment confidence — three separate indicators, never conflated.
+              AcadLens distinguishes clearly between profile completeness, data quality, and assessment confidence — three separate indicators, never conflated.
             </p>
           </SectionReveal>
 
@@ -149,7 +149,7 @@ export function CTASection() {
         <div className="container-page max-w-3xl relative z-10">
           <SectionReveal>
             <div className="text-[10px] font-bold uppercase tracking-widest mb-6" style={{ color: "#0F8B8D" }}>
-              A³P-Web · Smart India Hackathon 2026
+              AcadLens · Smart India Hackathon 2026
             </div>
             
             <div className="space-y-1 mb-8">
@@ -165,7 +165,7 @@ export function CTASection() {
             </div>
             
             <p className="text-lg leading-relaxed mb-12 text-slate-300 max-w-2xl mx-auto">
-              From fragmented data to connected evidence to explainable insight — A³P-Web gives institutions the tools to assess faculty contribution with precision, fairness, and full auditability.
+              From fragmented data to connected evidence to explainable insight — AcadLens gives institutions the tools to assess faculty contribution with precision, fairness, and full auditability.
             </p>
             
             <div className="flex flex-wrap gap-4 justify-center">
@@ -213,8 +213,8 @@ export function CTASection() {
               className="mt-20 pt-8 text-xs font-medium text-slate-400 border-t flex justify-between items-center"
               style={{ borderColor: "rgba(255,255,255,0.1)" }}
             >
-              <span>A³P-Web Prototype</span>
-              <span>Rules Calculate. AI Interprets. Humans Decide.</span>
+              <span>AcadLens Prototype</span>
+              <span>See the complete academic picture.</span>
             </div>
           </SectionReveal>
         </div>

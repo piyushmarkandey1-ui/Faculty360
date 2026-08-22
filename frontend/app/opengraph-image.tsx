@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og'
  
 export const runtime = 'edge'
  
-export const alt = 'A³P-Web | Academic Profile Analytics'
+export const alt = 'AcadLens | Academic Profile Analytics'
 export const size = {
   width: 1200,
   height: 630,
@@ -35,10 +35,10 @@ export default function Image() {
               marginRight: '20px',
             }}
           >
-            A³
+            AL
           </div>
           <div style={{ fontSize: 48, fontWeight: 800, color: '#17233C', letterSpacing: '-0.02em' }}>
-            A³P-Web
+            AcadLens
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-# A³P-Web — Assessment Engine Specification
+# AcadLens — Assessment Engine Specification
 
 ---
 

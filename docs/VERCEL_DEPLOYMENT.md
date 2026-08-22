@@ -1,6 +1,6 @@
-# A³P-Web Frontend: Vercel Deployment Guide
+# AcadLens Frontend: Vercel Deployment Guide
 
-This guide details the steps to deploy the A³P-Web prototype to Vercel.
+This guide details the steps to deploy the AcadLens prototype to Vercel.
 
 ## 1. Project Information
 - **Framework**: Next.js

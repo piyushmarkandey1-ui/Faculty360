@@ -1,4 +1,4 @@
-# A³P-Web — Coding Conventions
+# AcadLens — Coding Conventions
 
 ---
 
@@ -33,7 +33,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 | `chore` | Build, config, dependencies |
 | `test` | Adding or updating tests |
 
-### Scopes (A³P-Web specific)
+### Scopes (AcadLens specific)
 `frontend`, `backend`, `docs`, `db`, `api`, `ingestion`, `engine`, `ai`, `auth`, `ui`
 
 ### Examples

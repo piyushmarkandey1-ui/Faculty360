@@ -1,4 +1,4 @@
-# A³P-Web — Database Schema (Boundary Document)
+# AcadLens — Database Schema (Boundary Document)
 
 > **Status**: Architecture boundary document. PostgreSQL / Supabase not yet implemented.
 > This document defines the intended schema to guide frontend type definitions and API contract design.

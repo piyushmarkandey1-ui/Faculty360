@@ -1,10 +1,10 @@
-# A³P-Web — Architecture Specification
+# AcadLens — Architecture Specification
 
 ---
 
 ## 1. High-Level Architecture
 
-A³P-Web is a two-tier application with a clear boundary between a **Next.js frontend** and a **FastAPI backend**. The frontend is a complete SSR/SPA hybrid that handles all UI and calls the FastAPI backend for data. The backend owns all data access, ingestion orchestration, rule engine computation, and AI API calls.
+AcadLens is a two-tier application with a clear boundary between a **Next.js frontend** and a **FastAPI backend**. The frontend is a complete SSR/SPA hybrid that handles all UI and calls the FastAPI backend for data. The backend owns all data access, ingestion orchestration, rule engine computation, and AI API calls.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

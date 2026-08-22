@@ -1,5 +1,5 @@
-# A³P-Web
-**AI-Enabled Academic Profile Analytics Using Multi-Source Public Web and Institutional Data**
+# AcadLens
+**AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment**
 
 Smart India Hackathon 2026 — Problem Statement PS64
 
@@ -7,9 +7,9 @@ Smart India Hackathon 2026 — Problem Statement PS64
 
 ---
 
-## 📖 What is A³P-Web?
+## 📖 What is AcadLens?
 
-A³P-Web resolves fragmented faculty information — scattered across Google Scholar, ResearchGate, and institutional systems — into a single, evidence-backed, assessable academic profile. It provides academic institutions with an auditable platform to assess research output, track performance, and resolve data conflicts.
+AcadLens resolves fragmented faculty information — scattered across Google Scholar, ResearchGate, and institutional systems — into a single, evidence-backed, assessable academic profile. It provides academic institutions with an auditable platform to assess research output, track performance, and resolve data conflicts.
 
 **Core Principle:**
 > RULES CALCULATE.

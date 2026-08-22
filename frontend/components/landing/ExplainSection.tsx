@@ -10,7 +10,7 @@ const chain = [
     id: "overall",
     level: 0,
     label: "84.7 Overall Score",
-    detail: "Computed by A³P Rule Engine v1.0.0",
+    detail: "Computed by AcadLens Rule Engine v1.0.0",
     meta: "7 parameters · 14 KPIs",
     children: ["research"],
   },

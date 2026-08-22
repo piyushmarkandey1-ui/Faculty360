@@ -72,7 +72,7 @@ const SOURCE_NODES = [
   },
 ];
 
-// SVG connection paths: source → A³P center (260, 270)
+// SVG connection paths: source → AcadLens center (260, 270)
 const CONNECTION_PATHS = [
   { id: "path-scholar",      d: "M 88 108 Q 160 190 260 270",   color: TEAL, primary: true },
   { id: "path-researchgate", d: "M 432 108 Q 360 190 260 270",  color: GOLD, primary: true },
@@ -220,10 +220,10 @@ function HeroNetwork() {
         {/* Animated particles */}
         <NetworkParticles />
 
-        {/* A³P Central Node */}
+        {/* AcadLens Central Node */}
         <circle cx="260" cy="270" r="30" fill={TEAL} opacity="0.12" />
         <circle cx="260" cy="270" r="22" fill={TEAL} />
-        <text x="260" y="274" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="9" fontWeight="700" fontFamily="var(--font-mono)">A³P</text>
+        <text x="260" y="274" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="7.5" fontWeight="700" fontFamily="var(--font-mono)">AcadLens</text>
         {/* Pulse ring */}
         <circle cx="260" cy="270" r="32" fill="none" stroke={TEAL} strokeWidth="1" opacity="0.3">
           {!shouldReduceMotion && (

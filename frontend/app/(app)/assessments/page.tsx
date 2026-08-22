@@ -125,7 +125,7 @@ export default function AssessmentsPage() {
               className="text-base font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
-              A³P-Web Faculty Assessment Framework 2026
+              AcadLens Faculty Assessment Framework 2026
             </h3>
             <p
               className="text-xs mt-1 leading-relaxed"

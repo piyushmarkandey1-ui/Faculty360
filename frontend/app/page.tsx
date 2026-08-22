@@ -9,9 +9,9 @@ import { PlatformPreview } from "@/components/landing/PlatformPreview";
 import { CTASection } from "@/components/landing/CTASection";
 
 export const metadata: Metadata = {
-  title: "A³P-Web — From Fragmented Data to Explainable Insight",
+  title: "AcadLens — See the Complete Academic Picture",
   description:
-    "AI-Enabled Academic Profile Analytics. Resolves faculty data from Google Scholar, ResearchGate, and institutional systems into unified, assessable profiles. Rules Calculate. AI Interprets. Humans Decide.",
+    "AI-enabled academic profile analytics for evidence-based faculty assessment. Resolves faculty data from Google Scholar, ResearchGate, and institutional systems into unified, assessable profiles.",
 };
 
 export default function LandingPage() {

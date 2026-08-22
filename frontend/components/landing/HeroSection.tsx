@@ -95,7 +95,7 @@ function DataFlowDiagram() {
           </motion.g>
         ))}
 
-        {/* A³P center node */}
+        {/* AcadLens center node */}
         <motion.g initial={{ scale: 0, opacity: 0 }} animate={inView ? { scale: 1, opacity: 1 } : {}} transition={{ delay: 0.8, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}>
           <circle cx={centerX} cy={centerY} r={30} fill="var(--bg-surface)" stroke="var(--accent)" strokeWidth={2} className="shadow-md" />
           <circle cx={centerX} cy={centerY} r={24} fill="var(--accent-muted)" />
@@ -104,11 +104,11 @@ function DataFlowDiagram() {
             y={centerY + 4}
             textAnchor="middle"
             fill="var(--accent)"
-            fontSize={12}
+            fontSize={9.5}
             fontWeight="bold"
             fontFamily="var(--font-mono)"
           >
-            A³P
+            AcadLens
           </text>
         </motion.g>
 
@@ -293,7 +293,7 @@ export function HeroSection() {
               className="text-base mb-8 max-w-md leading-relaxed font-normal"
               style={{ color: "var(--text-secondary)" }}
             >
-              A³P-Web resolves fragmented faculty information from Google Scholar, ResearchGate, and institutional systems into a single, evidence-backed, assessable profile.
+              AcadLens resolves fragmented faculty information from Google Scholar, ResearchGate, and institutional systems into a single, evidence-backed, assessable profile.
             </motion.p>
 
             {/* CTAs */}

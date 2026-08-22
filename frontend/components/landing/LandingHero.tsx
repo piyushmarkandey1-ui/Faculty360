@@ -1,10 +1,15 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
-import { motion, useInView, useReducedMotion, animate } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
+import { motion, useInView, useReducedMotion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { 
+  ArrowRight, ChevronDown, BookOpen, Fingerprint, 
+  Building2, Network, GraduationCap, Database, 
+  Award, RefreshCw 
+} from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import Shuffle from "@/components/ui/Shuffle";
 
 const TEAL = "#0F8B8D";
 const NAVY = "#17233C";
@@ -15,296 +20,363 @@ const BORDER = "#E4E8EF";
 const SLATE = "#5D6B82";
 
 // ─── SOURCE NODE CONFIG ───────────────────────────────────────────────────────
-const SOURCE_NODES = [
-  {
-    id: "scholar",
-    label: "Google Scholar",
-    cx: 88, cy: 108,
-    r: 9,
-    color: TEAL,
-    type: "PUBLIC SOURCE",
-    fields: ["87 Publications", "1,842 Citations", "h-index 21"],
-  },
-  {
-    id: "researchgate",
-    label: "ResearchGate",
-    cx: 432, cy: 108,
-    r: 7,
-    color: GOLD,
-    type: "PUBLIC SOURCE",
-    fields: ["43 Publications", "Research Activity: High"],
-  },
-  {
-    id: "institutional",
-    label: "Institutional Data",
-    cx: 66, cy: 268,
-    r: 8,
-    color: BLUE,
-    type: "AUTHORIZED SOURCE",
-    fields: ["Teaching Load", "Mentoring", "Committees"],
-  },
-  {
-    id: "orcid",
-    label: "ORCID",
-    cx: 432, cy: 268,
-    r: 5,
-    color: "#7C3AED",
-    type: "PLANNED SOURCE",
-    fields: ["Verified Author ID", "Works"],
-  },
-  {
-    id: "projects",
-    label: "Projects",
-    cx: 156, cy: 408,
-    r: 5,
-    color: SLATE,
-    type: "PLANNED SOURCE",
-    fields: ["Research Grants", "Collaborations"],
-  },
-  {
-    id: "patents",
-    label: "Patents",
-    cx: 364, cy: 408,
-    r: 5,
-    color: SLATE,
-    type: "PLANNED SOURCE",
-    fields: ["Filed Patents", "Granted Patents"],
-  },
+const DRAG_SOURCES = [
+  { id: "scholar", label: "Google Scholar", icon: BookOpen, color: TEAL, cx: -200, cy: -150, details: "87 Publications · 1,842 Citations" },
+  { id: "orcid", label: "ORCID", icon: Fingerprint, color: "#7C3AED", cx: 200, cy: -130, details: "Research Identity · 31 Works" },
+  { id: "institutional", label: "Institutional Data", icon: Building2, color: BLUE, cx: -240, cy: 10, details: "Teaching · Mentoring · Service" },
+  { id: "researchgate", label: "ResearchGate", icon: Network, color: GOLD, cx: 240, cy: 30, details: "43 Publications · Activity" },
+  { id: "teaching", label: "Teaching Records", icon: GraduationCap, color: NAVY, cx: -180, cy: 160, details: "12 hrs/wk · 17 Mentored" },
+  { id: "hr", label: "HR / ERP", icon: Database, color: SLATE, cx: 180, cy: 170, details: "Employment · HR Records" },
+  { id: "awards", label: "Awards", icon: Award, color: "#D97706", cx: 0, cy: 200, details: "4 Awards · 2 Grants" },
 ];
 
-// SVG connection paths: source → AcadLens center (260, 270)
-const CONNECTION_PATHS = [
-  { id: "path-scholar",      d: "M 88 108 Q 160 190 260 270",   color: TEAL, primary: true },
-  { id: "path-researchgate", d: "M 432 108 Q 360 190 260 270",  color: GOLD, primary: true },
-  { id: "path-institutional",d: "M 66 268 Q 160 268 260 270",   color: BLUE, primary: true },
-  { id: "path-orcid",        d: "M 432 268 Q 360 268 260 270",  color: "#7C3AED", primary: false },
-  { id: "path-projects",     d: "M 156 408 Q 200 340 260 270",  color: SLATE, primary: false },
-  { id: "path-patents",      d: "M 364 408 Q 320 340 260 270",  color: SLATE, primary: false },
-];
-
-// ─── PARTICLE ANIMATION ────────────────────────────────────────────────────────
-function NetworkParticles() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
-
-  return (
-    <>
-      {CONNECTION_PATHS.filter(p => p.primary).map((path, pi) => (
-        [0, 1].map((particleIdx) => (
-          <circle key={`${path.id}-p${particleIdx}`} r={2.5} fill={path.color} opacity={0.75}>
-            <animateMotion
-              dur={`${2.2 + pi * 0.4}s`}
-              begin={`${particleIdx * 1.1 + pi * 0.3}s`}
-              repeatCount="indefinite"
-              calcMode="spline"
-              keyTimes="0;1"
-              keySplines="0.4 0 0.6 1"
-            >
-              <mpath href={`#${path.id}`} />
-            </animateMotion>
-          </circle>
-        ))
-      ))}
-    </>
-  );
+// ─── ANIMATED COUNTER ────────────────────────────────────────────────────────
+function AnimatedCounter({ value, decimals = 0 }: { value: number, decimals?: number }) {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    let start = 0;
+    const duration = 1000;
+    const startTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      const ease = 1 - Math.pow(1 - progress, 4);
+      setCount(start + (value - start) * ease);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [value]);
+  
+  return <>{count.toFixed(decimals)}</>;
 }
 
-// ─── TOOLTIP ──────────────────────────────────────────────────────────────────
-interface TooltipData {
-  nodeId: string;
-  label: string;
-  type: string;
-  fields: string[];
-  x: number;
-  y: number;
-}
-
-// ─── HERO DATA NETWORK SVG ────────────────────────────────────────────────────
-function HeroNetwork() {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+// ─── DRAG HERO COMPONENT ───────────────────────────────────────────────────────
+function DragHero() {
   const shouldReduceMotion = useReducedMotion();
+  const [connectedSources, setConnectedSources] = useState<string[]>([]);
+  const [phase, setPhase] = useState<"collecting" | "fusion" | "profile">("collecting");
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
-  // Subtle pointer-driven translation of the entire SVG
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (shouldReduceMotion || !svgRef.current) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
-    const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
-    svgRef.current.style.transform = `translate(${x * 10}px, ${y * 8}px)`;
-  }, [shouldReduceMotion]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (!svgRef.current) return;
-    svgRef.current.style.transform = "translate(0px, 0px)";
-    setTooltip(null);
-  }, []);
-
-  const handleNodeHover = useCallback((node: typeof SOURCE_NODES[0], svgX: number, svgY: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    // Convert SVG coords (viewBox -100 0 720 480) to percentage
-    const xPct = (svgX + 100) / 720;
-    const yPct = svgY / 480;
-    setTooltip({
-      nodeId: node.id,
-      label: node.label,
-      type: node.type,
-      fields: node.fields,
-      x: rect.width * xPct,
-      y: rect.height * yPct,
+  // Responsive scaling to fit perfectly in container and mobile
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width;
+      if (width < 750 && width > 0) {
+        setScale(width / 750);
+      } else {
+        setScale(1);
+      }
     });
+    observer.observe(wrapperRef.current);
+    return () => observer.disconnect();
   }, []);
+
+  const handleDragEnd = (e: any, info: any, sourceId: string) => {
+    if (phase !== "collecting") return;
+    const container = containerRef.current?.getBoundingClientRect();
+    if (!container) return;
+    
+    const centerX = container.left + container.width / 2;
+    const centerY = container.top + container.height / 2;
+    
+    const distance = Math.hypot(info.point.x - centerX, info.point.y - centerY);
+    
+    // Drop radius accounts for scale
+    if (distance < 150 * scale) {
+      handleConnect(sourceId);
+    }
+  };
+
+  const handleConnect = (sourceId: string) => {
+    if (phase !== "collecting" || connectedSources.includes(sourceId)) return;
+    const next = [...connectedSources, sourceId];
+    setConnectedSources(next);
+    if (next.length === DRAG_SOURCES.length) {
+      setPhase("fusion");
+      setTimeout(() => setPhase("profile"), 1400); // 1.4s fusion sequence
+    }
+  };
+
+  const reset = () => {
+    setPhase("collecting");
+    setConnectedSources([]);
+  };
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-full"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
-      <svg
-        ref={svgRef}
-        viewBox="-100 0 720 480"
-        className="w-full h-full"
-        aria-hidden="true"
-        style={{ transition: "transform 0.4s cubic-bezier(0,0,0.2,1)" }}
+    <div ref={wrapperRef} className="relative w-full h-[400px] lg:h-[500px] flex items-center justify-center">
+      <div 
+        ref={containerRef}
+        className="relative w-[720px] h-[500px] flex items-center justify-center origin-center"
+        style={{ transform: `scale(${scale})` }}
       >
-        <defs>
-          {/* Gradient for primary connections */}
-          <linearGradient id="grad-teal" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={TEAL} stopOpacity="0.7" />
-            <stop offset="100%" stopColor={TEAL} stopOpacity="0.15" />
-          </linearGradient>
-          <linearGradient id="grad-gold" x1="1" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={GOLD} stopOpacity="0.7" />
-            <stop offset="100%" stopColor={GOLD} stopOpacity="0.15" />
-          </linearGradient>
-          <linearGradient id="grad-blue" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={BLUE} stopOpacity="0.6" />
-            <stop offset="100%" stopColor={BLUE} stopOpacity="0.15" />
-          </linearGradient>
+        {/* SVG Connection Lines */}
+        <svg viewBox="-360 -250 720 500" className="absolute inset-0 w-full h-full pointer-events-none z-0">
+          {DRAG_SOURCES.map((source, i) => {
+            const isConnected = connectedSources.includes(source.id);
+            if (!isConnected || phase === "profile") return null;
+            
+            const pathId = `path-${source.id}`;
+            const d = `M ${source.cx} ${source.cy} Q ${source.cx * 0.4} ${source.cy * 0.4} 0 0`;
+            
+            return (
+              <g key={`connection-${source.id}`}>
+                <path id={pathId} d={d} stroke={source.color} strokeWidth="2" fill="none" opacity="0.3" strokeDasharray="5 5" />
+                {phase === "collecting" && !shouldReduceMotion && (
+                  <circle r="4" fill={source.color}>
+                    <animateMotion dur={`${1.5 + (i % 3) * 0.3}s`} repeatCount="indefinite">
+                      <mpath href={`#${pathId}`} />
+                    </animateMotion>
+                  </circle>
+                )}
+                {phase === "fusion" && !shouldReduceMotion && (
+                  <>
+                    <circle r="5" fill={source.color}>
+                      <animateMotion dur="0.4s" repeatCount="indefinite">
+                        <mpath href={`#${pathId}`} />
+                      </animateMotion>
+                    </circle>
+                    <circle r="5" fill={source.color}>
+                      <animateMotion dur="0.4s" begin="0.2s" repeatCount="indefinite">
+                        <mpath href={`#${pathId}`} />
+                      </animateMotion>
+                    </circle>
+                  </>
+                )}
+              </g>
+            );
+          })}
+        </svg>
 
-          {/* Define all paths for mpath references */}
-          {CONNECTION_PATHS.map(p => (
-            <path key={p.id} id={p.id} d={p.d} />
-          ))}
-        </defs>
-
-        {/* Outer dashed ring */}
-        <circle cx="260" cy="270" r="190" fill="none" stroke={BORDER} strokeWidth="1" strokeDasharray="4 6" opacity="0.5" />
-        <circle cx="260" cy="270" r="120" fill="none" stroke={BORDER} strokeWidth="1" opacity="0.4" />
-
-        {/* Connection paths */}
-        {CONNECTION_PATHS.map((path) => {
-          const gradId = path.id === "path-scholar" ? "url(#grad-teal)"
-            : path.id === "path-researchgate" ? "url(#grad-gold)"
-            : path.id === "path-institutional" ? "url(#grad-blue)"
-            : path.color;
-          return (
-            <path
-              key={path.id}
-              d={path.d}
-              stroke={gradId}
-              strokeWidth={path.primary ? 1.5 : 1}
-              fill="none"
-              strokeDasharray={path.primary ? "none" : "3 5"}
-              opacity={path.primary ? 0.8 : 0.4}
-            />
-          );
-        })}
-
-        {/* Animated particles */}
-        <NetworkParticles />
-
-        {/* AcadLens Central Node */}
-        <circle cx="260" cy="270" r="30" fill={TEAL} opacity="0.12" />
-        <circle cx="260" cy="270" r="22" fill={TEAL} />
-        <text x="260" y="274" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="7.5" fontWeight="700" fontFamily="var(--font-mono)">AcadLens</text>
-        {/* Pulse ring */}
-        <circle cx="260" cy="270" r="32" fill="none" stroke={TEAL} strokeWidth="1" opacity="0.3">
-          {!shouldReduceMotion && (
-            <animate attributeName="r" values="28;36;28" dur="2.5s" repeatCount="indefinite" />
-          )}
-          {!shouldReduceMotion && (
-            <animate attributeName="opacity" values="0.4;0;0.4" dur="2.5s" repeatCount="indefinite" />
-          )}
-        </circle>
-
-        {/* Source Nodes */}
-        {SOURCE_NODES.map((node) => (
-          <g
-            key={node.id}
-            className="cursor-pointer"
-            onMouseEnter={() => handleNodeHover(node, node.cx, node.cy)}
-            onMouseLeave={() => setTooltip(null)}
-          >
-            <circle cx={node.cx} cy={node.cy} r={node.r + 6} fill={node.color} opacity="0.08" />
-            <circle cx={node.cx} cy={node.cy} r={node.r} fill={WHITE} stroke={node.color} strokeWidth="2" />
-            {!shouldReduceMotion && (
-              <circle cx={node.cx} cy={node.cy} r={node.r + 2} fill="none" stroke={node.color} strokeWidth="0.5" opacity="0.4">
-                <animate attributeName="r" values={`${node.r};${node.r + 5};${node.r}`} dur={`${2 + Math.random()}s`} repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0;0.4" dur={`${2 + Math.random()}s`} repeatCount="indefinite" />
-              </circle>
-            )}
-          </g>
-        ))}
-
-        {/* Node Labels */}
-        {SOURCE_NODES.map((node) => {
-          const isLeft = node.cx < 260;
-          const isBottom = node.cy > 350;
-          const labelX = isBottom ? node.cx : isLeft ? node.cx - node.r - 8 : node.cx + node.r + 8;
-          const labelY = isBottom ? node.cy + node.r + 14 : node.cy;
-          const anchor = isBottom ? "middle" : isLeft ? "end" : "start";
-          return (
-            <text
-              key={`label-${node.id}`}
-              x={labelX}
-              y={labelY}
-              textAnchor={anchor}
-              dominantBaseline="middle"
-              fill={NAVY}
-              fontSize="10"
-              fontWeight="600"
-              fontFamily="var(--font-sans)"
-              opacity="0.75"
-              pointerEvents="none"
-            >
-              {node.label}
-            </text>
-          );
-        })}
-      </svg>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div
-          className="absolute pointer-events-none z-20 px-4 py-3 rounded-xl border shadow-xl"
-          style={{
-            left: tooltip.x + 16,
-            top: Math.max(8, tooltip.y - 40),
-            background: WHITE,
-            borderColor: BORDER,
-            boxShadow: "0 8px 30px rgba(23,35,60,0.12)",
-            minWidth: 160,
-            transform: "translateY(-50%)",
+        {/* Central Chamber */}
+        <motion.div 
+          className="absolute flex flex-col items-center justify-center rounded-full bg-white z-10"
+          animate={{
+            scale: phase === "fusion" ? [1, 1.05, 0.95, 1.1, 1] : phase === "profile" ? 0 : 1,
+            opacity: phase === "profile" ? 0 : 1,
+            borderColor: connectedSources.length > 0 ? TEAL : BORDER,
+            boxShadow: phase === "fusion" 
+              ? `0 0 60px ${TEAL}80` 
+              : "0 12px 40px rgba(23,35,60,0.08)",
           }}
+          transition={{ duration: phase === "fusion" ? 1.4 : 0.4 }}
+          style={{ width: 240, height: 240, borderWidth: 2 }}
         >
-          <div className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: TEAL }}>
-            {tooltip.type}
-          </div>
-          <div className="text-xs font-bold mb-2" style={{ color: NAVY }}>{tooltip.label}</div>
-          <div className="space-y-1">
-            {tooltip.fields.map((f) => (
-              <div key={f} className="text-[11px] font-medium" style={{ color: SLATE }}>{f}</div>
-            ))}
-          </div>
-        </div>
-      )}
+          {phase === "collecting" && (
+            <motion.div 
+              className="flex flex-col items-center text-center px-4"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            >
+              <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                AcadLens Core
+              </div>
+              <div className="text-sm font-semibold text-slate-700">
+                {connectedSources.length === 0 
+                  ? "Drag sources here" 
+                  : `${connectedSources.length} / ${DRAG_SOURCES.length} Connected`}
+              </div>
+              {connectedSources.length === 0 && (
+                <div className="text-[10px] text-slate-400 mt-2 max-w-[140px] md:hidden">
+                  (Or tap cards to connect)
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {phase === "fusion" && (
+            <motion.div 
+              className="text-lg font-bold"
+              style={{ color: TEAL }}
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ repeat: Infinity, duration: 0.5 }}
+            >
+              Fusing Data...
+            </motion.div>
+          )}
+
+          {/* Progress Ring */}
+          {(phase === "collecting" || phase === "fusion") && (
+            <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
+              <circle cx="120" cy="120" r="108" fill="none" stroke={BORDER} strokeWidth="4" opacity="0.5" />
+              <motion.circle 
+                cx="120" cy="120" r="108" fill="none" stroke={TEAL} strokeWidth="4"
+                strokeDasharray="678.5" // 2 * pi * 108
+                initial={{ strokeDashoffset: 678.5 }}
+                animate={{ strokeDashoffset: 678.5 - (678.5 * connectedSources.length) / DRAG_SOURCES.length }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+            </svg>
+          )}
+
+          {/* Connected Source Tokens on the Ring */}
+          <AnimatePresence>
+            {(phase === "collecting" || phase === "fusion") && connectedSources.map((id, index) => {
+              const source = DRAG_SOURCES.find(s => s.id === id);
+              if (!source) return null;
+              // Distribute tokens evenly around the ring
+              const angle = (index / DRAG_SOURCES.length) * Math.PI * 2 - Math.PI / 2;
+              const cx = Math.cos(angle) * 108;
+              const cy = Math.sin(angle) * 108;
+              const Icon = source.icon;
+
+              return (
+                <motion.div
+                  key={`token-${id}`}
+                  initial={{ scale: 0, x: 0, y: 0 }}
+                  animate={{ scale: 1, x: cx, y: cy }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  className="absolute left-[104px] top-[104px] flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-md border"
+                  style={{ borderColor: source.color, color: source.color, zIndex: 15 }}
+                >
+                  <Icon size={14} />
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Floating Draggable Source Cards */}
+        <AnimatePresence>
+          {phase === "collecting" && DRAG_SOURCES.map((source) => {
+            const isConnected = connectedSources.includes(source.id);
+            if (isConnected) return null;
+            
+            const Icon = source.icon;
+            return (
+              <motion.div
+                key={source.id}
+                drag
+                dragConstraints={containerRef}
+                dragElastic={0.2}
+                dragMomentum={false}
+                onDragEnd={(e, info) => handleDragEnd(e, info, source.id)}
+                initial={{ x: source.cx, y: source.cy, opacity: 0, scale: 0.8 }}
+                animate={{ x: source.cx, y: source.cy, opacity: 1, scale: 1 }}
+                exit={{ x: 0, y: 0, opacity: 0, scale: 0.4, transition: { duration: 0.5, ease: "anticipate" } }}
+                whileHover={{ scale: 1.05, zIndex: 30 }}
+                whileDrag={{ scale: 1.1, rotate: 3, cursor: "grabbing", zIndex: 40 }}
+                className="absolute z-20 flex items-center gap-3 bg-white p-3 pr-5 rounded-xl shadow-lg border cursor-grab transition-colors"
+                style={{ 
+                  borderColor: source.color + '40', 
+                  marginLeft: '-100px', // Center approx horizontally
+                  marginTop: '-30px', // Center approx vertically
+                }}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleConnect(source.id);
+                  }
+                }}
+                onClick={() => {
+                  // Fallback for touch devices without drag capability
+                  handleConnect(source.id);
+                }}
+                aria-label={`Connect ${source.label}`}
+                role="button"
+              >
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0" style={{ backgroundColor: source.color + '1A', color: source.color }}>
+                  <Icon size={20} />
+                </div>
+                <div className="pointer-events-none select-none">
+                  <div className="text-sm font-bold whitespace-nowrap" style={{ color: NAVY }}>{source.label}</div>
+                  <div className="text-[10px] font-medium whitespace-nowrap" style={{ color: SLATE }}>{source.details}</div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+
+        {/* Profile Reveal */}
+        <AnimatePresence>
+          {phase === "profile" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
+              className="absolute z-30 bg-white rounded-2xl shadow-2xl border p-7 w-full max-w-[360px]"
+              style={{ borderColor: BORDER }}
+            >
+              {/* Profile Header */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-slate-50 border-2 flex items-center justify-center text-xl font-bold shrink-0" style={{ borderColor: TEAL, color: TEAL }}>
+                  AS
+                </div>
+                <div>
+                  <div className="text-xl font-extrabold" style={{ color: NAVY, letterSpacing: '-0.02em' }}>Dr. Ananya Sharma</div>
+                  <div className="text-sm font-medium" style={{ color: SLATE }}>Professor · Computer Science</div>
+                </div>
+              </div>
+              
+              {/* Top Stats */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Overall Score</div>
+                  <div className="text-3xl font-extrabold" style={{ color: TEAL }}>
+                    <AnimatedCounter value={87.4} decimals={1} />
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Evidence</div>
+                  <div className="text-3xl font-extrabold" style={{ color: NAVY }}>
+                    <AnimatedCounter value={7} /> <span className="text-lg font-bold text-slate-400">Src</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Breakdown */}
+              <div className="space-y-3 mb-8">
+                {[
+                  { label: "Research Impact", val: 91, color: TEAL },
+                  { label: "Teaching Excellence", val: 86, color: BLUE },
+                  { label: "Mentoring & Service", val: 84, color: GOLD }
+                ].map((stat, i) => (
+                  <div key={stat.label} className="flex flex-col gap-1.5">
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wide">
+                      <span style={{ color: SLATE }}>{stat.label}</span>
+                      <span style={{ color: NAVY }}>{stat.val}</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <motion.div 
+                        className="h-full rounded-full" 
+                        style={{ backgroundColor: stat.color }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${stat.val}%` }}
+                        transition={{ duration: 1, delay: 0.2 + i * 0.1, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Actions */}
+              <Link 
+                href={ROUTES.dashboard} 
+                className="flex items-center justify-center w-full py-3.5 rounded-xl text-white text-sm font-bold gap-2 shadow-sm transition-all hover:opacity-90 hover:scale-[1.02]" 
+                style={{ backgroundColor: NAVY }}
+              >
+                Explore Complete Profile <ArrowRight size={16} />
+              </Link>
+              
+              <button 
+                onClick={reset}
+                className="flex items-center justify-center w-full mt-4 py-2 text-xs font-bold gap-1.5 transition-colors opacity-60 hover:opacity-100"
+                style={{ color: SLATE }}
+              >
+                <RefreshCw size={12} /> Reset Interactive Demo
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -312,9 +384,9 @@ function HeroNetwork() {
 // ─── HERO SECTION ─────────────────────────────────────────────────────────────
 export function LandingHero() {
   const shouldReduceMotion = useReducedMotion();
-  const sectionRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true });
+  const containerRef = useRef<HTMLElement>(null);
+  const isInView = useInView(containerRef, { once: true });
 
   const HEADLINE_LINES = [
     { text: "FROM FRAGMENTED", color: NAVY },
@@ -341,8 +413,8 @@ export function LandingHero() {
 
   return (
     <section
-      ref={sectionRef}
-      className="relative min-h-[92vh] flex items-center pt-16 pb-16 overflow-hidden"
+      ref={containerRef}
+      className="relative min-h-[92vh] flex items-center pt-24 pb-16 overflow-hidden"
     >
       {/* Subtle grid background */}
       <div
@@ -378,9 +450,9 @@ export function LandingHero() {
         />
       </div>
 
-      <div className="container-page relative z-10 w-full grid lg:grid-cols-[1.15fr_0.85fr] gap-16 items-center">
+      <div className="container-page relative z-10 w-full grid lg:grid-cols-[1.15fr_0.85fr] gap-12 lg:gap-16 items-center">
         {/* LEFT: Content */}
-        <div className="max-w-2xl">
+        <div className="max-w-2xl relative z-20">
           {/* Label */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -411,7 +483,23 @@ export function LandingHero() {
                   letterSpacing: "-0.025em",
                 }}
               >
-                {line.text}
+                {line.text === "INSIGHT." ? (
+                  <Shuffle
+                    text="INSIGHT."
+                    shuffleDirection="right"
+                    duration={0.35}
+                    animationMode="evenodd"
+                    shuffleTimes={1}
+                    ease="power3.out"
+                    stagger={0.03}
+                    threshold={0.1}
+                    triggerOnce={true}
+                    triggerOnHover={true}
+                    respectReducedMotion={true}
+                  />
+                ) : (
+                  line.text
+                )}
               </motion.div>
             ))}
           </motion.div>
@@ -492,12 +580,12 @@ export function LandingHero() {
           initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.1, delay: 0.4, ease: "easeOut" }}
-          className="hidden lg:block relative"
-          style={{ height: 480 }}
+          className="relative block w-full mt-10 lg:mt-0"
         >
-          <HeroNetwork />
+          <DragHero />
         </motion.div>
       </div>
     </section>
   );
 }
+

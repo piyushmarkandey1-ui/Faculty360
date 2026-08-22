@@ -70,8 +70,8 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
     if (!wrapperRef.current) return;
     const observer = new ResizeObserver((entries) => {
       const width = entries[0].contentRect.width;
-      if (width < 750 && width > 0) {
-        setScale(width / 750);
+      if (width < 620 && width > 0) {
+        setScale(width / 620);
       } else {
         setScale(1);
       }
@@ -119,10 +119,10 @@ function DragHero({ onPhaseChange }: { onPhaseChange?: (phase: "collecting" | "f
   };
 
   return (
-    <div ref={wrapperRef} className="relative w-full h-[400px] lg:h-[500px] flex items-center justify-center">
+    <div ref={wrapperRef} className="relative w-full h-[380px] lg:h-[480px] flex items-center justify-center">
       <div 
         ref={containerRef}
-        className="relative w-[720px] h-[500px] flex items-center justify-center origin-center"
+        className="relative w-[620px] h-[480px] flex items-center justify-center origin-center"
         style={{ transform: `scale(${scale})` }}
       >
         {/* SVG Connection Lines */}
@@ -435,53 +435,52 @@ export function LandingHero() {
         />
       </div>
 
-      <div className="container-page relative z-10 w-full flex flex-col lg:flex-row items-center gap-10 lg:gap-0">
-        {/* LEFT: Minimal headline — 38% on desktop */}
+      <div className="container-page relative z-10 w-full flex flex-col lg:flex-row items-center gap-8 lg:gap-0">
+        {/* LEFT: Hero headline — 45% on desktop */}
         <motion.div
-          className="w-full lg:w-[38%] lg:pr-10 flex items-center"
+          className="w-full lg:w-[45%] lg:pr-16 flex items-center"
           animate={{
-            opacity: isRevealed ? 0.35 : 1,
-            y: isRevealed ? -8 : 0,
+            opacity: isRevealed ? 0.2 : 1,
+            y: isRevealed ? -16 : 0,
           }}
           transition={{
-            duration: shouldReduceMotion ? 0 : 0.5,
-            ease: "easeInOut",
+            duration: shouldReduceMotion ? 0 : 0.55,
+            ease: [0.4, 0, 0.2, 1],
           }}
         >
           <div className="w-full">
-            {/* Line 1 */}
+            {/* Line 1: FRAGMENTED DATA — primary visual hook, heaviest weight */}
             <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, filter: "blur(8px)" }}
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.65, delay: 0.1, ease: [0, 0, 0.2, 1] }}
+              transition={{ duration: 0.7, delay: 0.08, ease: [0, 0, 0.2, 1] }}
             >
               <span
-                className="block font-extrabold leading-[1.08]"
+                className="block font-black leading-[1.05]"
                 style={{
-                  fontSize: "clamp(2.6rem, 3.8vw, 4.4rem)",
+                  fontSize: "clamp(3.2rem, 5vw, 5.1rem)",
                   color: NAVY,
-                  letterSpacing: "-0.03em",
+                  letterSpacing: "-0.035em",
                 }}
               >
-                Fragmented Data to
+                Fragmented Data
               </span>
             </motion.div>
 
-            {/* Line 2 — slightly stronger emphasis via TEAL + Shuffle */}
+            {/* Line 2: to Explainable Insight — secondary emphasis via TEAL + Shuffle */}
             <motion.div
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, filter: "blur(8px)" }}
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 30, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.65, delay: 0.22, ease: [0, 0, 0.2, 1] }}
+              transition={{ duration: 0.7, delay: 0.2, ease: [0, 0, 0.2, 1] }}
             >
               <Shuffle
-                text="Explainable Insight"
+                text="to Explainable Insight"
                 tag="span"
-                className="block font-extrabold leading-[1.08]"
+                className="block font-bold leading-[1.05]"
                 style={{
-                  fontSize: "clamp(2.6rem, 3.8vw, 4.4rem)",
+                  fontSize: "clamp(2.6rem, 3.9vw, 4.2rem)",
                   color: TEAL,
                   letterSpacing: "-0.03em",
-                  visibility: "visible",
                 }}
                 textAlign="left"
                 shuffleDirection="right"
@@ -489,7 +488,7 @@ export function LandingHero() {
                 animationMode="evenodd"
                 shuffleTimes={1}
                 ease="power3.out"
-                stagger={0.028}
+                stagger={0.025}
                 threshold={0.15}
                 triggerOnce={true}
                 triggerOnHover={true}
@@ -499,12 +498,12 @@ export function LandingHero() {
           </div>
         </motion.div>
 
-        {/* RIGHT: Interactive drag experience — 62% on desktop */}
+        {/* RIGHT: Interactive drag experience — 55% on desktop */}
         <motion.div
-          className="w-full lg:w-[62%]"
-          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+          className="w-full lg:w-[55%]"
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.1, delay: 0.35, ease: "easeOut" }}
+          transition={{ duration: 1.1, delay: 0.3, ease: "easeOut" }}
         >
           <DragHero onPhaseChange={setHeroPhase} />
         </motion.div>

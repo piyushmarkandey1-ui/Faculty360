@@ -27,16 +27,22 @@ export default function LandingPage() {
       <LandingHero />
 
       {/* [02] The Problem */}
-      <LandingProblem />
+      <div id="how-it-works">
+        <LandingProblem />
+      </div>
 
       {/* [03] Cinematic Pipeline (pinned 450vh) */}
-      <CinematicStory />
+      <div id="story-section">
+        <CinematicStory />
+      </div>
 
       {/* [04] Unified Faculty Profile */}
       <ProfileShowcase />
 
       {/* [05] Explainable Assessment */}
-      <AssessmentShowcase />
+      <div id="assessment-section">
+        <AssessmentShowcase />
+      </div>
 
       {/* [06] Platform Preview */}
       <PlatformPreview />

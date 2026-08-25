@@ -23,9 +23,17 @@ const PROTECTED_PREFIXES = [
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Supabase credentials not set in local dev — bypass auth check gracefully
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -43,6 +51,7 @@ export async function middleware(request: NextRequest) {
       },
     }
   )
+
 
   // IMPORTANT: Do not add logic between createServerClient and getUser.
   // A simple mistake can make the session unreliable.

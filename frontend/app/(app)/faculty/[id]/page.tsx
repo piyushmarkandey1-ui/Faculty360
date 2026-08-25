@@ -130,8 +130,9 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
             <ConfidenceBadge confidence={latest_assessment?.confidence_score ?? 0} />
           </div>
           <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-            {entity.designation} Ã¢â‚¬Â¢ {entity.department} Ã¢â‚¬Â¢ {entity.institution}
+            {entity.designation} • {entity.department} • {entity.institution}
           </p>
+
           <div className="flex flex-wrap gap-2">
             {unified_profile.source_coverage.google_scholar && <SourceBadge source="google_scholar" status="active" />}
             {unified_profile.source_coverage.researchgate && <SourceBadge source="researchgate" status="active" />}
@@ -221,35 +222,43 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
 
         {activeTab === 'research' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            {publications.slice(0, 6).map((pub) => (
-              <div key={pub.id} className="p-5 rounded-xl border hover:border-[var(--border-default)] transition-colors flex gap-4" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-                  <FileText size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm mb-1 truncate" style={{ color: 'var(--text-primary)' }} title={pub.title}>{pub.title}</h4>
-                   <div className="text-xs mb-2 truncate" style={{ color: 'var(--text-secondary)' }}>
-                    {pub.venue} Ã‚Â· {pub.year}
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Verified Publications</h3>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Auto-deduplicated across 4 sources</span>
+            </div>
+            
+            <div className="grid gap-3">
+              {publications.map(pub => (
+                <div key={pub.id} className="p-5 rounded-xl border hover:border-[var(--border-default)] transition-colors flex gap-4" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                    <FileText size={20} />
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    <span>{pub.venue || 'Unknown Venue'}</span>
-                    <span>Ã¢â‚¬Â¢</span>
-                    <span>{pub.year}</span>
-                    {pub.citation_count !== null && (
-                      <>
-                        <span>Ã¢â‚¬Â¢</span>
-                        <span>{pub.citation_count} Citations</span>
-                      </>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm mb-1 truncate" style={{ color: 'var(--text-primary)' }} title={pub.title}>{pub.title}</h4>
+                    <div className="text-xs mb-2 truncate" style={{ color: 'var(--text-secondary)' }}>
+                      {pub.venue} • {pub.year}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <span>{pub.venue || 'Unknown Venue'}</span>
+                      <span>•</span>
+                      <span>{pub.year}</span>
+                      {pub.citation_count !== null && (
+                        <>
+                          <span>•</span>
+                          <span>{pub.citation_count} Citations</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <SourceBadge source={pub.source_type} status="active" />
                   </div>
                 </div>
-                <div className="shrink-0">
-                  <SourceBadge source={pub.source_type} status="active" />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </motion.div>
         )}
+
 
         {activeTab === 'sources' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">

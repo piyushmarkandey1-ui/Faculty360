@@ -98,11 +98,12 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
               <div className="flex flex-wrap items-center gap-3">
                 <ConfidenceBadge confidence={assessment.confidence_score} />
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Completeness: {assessment.completeness_score}%</span>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ã¢â‚¬Â¢</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
                 <Badge variant="success">Approved</Badge>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ã¢â‚¬Â¢</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
                 <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatRelativeTime(assessment.created_at)}</span>
               </div>
+
             </>
           ) : (
              <div className="text-[var(--text-muted)] text-sm mb-3">No assessment has been run yet.</div>

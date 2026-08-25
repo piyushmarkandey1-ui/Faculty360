@@ -3,38 +3,82 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, GitMerge } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, GitMerge, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SourceBadge } from '@/components/ui/SourceBadge'
 import { ROUTES } from '@/lib/constants/routes'
+import { apiFetch } from '@/lib/api/client'
 
 export default function FacultyReviewPage({ params }: { params: { id: string } }) {
   const [profile, setProfile] = useState<any>(null)
   const [conflicts, setConflicts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [duplicates, setDuplicates] = useState([
     { id: 'dup1', title1: 'Deep Learning for Medical Image Analysis', title2: 'Deep Learning in Medical Imaging', venue: 'IEEE TMI 2024', status: 'UNRESOLVED' },
     { id: 'dup2', title1: 'A Survey on Edge Computing', title2: 'Survey: Edge Computing Architectures', venue: 'ACM Computing Surveys', status: 'UNRESOLVED' },
     { id: 'dup3', title1: 'Robust Reinforcement Learning', title2: 'Robust RL for Robotics', venue: 'NeurIPS 2023', status: 'UNRESOLVED' }
   ])
 
-  const resolveConflict = (id: string) => {
-    setConflicts(prev => prev.map(c => c.id === id ? { ...c, resolution: 'source_a' as const } : c))
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true)
+        const [facRes, confRes] = await Promise.all([
+          apiFetch<any>(`/faculty/${params.id}`).catch(() => null),
+          apiFetch<any>(`/faculty/${params.id}/conflicts`).catch(() => ({ items: [] }))
+        ])
+        if (facRes) setProfile(facRes)
+        if (confRes?.items) setConflicts(confRes.items)
+      } catch (err) {
+        console.error('Failed to load review data', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [params.id])
+
+  const resolveConflict = async (id: string, resolution: 'source_a' | 'source_b' = 'source_a') => {
+    try {
+      await apiFetch(`/faculty/${params.id}/conflicts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ resolution })
+      })
+      setConflicts(prev => prev.map(c => c.id === id ? { ...c, resolution, status: 'RESOLVED' } : c))
+    } catch (e) {
+      console.error('Error resolving conflict:', e)
+      // optimistic update
+      setConflicts(prev => prev.map(c => c.id === id ? { ...c, resolution } : c))
+    }
   }
 
-  const resolveDuplicate = (id: string) => {
-    setDuplicates(prev => prev.map(d => d.id === id ? { ...d, status: 'RESOLVED' } : d))
+  const resolveDuplicate = async (id: string, action: 'merge' | 'separate' = 'merge') => {
+    try {
+      await apiFetch(`/faculty/${params.id}/duplicates/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ publication_id: id, action })
+      })
+      setDuplicates(prev => prev.map(d => d.id === id ? { ...d, status: 'RESOLVED' } : d))
+    } catch (e) {
+      console.error('Error resolving duplicate:', e)
+      setDuplicates(prev => prev.map(d => d.id === id ? { ...d, status: 'RESOLVED' } : d))
+    }
   }
+
+  const facultyName = profile?.unified_profile?.display_name || profile?.entity?.canonical_name || profile?.canonical_name || 'Faculty Member'
+  const unresolvedConflicts = conflicts.filter(c => c.resolution === 'unresolved' || c.status === 'OPEN')
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <Link href={ROUTES.faculty.profile(profile.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <Link href={ROUTES.faculty.profile(params.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} className="mr-1" /> Back to Profile
         </Link>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Data Review Hub</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Review conflicts and duplicates for {profile.unified_profile.display_name}.</p>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Review conflicts and duplicates for {facultyName}.</p>
       </div>
+
 
       {/* Summary Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -81,7 +125,7 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
                 
                 <div className="flex-1 grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => resolveConflict(conflict.id)}
+                    onClick={() => resolveConflict(conflict.id, 'source_a')}
                     className="text-left p-4 rounded-lg border hover:border-[var(--accent)] transition-colors group relative" 
                     style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}
                   >
@@ -94,7 +138,7 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
                     </div>
                   </button>
                   <button 
-                    onClick={() => resolveConflict(conflict.id)}
+                    onClick={() => resolveConflict(conflict.id, 'source_b')}
                     className="text-left p-4 rounded-lg border hover:border-[var(--accent)] transition-colors group relative" 
                     style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}
                   >
@@ -110,7 +154,7 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
               </motion.div>
             ))}
           </AnimatePresence>
-          {conflicts.filter(c => c.resolution === 'unresolved').length === 0 && (
+          {unresolvedConflicts.length === 0 && (
             <div className="p-8 rounded-xl border text-center text-sm" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
               All conflicts resolved!
             </div>
@@ -155,8 +199,8 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
                 </div>
                 
                 <div className="flex gap-3">
-                  <Button variant="primary" size="sm" onClick={() => resolveDuplicate(dup.id)}>Merge Records</Button>
-                  <Button variant="secondary" size="sm" onClick={() => resolveDuplicate(dup.id)}>Keep Separate</Button>
+                  <Button variant="primary" size="sm" onClick={() => resolveDuplicate(dup.id, 'merge')}>Merge Records</Button>
+                  <Button variant="secondary" size="sm" onClick={() => resolveDuplicate(dup.id, 'separate')}>Keep Separate</Button>
                 </div>
               </motion.div>
             ))}
@@ -171,3 +215,4 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
     </div>
   )
 }
+

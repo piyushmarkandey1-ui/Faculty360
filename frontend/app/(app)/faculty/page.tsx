@@ -123,11 +123,12 @@ export default function FacultyDirectoryPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex justify-center gap-1.5">
-                      {fac.source_coverage.google_scholar && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" title="Google Scholar" />}
-                      {fac.source_coverage.researchgate && <div className="w-2.5 h-2.5 rounded-full bg-green-500" title="ResearchGate" />}
-                      {fac.source_coverage.institutional && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" title="Institutional" />}
-                      {fac.source_coverage.orcid && <div className="w-2.5 h-2.5 rounded-full bg-purple-500" title="ORCID" />}
+                      {fac.source_coverage?.google_scholar && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" title="Google Scholar" />}
+                      {fac.source_coverage?.researchgate && <div className="w-2.5 h-2.5 rounded-full bg-green-500" title="ResearchGate" />}
+                      {fac.source_coverage?.institutional && <div className="w-2.5 h-2.5 rounded-full bg-amber-500" title="Institutional" />}
+                      {fac.source_coverage?.orcid && <div className="w-2.5 h-2.5 rounded-full bg-purple-500" title="ORCID" />}
                     </div>
+
                   </td>
                   <td className="px-5 py-4 text-[var(--text-secondary)] text-xs">
                     {fac.last_synced_at ? formatRelativeTime(fac.last_synced_at) : 'Never'}

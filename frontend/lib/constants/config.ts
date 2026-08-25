@@ -7,7 +7,12 @@ export const APP_DESCRIPTION =
   'AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment'
 export const APP_TAGLINE = 'See the complete academic picture.'
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api'
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== 'undefined'
+    ? `${window.location.origin}/api`
+    : 'https://faculty360.vercel.app/api')
+
 
 /** Source types supported by the platform */
 export const SOURCE_TYPES = ['google_scholar', 'researchgate', 'institutional', 'orcid'] as const

@@ -2,26 +2,59 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, ChevronRight, GraduationCap, Globe, BookOpen } from 'lucide-react'
+
+import { Check, ChevronRight, GraduationCap, Globe, BookOpen, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { ROUTES } from '@/lib/constants/routes'
 import { Badge } from '@/components/ui/Badge'
+import { apiFetch } from '@/lib/api/client'
 
 export default function NewFacultyPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [createdFacultyId, setCreatedFacultyId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    department: '',
-    designation: '',
-    institution: '',
+    department: 'Computer Science',
+    designation: 'Assistant Professor',
+    institution: 'NIT Warangal',
     empId: '',
     scholarId: '',
     researchgateSlug: '',
     orcidId: '',
   })
+
+  const handleCreateFaculty = async () => {
+    setLoading(true)
+    setErrorMsg(null)
+    try {
+      const res: any = await apiFetch('/faculty', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      })
+      const facId = res?.id || 'fac-1'
+      setCreatedFacultyId(facId)
+      
+      // Auto-trigger scholar sync if scholar ID provided
+      if (formData.scholarId) {
+        apiFetch(`/faculty/${facId}/sources/google_scholar/sync`, {
+          method: 'POST',
+          body: JSON.stringify({ url: formData.scholarId })
+        }).catch(console.error)
+      }
+      
+      setStep(4)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to create faculty profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
 
   const updateForm = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -255,12 +288,22 @@ export default function NewFacultyPage() {
                       <div className="text-sm text-[var(--text-primary)] font-medium">{formData.orcidId || '-'}</div>
                     </div>
                   </div>
+
+                  {errorMsg && (
+                    <div className="p-3 bg-[var(--danger-muted)] text-[var(--danger)] text-xs rounded-lg mt-3">
+                      {errorMsg}
+                    </div>
+                  )}
                 </div>
               </div>
 
+
               <div className="flex justify-between pt-4">
-                <Button variant="ghost" onClick={() => setStep(2)}>Back</Button>
-                <Button variant="primary" onClick={() => setStep(4)}>Confirm & Create Faculty</Button>
+                <Button variant="ghost" onClick={() => setStep(2)} disabled={loading}>Back</Button>
+                <Button variant="primary" onClick={handleCreateFaculty} disabled={loading} className="gap-2">
+                  {loading && <Loader2 size={16} className="animate-spin" />}
+                  {loading ? 'Creating...' : 'Confirm & Create Faculty'}
+                </Button>
               </div>
             </motion.div>
           )}
@@ -283,11 +326,12 @@ export default function NewFacultyPage() {
               
               <div className="flex items-center justify-center gap-4">
                 <Button variant="ghost" onClick={() => router.push(ROUTES.faculty.list)}>Go to Directory</Button>
-                <Button variant="primary" onClick={() => router.push(ROUTES.faculty.profile('fac-1'))}>View Profile</Button>
+                <Button variant="primary" onClick={() => router.push(ROUTES.faculty.profile(createdFacultyId || 'fac-1'))}>View Profile</Button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
       </div>
     </div>
   )

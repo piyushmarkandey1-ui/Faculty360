@@ -48,6 +48,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 export interface SyncScholarResult {
   source: string
   status: string
+  message?: string
   publicationsFound: number
   publicationsAdded: number
   publicationsUpdated: number
@@ -59,6 +60,13 @@ export async function syncGoogleScholar(facultyId: string, scholarUrl: string): 
   return apiFetch<SyncScholarResult>(`/faculty/${facultyId}/sources/google-scholar/sync`, {
     method: 'POST',
     body: JSON.stringify({ scholar_url: scholarUrl })
+  })
+}
+
+export async function syncSource(facultyId: string, sourceType: string, url: string): Promise<SyncScholarResult> {
+  return apiFetch<SyncScholarResult>(`/faculty/${facultyId}/sources/${sourceType}/sync`, {
+    method: 'POST',
+    body: JSON.stringify({ url })
   })
 }
 

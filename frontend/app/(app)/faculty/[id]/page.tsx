@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, RefreshCw, AlertTriangle, ShieldCheck, CheckCircle2, Loader2, Link as LinkIcon } from 'lucide-react'
+import { FileText, RefreshCw, AlertTriangle, ShieldCheck, CheckCircle2, Loader2, Link as LinkIcon, Info } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ScoreRing } from '@/components/ui/ScoreRing'
 import { Badge } from '@/components/ui/Badge'
@@ -14,38 +14,57 @@ import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { ROUTES } from '@/lib/constants/routes'
 import { MOCK_FACULTY_PROFILES, MOCK_PUBLICATIONS, MOCK_CONFLICTS } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
-import { syncGoogleScholar, type SyncScholarResult } from '@/lib/api/client'
+import { syncSource, type SyncScholarResult } from '@/lib/api/client'
+
+export type SyncStateStatus = 'idle' | 'input' | 'syncing' | 'success' | 'error' | 'unavailable'
+export interface SourceState {
+  status: SyncStateStatus
+  url: string
+  result: SyncScholarResult | null
+  error: string | null
+}
 
 export default function FacultyProfilePage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'sources' | 'conflicts'>('overview')
   const [conflicts, setConflicts] = useState(MOCK_CONFLICTS)
   
-  // Scholar Sync State
-  const [scholarSyncState, setScholarSyncState] = useState<'idle' | 'input' | 'syncing' | 'success' | 'error'>('idle')
-  const [scholarUrl, setScholarUrl] = useState('')
-  const [syncResult, setSyncResult] = useState<SyncScholarResult | null>(null)
-  const [syncError, setSyncError] = useState<string | null>(null)
+  // Multi-source Sync State
+  const [sourceStates, setSourceStates] = useState<Record<string, SourceState>>({
+    google_scholar: { status: 'idle', url: '', result: null, error: null },
+    orcid: { status: 'idle', url: '', result: null, error: null },
+    researchgate: { status: 'idle', url: '', result: null, error: null }
+  })
+
+  const updateSourceState = (sourceId: string, updates: Partial<SourceState>) => {
+    setSourceStates(prev => ({
+      ...prev,
+      [sourceId]: { ...prev[sourceId], ...updates }
+    }))
+  }
+
+  const handleSourceSync = async (sourceId: string) => {
+    const state = sourceStates[sourceId]
+    if (!state.url.trim()) {
+      updateSourceState(sourceId, { error: 'Please enter a valid URL or identifier', status: 'error' })
+      return
+    }
+    
+    updateSourceState(sourceId, { status: 'syncing', error: null })
+    try {
+      const res = await syncSource(params.id, sourceId, state.url)
+      if (res.status === 'unavailable') {
+        updateSourceState(sourceId, { status: 'unavailable', error: res.message || 'Source is currently unavailable' })
+      } else {
+        updateSourceState(sourceId, { result: res, status: 'success' })
+      }
+    } catch (err: any) {
+      updateSourceState(sourceId, { error: err.message || `Failed to sync ${sourceId}`, status: 'error' })
+    }
+  }
 
   // Default to fac-1 if not found
   const profile = MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001']
   const { entity, unified_profile, publications_count, latest_assessment } = profile
-
-  const handleScholarSync = async () => {
-    if (!scholarUrl.includes('scholar.google')) {
-      setSyncError('Please enter a valid Google Scholar URL')
-      return
-    }
-    setScholarSyncState('syncing')
-    setSyncError(null)
-    try {
-      const res = await syncGoogleScholar(params.id, scholarUrl)
-      setSyncResult(res)
-      setScholarSyncState('success')
-    } catch (err: any) {
-      setSyncError(err.message || 'Failed to sync Google Scholar')
-      setScholarSyncState('error')
-    }
-  }
 
   const resolveConflict = (id: string, _resolution: string) => {
     setConflicts(prev => prev.map(c => c.id === id ? { ...c, resolution: 'source_a' as const } : c))
@@ -192,97 +211,114 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
 
         {activeTab === 'sources' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Google Scholar Card with Sync UI */}
+            
+            {/* Syncable Sources */}
+            {[
+              { id: 'google_scholar', name: 'Google Scholar', defaultUrlText: 'https://scholar.google.com/citations?user=...' },
+              { id: 'orcid', name: 'ORCID', defaultUrlText: 'https://orcid.org/XXXX-XXXX-XXXX-XXXX' },
+              { id: 'researchgate', name: 'ResearchGate', defaultUrlText: 'https://www.researchgate.net/profile/...' }
+            ].map(src => {
+              const state = sourceStates[src.id]
+              return (
+                <div key={src.id} className="p-5 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <SourceBadge source={src.id as any} status="active" />
+                      <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{src.name}</span>
+                    </div>
+                    <Badge variant={state.status === 'success' ? 'success' : state.status === 'error' ? 'danger' : state.status === 'unavailable' ? 'warning' : 'neutral'}>
+                      {state.status === 'success' ? 'Synced' : state.status === 'syncing' ? 'Syncing...' : state.status === 'unavailable' ? 'Pending Integration' : 'Connected'}
+                    </Badge>
+                  </div>
+
+                  {state.status === 'input' || state.status === 'syncing' || state.status === 'error' ? (
+                    <div className="flex flex-col gap-3 mt-auto border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Enter Profile URL or ID</div>
+                      <input
+                        type="url"
+                        placeholder={src.defaultUrlText}
+                        value={state.url}
+                        onChange={(e) => updateSourceState(src.id, { url: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors"
+                        style={{ background: 'var(--bg-base)', borderColor: 'var(--border-default)', color: 'var(--text-primary)' }}
+                        disabled={state.status === 'syncing'}
+                      />
+                      {state.error && <div className="text-xs" style={{ color: 'var(--danger)' }}>{state.error}</div>}
+                      <div className="flex gap-2">
+                        <Button variant="primary" size="sm" onClick={() => handleSourceSync(src.id)} disabled={state.status === 'syncing'} className="flex-1 justify-center gap-2">
+                          {state.status === 'syncing' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                          {state.status === 'syncing' ? 'Syncing...' : 'Start Sync'}
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle', error: null })} disabled={state.status === 'syncing'}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : state.status === 'success' && state.result ? (
+                    <div className="mt-auto border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="text-sm font-medium" style={{ color: 'var(--success)' }}>Sync Completed</div>
+                        <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle' })}>Dismiss</Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span style={{ color: 'var(--text-muted)' }}>Found:</span> {state.result.publicationsFound}</div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Added:</span> {state.result.publicationsAdded}</div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>h-index:</span> {state.result.hIndex}</div>
+                        <div><span style={{ color: 'var(--text-muted)' }}>Citations:</span> {state.result.citations}</div>
+                      </div>
+                    </div>
+                  ) : state.status === 'unavailable' ? (
+                     <div className="mt-auto border-t pt-4 flex flex-col gap-3" style={{ borderColor: 'var(--border-subtle)' }}>
+                       <div className="p-3 rounded-lg flex gap-3 text-sm" style={{ background: 'var(--warning-muted)', color: 'var(--warning)' }}>
+                         <Info size={16} className="shrink-0 mt-0.5" />
+                         <p>{state.error || 'Integration pending authorized access.'}</p>
+                       </div>
+                       <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle', error: null })}>Dismiss</Button>
+                     </div>
+                  ) : (
+                    <div className="flex justify-between items-end mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                      <div>
+                        <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Records Found</div>
+                        <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{state.result ? state.result.publicationsFound : (src.id === 'google_scholar' ? 82 : src.id === 'orcid' ? 45 : 0)}</div>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                          <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Last Synced</div>
+                          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{state.result ? 'Just now' : (src.id === 'google_scholar' ? '2 hours ago' : src.id === 'orcid' ? '5 days ago' : 'Never')}</div>
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'input' })} className="gap-2">
+                          <RefreshCw size={12} /> Force Sync
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Static Institutional Data Card */}
             <div className="p-5 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <SourceBadge source="google_scholar" status="active" />
-                  <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>Google Scholar</span>
+                  <SourceBadge source="institutional" status="active" />
+                  <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>Institutional DB</span>
                 </div>
-                <Badge variant={scholarSyncState === 'success' ? 'success' : scholarSyncState === 'error' ? 'danger' : 'neutral'}>
-                  {scholarSyncState === 'success' ? 'Synced' : scholarSyncState === 'syncing' ? 'Syncing...' : 'Connected'}
-                </Badge>
+                <Badge variant="success">Healthy</Badge>
               </div>
-
-              {scholarSyncState === 'input' || scholarSyncState === 'syncing' ? (
-                <div className="flex flex-col gap-3 mt-auto border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Enter Scholar Profile URL</div>
-                  <input
-                    type="url"
-                    placeholder="https://scholar.google.com/citations?user=..."
-                    value={scholarUrl}
-                    onChange={(e) => setScholarUrl(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors"
-                    style={{ background: 'var(--bg-base)', borderColor: 'var(--border-default)', color: 'var(--text-primary)' }}
-                    disabled={scholarSyncState === 'syncing'}
-                  />
-                  {syncError && <div className="text-xs" style={{ color: 'var(--danger)' }}>{syncError}</div>}
-                  <div className="flex gap-2">
-                    <Button variant="primary" size="sm" onClick={handleScholarSync} disabled={scholarSyncState === 'syncing'} className="flex-1 justify-center gap-2">
-                      {scholarSyncState === 'syncing' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                      {scholarSyncState === 'syncing' ? 'Syncing via Apify...' : 'Start Sync'}
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => {setScholarSyncState('idle'); setSyncError(null)}} disabled={scholarSyncState === 'syncing'}>Cancel</Button>
-                  </div>
+              <div className="flex justify-between items-end mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div>
+                  <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Records Found</div>
+                  <div className="font-medium" style={{ color: 'var(--text-primary)' }}>87</div>
                 </div>
-              ) : scholarSyncState === 'success' && syncResult ? (
-                <div className="mt-auto border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="text-sm font-medium" style={{ color: 'var(--success)' }}>Sync Completed</div>
-                    <Button variant="secondary" size="sm" onClick={() => setScholarSyncState('idle')}>Dismiss</Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span style={{ color: 'var(--text-muted)' }}>Found:</span> {syncResult.publicationsFound}</div>
-                    <div><span style={{ color: 'var(--text-muted)' }}>Added:</span> {syncResult.publicationsAdded}</div>
-                    <div><span style={{ color: 'var(--text-muted)' }}>h-index:</span> {syncResult.hIndex}</div>
-                    <div><span style={{ color: 'var(--text-muted)' }}>Citations:</span> {syncResult.citations}</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-between items-end mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div className="text-right flex flex-col items-end gap-2">
                   <div>
-                    <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Records Found</div>
-                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{syncResult ? syncResult.publicationsFound : 82}</div>
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <div>
-                      <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Last Synced</div>
-                      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{syncResult ? 'Just now' : '2 hours ago'}</div>
-                    </div>
-                    <Button variant="secondary" size="sm" onClick={() => setScholarSyncState('input')} className="gap-2">
-                      <RefreshCw size={12} /> Force Sync
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Other Source Cards */}
-            {[
-              { id: 'researchgate', name: 'ResearchGate', status: 'Missing', records: 0, lastSync: 'Never' },
-              { id: 'institutional', name: 'Institutional DB', status: 'Healthy', records: 87, lastSync: '1 day ago' },
-              { id: 'orcid', name: 'ORCID', status: 'Healthy', records: 45, lastSync: '5 days ago' },
-            ].map(src => (
-              <div key={src.id} className="p-5 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <SourceBadge source={src.id as any} status="active" />
-                    <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{src.name}</span>
-                  </div>
-                  <Badge variant={src.status === 'Healthy' ? 'success' : 'neutral'}>{src.status}</Badge>
-                </div>
-                <div className="flex justify-between items-end mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-                  <div>
-                    <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Records Found</div>
-                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{src.records}</div>
-                  </div>
-                  <div className="text-right">
                     <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Last Synced</div>
-                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{src.lastSync}</div>
+                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>1 day ago</div>
                   </div>
+                  <Button variant="secondary" size="sm" className="gap-2 opacity-50 cursor-not-allowed">
+                    <RefreshCw size={12} /> Auto-Syncing
+                  </Button>
                 </div>
               </div>
-            ))}
+            </div>
           </motion.div>
         )}
 

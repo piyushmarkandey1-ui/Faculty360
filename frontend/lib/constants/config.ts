@@ -7,7 +7,7 @@ export const APP_DESCRIPTION =
   'AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment'
 export const APP_TAGLINE = 'See the complete academic picture.'
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api'
 
 /** Source types supported by the platform */
 export const SOURCE_TYPES = ['google_scholar', 'researchgate', 'institutional', 'orcid'] as const

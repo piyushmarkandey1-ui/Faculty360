@@ -38,3 +38,39 @@ async def sync_source(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error during sync")
+
+@router.get("/{faculty_id}/quality")
+async def get_faculty_quality_metrics(faculty_id: str, user: dict = Depends(get_current_user)):
+    from app.core.supabase import get_supabase_admin
+    supabase = get_supabase_admin()
+    
+    # Conflicts
+    conflicts_res = supabase.table("profile_conflicts").select("id", count="exact").eq("faculty_id", faculty_id).eq("status", "OPEN").execute()
+    open_conflicts = conflicts_res.count or 0
+    
+    # Duplicates / Candidates
+    dups_res = supabase.table("publications").select("id", count="exact").eq("faculty_id", faculty_id).neq("dedup_status", "unique").execute()
+    duplicates = dups_res.count or 0
+    
+    # Verified Evidence (sources)
+    verified_res = supabase.table("publication_sources").select("id", count="exact").execute() # simplistic
+    
+    # Profile completeness
+    faculty_res = supabase.table("faculty").select("completeness_score").eq("id", faculty_id).execute()
+    completeness = faculty_res.data[0].get("completeness_score", 0) if faculty_res.data else 0
+
+    return {
+        "completeness_score": completeness,
+        "verified_evidence": verified_res.count or 0,
+        "duplicate_records": duplicates,
+        "open_conflicts": open_conflicts,
+        "unmatched_records": 0  # Global to institution, or we can query by email
+    }
+
+@router.get("/{faculty_id}/conflicts")
+async def get_faculty_conflicts(faculty_id: str, user: dict = Depends(get_current_user)):
+    from app.core.supabase import get_supabase_admin
+    supabase = get_supabase_admin()
+    
+    res = supabase.table("profile_conflicts").select("*").eq("faculty_id", faculty_id).order("detected_at", desc=True).execute()
+    return {"items": res.data}

@@ -5,6 +5,8 @@ import logging
 from typing import Dict, Any, List
 from app.core.supabase import get_supabase_admin
 from app.services.connectors import get_connector
+from app.services.normalization import normalize_title, normalize_doi
+from app.services.resolution import resolve_publication, detect_conflicts
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ def sync_source(faculty_id: str, source_type: str, url_or_id: str) -> Dict[str, 
     author_info = result["author"]
     publications = result["publications"]
     
+    # 1. Update academic_identities
     identity_data = {
         "faculty_id": faculty_id,
         "source_type": source_type,
@@ -45,42 +48,102 @@ def sync_source(faculty_id: str, source_type: str, url_or_id: str) -> Dict[str, 
     pubs_added = 0
     pubs_updated = 0
     
-    existing_pubs_res = supabase.table("publications").select("id, title, doi").eq("faculty_id", faculty_id).execute()
+    # 2. Fetch existing publications to resolve against
+    existing_pubs_res = supabase.table("publications").select("*").eq("faculty_id", faculty_id).execute()
     existing_pubs = existing_pubs_res.data
-    existing_titles = {p["title"].lower(): p for p in existing_pubs if p.get("title")}
-    existing_dois = {p["doi"]: p for p in existing_pubs if p.get("doi")}
+    
+    all_conflicts = []
+    pub_sources_inserts = []
     
     for article in publications:
-        title = article["title"]
-        doi = article.get("doi")
+        raw_title = article.get("title", "")
+        raw_doi = article.get("doi")
+        year = article.get("year")
+        citation_count = article.get("citation_count", 0)
+        venue = article.get("venue")
         
-        match = None
-        if doi and doi in existing_dois:
-            match = existing_dois[doi]
-        elif title.lower() in existing_titles:
-            match = existing_titles[title.lower()]
-            
-        pub_record = {
-            "faculty_id": faculty_id,
-            "title": title,
-            "year": article.get("year"),
-            "venue": article.get("venue"),
-            "doi": doi,
-            "citation_count": article.get("citation_count", 0),
-            "source_type": source_type,
-            "is_verified": True,
-            "dedup_status": "unique" if not match else "candidate"
-        }
+        norm_title = normalize_title(raw_title)
+        norm_doi = normalize_doi(raw_doi)
+        
+        match, confidence = resolve_publication(norm_title, norm_doi, year, existing_pubs)
         
         if match:
-            pub_record["id"] = match["id"]
+            # Detect conflicts
+            confs = detect_conflicts(faculty_id, match, article, source_type)
+            if confs:
+                all_conflicts.extend(confs)
+                
+            # Update existing unified publication
+            pub_record = {
+                "id": match["id"],
+                "citation_count": max(match.get("citation_count", 0) or 0, citation_count or 0),
+                "dedup_status": "duplicate" if confidence > 90 else "candidate"
+            }
+            # Only update if DOI is newly found
+            if not match.get("doi") and norm_doi:
+                pub_record["doi"] = norm_doi
+                
             supabase.table("publications").upsert(pub_record).execute()
+            
+            # Record provenance
+            pub_sources_inserts.append({
+                "publication_id": match["id"],
+                "source_type": source_type,
+                "source_url": author_info.get("profile_url"),
+                "original_title": raw_title,
+                "original_year": year,
+                "original_doi": raw_doi
+            })
             pubs_updated += 1
+            
         else:
-            supabase.table("publications").insert(pub_record).execute()
+            # Insert new unified publication
+            pub_record = {
+                "faculty_id": faculty_id,
+                "title": raw_title,
+                "normalized_title": norm_title,
+                "year": year,
+                "venue": venue,
+                "doi": norm_doi,
+                "citation_count": citation_count,
+                "source_type": source_type,
+                "is_verified": True,
+                "dedup_status": "unique",
+                "confidence": confidence if confidence > 0 else 100.0
+            }
+            new_pub_res = supabase.table("publications").insert(pub_record).execute()
+            new_pub_id = new_pub_res.data[0]["id"]
+            
+            # Record provenance
+            pub_sources_inserts.append({
+                "publication_id": new_pub_id,
+                "source_type": source_type,
+                "source_url": author_info.get("profile_url"),
+                "original_title": raw_title,
+                "original_year": year,
+                "original_doi": raw_doi
+            })
             pubs_added += 1
+            # Add to local cache for subsequent iterations
+            existing_pubs.append(new_pub_res.data[0])
 
-    supabase.table("faculty").update({"last_synced_at": "now()"}).eq("id", faculty_id).execute()
+    # Batch insert provenance
+    if pub_sources_inserts:
+        # Ignore conflicts on unique constraints (publication_id, source_type)
+        supabase.table("publication_sources").upsert(pub_sources_inserts, on_conflict="publication_id,source_type").execute()
+        
+    # Batch insert conflicts
+    if all_conflicts:
+        supabase.table("profile_conflicts").insert(all_conflicts).execute()
+        
+    # Update faculty metrics
+    conflict_count_res = supabase.table("profile_conflicts").select("id", count="exact").eq("faculty_id", faculty_id).execute()
+    total_conflicts = conflict_count_res.count or 0
+    
+    supabase.table("faculty").update({
+        "last_synced_at": "now()",
+        "conflict_count": total_conflicts
+    }).eq("id", faculty_id).execute()
 
     return {
         "source": source_type,
@@ -88,8 +151,9 @@ def sync_source(faculty_id: str, source_type: str, url_or_id: str) -> Dict[str, 
         "publicationsFound": len(publications),
         "publicationsAdded": pubs_added,
         "publicationsUpdated": pubs_updated,
-        "citations": author_info["total_citations"],
-        "hIndex": author_info["h_index"]
+        "citations": author_info.get("total_citations", 0),
+        "hIndex": author_info.get("h_index", 0),
+        "conflictsDetected": len(all_conflicts)
     }
 
 def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
@@ -107,7 +171,6 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
     result = connector.fetch_and_normalize(valid_rows)
     records = result.get("institutional_records", [])
 
-    # Fetch all faculty to match
     faculty_res = supabase.table("faculty").select("id, canonical_email, employee_id").execute()
     faculty_list = faculty_res.data
 
@@ -132,7 +195,6 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
             unmatched_records.append(row)
             continue
             
-        # Check for exact duplicate in DB (same faculty_id, category, title, year)
         dup_check = supabase.table("institutional_records").select("id").eq("faculty_id", faculty_id).eq("category", row["category"]).eq("title", row["title"]).eq("year", row["year"]).execute()
         
         record_data = {
@@ -153,7 +215,6 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
             supabase.table("institutional_records").insert(record_data).execute()
             records_imported += 1
             
-    # Insert unmatched records
     if unmatched_records:
         unmatched_inserts = []
         for ur in unmatched_records:
@@ -174,6 +235,6 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
         "recordsImported": records_imported,
         "recordsUpdated": records_updated,
         "unmatchedFaculty": len(unmatched_records),
-        "invalidRecords": 0,  # invalid rows were dropped in validate() or raised Exception
+        "invalidRecords": 0,
         "duplicatesDetected": records_updated
     }

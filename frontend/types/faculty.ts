@@ -61,6 +61,8 @@ export interface ProfileConflict {
   source_b: SourceType
   value_b: string
   resolution: 'source_a' | 'source_b' | 'manual' | 'unresolved'
+  status?: 'OPEN' | 'RESOLVED' | 'IGNORED'
+  severity?: string
   resolved_by: string | null
   resolved_at: string | null
   detected_at: string

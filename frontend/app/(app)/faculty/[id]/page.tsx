@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -14,7 +14,8 @@ import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { ROUTES } from '@/lib/constants/routes'
 import { MOCK_FACULTY_PROFILES, MOCK_PUBLICATIONS, MOCK_CONFLICTS } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
-import { syncSource, type SyncScholarResult } from '@/lib/api/client'
+import { syncSource, getFacultyConflicts, type SyncScholarResult } from '@/lib/api/client'
+import type { ProfileConflict } from '@/types/faculty'
 
 export type SyncStateStatus = 'idle' | 'input' | 'syncing' | 'success' | 'error' | 'unavailable'
 export interface SourceState {
@@ -26,7 +27,8 @@ export interface SourceState {
 
 export default function FacultyProfilePage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'sources' | 'conflicts'>('overview')
-  const [conflicts, setConflicts] = useState(MOCK_CONFLICTS)
+  const [conflicts, setConflicts] = useState<ProfileConflict[]>(MOCK_CONFLICTS)
+  const [loadingConflicts, setLoadingConflicts] = useState(false)
   
   // Multi-source Sync State
   const [sourceStates, setSourceStates] = useState<Record<string, SourceState>>({
@@ -34,6 +36,23 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
     orcid: { status: 'idle', url: '', result: null, error: null },
     researchgate: { status: 'idle', url: '', result: null, error: null }
   })
+
+  useEffect(() => {
+    async function loadConflicts() {
+      try {
+        setLoadingConflicts(true)
+        const res = await getFacultyConflicts(params.id)
+        if (res.items && res.items.length > 0) {
+          setConflicts(res.items)
+        }
+      } catch (err) {
+        console.error('Failed to load conflicts', err)
+      } finally {
+        setLoadingConflicts(false)
+      }
+    }
+    loadConflicts()
+  }, [params.id])
 
   const updateSourceState = (sourceId: string, updates: Partial<SourceState>) => {
     setSourceStates(prev => ({
@@ -56,6 +75,9 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
         updateSourceState(sourceId, { status: 'unavailable', error: res.message || 'Source is currently unavailable' })
       } else {
         updateSourceState(sourceId, { result: res, status: 'success' })
+        // Reload conflicts after sync
+        const cRes = await getFacultyConflicts(params.id)
+        if (cRes.items) setConflicts(cRes.items)
       }
     } catch (err: any) {
       updateSourceState(sourceId, { error: err.message || `Failed to sync ${sourceId}`, status: 'error' })
@@ -332,19 +354,27 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
             </div>
             
             {conflicts.map(conflict => {
-              const isResolved = conflict.resolution !== 'unresolved'
+              const isResolved = conflict.status === 'RESOLVED' || conflict.resolution !== 'unresolved'
+              const severityColor = conflict.severity === 'high' ? 'var(--danger)' : conflict.severity === 'medium' ? 'var(--warning)' : 'var(--accent)'
+              
               return (
                 <div key={conflict.id} className="p-5 rounded-xl border transition-colors" style={{ 
                   background: isResolved ? 'var(--bg-base)' : 'var(--bg-surface)', 
-                  borderColor: isResolved ? 'var(--border-subtle)' : 'var(--warning)',
+                  borderColor: isResolved ? 'var(--border-subtle)' : severityColor,
                   opacity: isResolved ? 0.7 : 1
                 }}>
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                      {isResolved ? <CheckCircle2 className="text-[var(--success)]" size={16} /> : <AlertTriangle className="text-[var(--warning)]" size={16} />}
+                      {isResolved ? <CheckCircle2 className="text-[var(--success)]" size={16} /> : <AlertTriangle style={{ color: severityColor }} size={16} />}
                       {conflict.field_name.replace('_', ' ').toUpperCase()}
+                      {!isResolved && conflict.severity && (
+                        <Badge variant={conflict.severity === 'high' ? 'danger' : 'warning'}>{conflict.severity.toUpperCase()}</Badge>
+                      )}
                     </h4>
-                    {isResolved && <Badge variant="success">Resolved</Badge>}
+                    <div className="flex items-center gap-2">
+                      {!isResolved && <span className="text-xs text-[var(--text-muted)]">Confidence: 95%</span>}
+                      {isResolved ? <Badge variant="success">RESOLVED</Badge> : <Badge variant="neutral">{conflict.status || 'OPEN'}</Badge>}
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -366,6 +396,7 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
                     <div className="mt-4 flex gap-2">
                       <Button variant="secondary" size="sm" onClick={() => resolveConflict(conflict.id, 'A')}>Use Source A</Button>
                       <Button variant="secondary" size="sm" onClick={() => resolveConflict(conflict.id, 'B')}>Use Source B</Button>
+                      <Button variant="secondary" size="sm" onClick={() => resolveConflict(conflict.id, 'IGNORE')}>Ignore</Button>
                     </div>
                   )}
                 </div>

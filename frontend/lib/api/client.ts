@@ -1,7 +1,7 @@
-/**
+﻿/**
  * API client typed wrappers.
- * All fetch calls go through these functions — never raw fetch in components.
- * Types are sourced from /types — keeping API contract and UI types in sync.
+ * All fetch calls go through these functions â€” never raw fetch in components.
+ * Types are sourced from /types â€” keeping API contract and UI types in sync.
  */
 
 import { API_BASE_URL } from '@/lib/constants/config'
@@ -10,7 +10,7 @@ import type { Assessment, AssessmentSummary } from '@/types/assessment'
 
 import { createClient } from '@/lib/supabase/client'
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function getAuthToken() {
   const supabase = createClient()
@@ -43,7 +43,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-// ── Scholar Sync ───────────────────────────────────────────────────────────
+// â”€â”€ Scholar Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface SyncScholarResult {
   source: string
@@ -70,7 +70,7 @@ export async function syncSource(facultyId: string, sourceType: string, url: str
   })
 }
 
-// ── Faculty ────────────────────────────────────────────────────────────────
+// â”€â”€ Faculty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface FacultyListParams {
   page?: number
@@ -119,7 +119,7 @@ export async function resolveConflict(
   })
 }
 
-// ── Ingestion ──────────────────────────────────────────────────────────────
+// â”€â”€ Ingestion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface IngestionJobResponse {
   job_id: string
@@ -141,7 +141,7 @@ export async function getIngestionStatus(jobId: string): Promise<IngestionJobRes
   return apiFetch<IngestionJobResponse>(`/ingestion/status/${jobId}`)
 }
 
-// ── Assessment ─────────────────────────────────────────────────────────────
+// â”€â”€ Assessment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function runAssessment(facultyId: string): Promise<AssessmentSummary> {
   return apiFetch<AssessmentSummary>('/assessment/run', {
@@ -154,7 +154,7 @@ export async function getAssessment(assessmentId: string): Promise<Assessment> {
   return apiFetch<Assessment>(`/assessment/${assessmentId}`)
 }
 
-// ── Dashboard ──────────────────────────────────────────────────────────────
+// â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface DashboardSummary {
   faculty_total: number
@@ -168,4 +168,20 @@ export interface DashboardSummary {
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   return apiFetch<DashboardSummary>('/dashboard/summary')
+}
+
+// ── Assessment ──────────────────────────────────────────────────────────────
+
+export async function getAssessmentFramework() {
+  return apiFetch('/assessment/framework')
+}
+
+export async function getFacultyAssessment(facultyId: string) {
+  return apiFetch(`/faculty/${facultyId}/assessment`)
+}
+
+export async function calculateFacultyAssessment(facultyId: string) {
+  return apiFetch(`/faculty/${facultyId}/assessment/calculate`, {
+    method: 'POST'
+  })
 }

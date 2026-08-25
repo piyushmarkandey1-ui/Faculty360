@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Sparkles, FileSearch } from 'lucide-react'
+import { ArrowLeft, Sparkles, FileSearch, Loader2 } from 'lucide-react'
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer 
 } from 'recharts'
@@ -12,26 +12,60 @@ import { Badge } from '@/components/ui/Badge'
 import { ParameterBar } from '@/components/ui/ParameterBar'
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge'
 import { ROUTES } from '@/lib/constants/routes'
-import { MOCK_ASSESSMENTS, MOCK_FACULTY_PROFILES } from '@/mock-data'
+import { MOCK_FACULTY_PROFILES } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
+import { getFacultyAssessment, calculateFacultyAssessment } from '@/lib/api/client'
 
 export default function FacultyAssessmentPage({ params }: { params: { id: string } }) {
   const [isClient, setIsClient] = useState(false)
+  const [assessment, setAssessment] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [calculating, setCalculating] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
+  const loadAssessment = async () => {
+    setLoading(true)
+    setErrorMsg(null)
+    try {
+      const res = await getFacultyAssessment(params.id)
+      setAssessment(res)
+    } catch (err: any) {
+      if (err.status !== 404) {
+        setErrorMsg('Failed to load assessment')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     setIsClient(true)
-  }, [])
+    loadAssessment()
+  }, [params.id])
+
+  const handleRunAssessment = async () => {
+    setCalculating(true)
+    setErrorMsg(null)
+    try {
+      const res = await calculateFacultyAssessment(params.id)
+      // The API returns the calculated assessment summary, but we need the full assessment to render the UI
+      // so we just reload it.
+      await loadAssessment()
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to run assessment')
+    } finally {
+      setCalculating(false)
+    }
+  }
 
   const profile = MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001']
-  // Use latest assessment or fallback to assess-1
-  const assessment = MOCK_ASSESSMENTS[profile.latest_assessment?.id ?? ''] ?? MOCK_ASSESSMENTS['assessment-001']
 
   // Format data for radar chart
-  const radarData = assessment.kpi_scores.map(kpi => ({
+  const radarData = assessment?.kpi_scores?.map((kpi: any) => ({
     subject: kpi.category,
     A: kpi.computed_score,
     fullMark: kpi.max_score,
-  }))
+  })) || []
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -42,31 +76,48 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
         </Link>
       </div>
 
+      {errorMsg && (
+        <div className="p-4 bg-[var(--danger-muted)] text-[var(--danger)] rounded-lg text-sm">
+          {errorMsg}
+        </div>
+      )}
+
       {/* Header Card */}
       <div className="p-6 rounded-xl border flex flex-col md:flex-row gap-8 items-start md:items-center justify-between" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
         <div>
           <div className="text-xs uppercase tracking-wider mb-2 font-medium" style={{ color: 'var(--text-muted)' }}>Latest Assessment</div>
-          <h1 className="text-3xl font-bold flex items-baseline gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
-            {assessment.total_score}
-            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>/ 100</span>
-          </h1>
-          <div className="flex flex-wrap items-center gap-3">
-            <ConfidenceBadge confidence={assessment.confidence_score} />
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Completeness: {assessment.completeness_score}%</span>
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
-            <Badge variant="neutral">Draft</Badge>
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatRelativeTime(assessment.assessed_at)}</span>
-          </div>
+          {loading ? (
+            <div className="animate-pulse h-10 w-32 bg-[var(--bg-elevated)] rounded mb-3"></div>
+          ) : assessment ? (
+            <>
+              <h1 className="text-3xl font-bold flex items-baseline gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
+                {assessment.total_score}
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>/ 100</span>
+              </h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <ConfidenceBadge confidence={assessment.confidence_score} />
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Completeness: {assessment.completeness_score}%</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
+                <Badge variant="success">Approved</Badge>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatRelativeTime(assessment.created_at)}</span>
+              </div>
+            </>
+          ) : (
+             <div className="text-[var(--text-muted)] text-sm mb-3">No assessment has been run yet.</div>
+          )}
         </div>
         
         <div>
-          <Button variant="primary">Run New Assessment</Button>
+          <Button variant="primary" onClick={handleRunAssessment} disabled={calculating} className="gap-2">
+            {calculating && <Loader2 size={16} className="animate-spin" />}
+            {calculating ? 'Calculating...' : 'Run New Assessment'}
+          </Button>
         </div>
       </div>
 
       {/* AI Insights Banner */}
-      {assessment.ai_insights && (
+      {assessment?.ai_insights && (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -90,46 +141,53 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
       )}
 
       {/* Breakdown Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Radar Chart */}
-        <div className="p-6 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-          <h3 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Category Distribution</h3>
-          <div className="flex-1 min-h-[300px]">
-            {isClient && (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="var(--border-default)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
-                  <Radar name="Score" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.3} />
-                </RadarChart>
-              </ResponsiveContainer>
-            )}
+      {assessment && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Radar Chart */}
+          <div className="p-6 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <h3 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Category Distribution</h3>
+            <div className="flex-1 min-h-[300px]">
+              {isClient && radarData.length > 0 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="var(--border-default)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
+                    <Radar name="Score" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.3} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Individual Scores */}
-        <div className="p-6 rounded-xl border flex flex-col gap-6" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-          <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Parameter Breakdown</h3>
-          
-          <div className="space-y-5">
-            {assessment.kpi_scores.map(kpi => (
-              <div key={kpi.id}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{kpi.rule_name}</span>
-                  <Link 
-                    href={ROUTES.assessment.evidence(assessment.id)} 
-                    className="text-xs flex items-center gap-1 hover:underline" 
-                    style={{ color: 'var(--accent)' }}
-                  >
-                    <FileSearch size={12} /> View Evidence
-                  </Link>
+          {/* Individual Scores */}
+          <div className="p-6 rounded-xl border flex flex-col gap-6" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Parameter Breakdown</h3>
+            
+            <div className="space-y-5">
+              {assessment.kpi_scores?.map((kpi: any) => (
+                <div key={kpi.id}>
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{kpi.rule_name}</span>
+                      {kpi.status === 'INSUFFICIENT_EVIDENCE' && (
+                        <Badge variant="danger" className="text-[10px]">MISSING EVIDENCE</Badge>
+                      )}
+                    </div>
+                    <Link 
+                      href={ROUTES.assessment.evidence(assessment.id)} 
+                      className="text-xs flex items-center gap-1 hover:underline" 
+                      style={{ color: 'var(--accent)' }}
+                    >
+                      <FileSearch size={12} /> View Evidence
+                    </Link>
+                  </div>
+                  <ParameterBar label={kpi.category} score={kpi.computed_score} maxScore={kpi.max_score} />
                 </div>
-                <ParameterBar label={kpi.category} score={kpi.computed_score} maxScore={kpi.max_score} />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

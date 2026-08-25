@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ROUTES } from '@/lib/constants/routes'
 import { APP_NAME } from '@/lib/constants/config'
 import { Button } from '@/components/ui/Button'
@@ -10,31 +10,63 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const router = useRouter()
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setSuccessMsg(null)
 
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
 
-    if (authError) {
-      setError(authError.message)
-      setIsLoading(false)
-      return
+    if (mode === 'signup') {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      })
+
+      if (signUpError) {
+        setError(signUpError.message)
+        setIsLoading(false)
+        return
+      }
+
+      if (data.session) {
+        // Auto signed-in
+        router.refresh()
+        router.push(ROUTES.dashboard)
+      } else {
+        setSuccessMsg('Account created successfully! You can now sign in.')
+        setMode('signin')
+        setIsLoading(false)
+      }
+    } else {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (authError) {
+        setError(authError.message)
+        setIsLoading(false)
+        return
+      }
+
+      router.refresh()
+      router.push(ROUTES.dashboard)
     }
-
-    // Refresh server components to pick up the new session, then navigate
-    router.refresh()
-    router.push(ROUTES.dashboard)
   }
 
   return (
@@ -95,7 +127,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel - Login form */}
+      {/* Right panel - Auth form */}
       <div className="w-full lg:w-[42%] flex items-center justify-center p-8 sm:p-12 lg:p-16 relative">
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
@@ -115,10 +147,67 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Sign In</h2>
-          <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>Institutional administrator login</p>
+          {/* Mode Switcher Tabs */}
+          <div className="flex p-1 rounded-xl mb-6 border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
+            <button
+              type="button"
+              onClick={() => { setMode('signin'); setError(null); setSuccessMsg(null); }}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                mode === 'signin' 
+                  ? 'bg-[var(--accent)] text-white shadow-sm' 
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('signup'); setError(null); setSuccessMsg(null); }}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                mode === 'signup' 
+                  ? 'bg-[var(--accent)] text-white shadow-sm' 
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+          </h2>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+            {mode === 'signin' ? 'Institutional access & review portal' : 'Register for institutional access'}
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <AnimatePresence mode="wait">
+              {mode === 'signup' && (
+                <motion.div
+                  key="fullName"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-1.5 overflow-hidden"
+                >
+                  <label className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Full Name</label>
+                  <input 
+                    type="text" 
+                    required={mode === 'signup'}
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border text-sm focus:outline-none transition-colors"
+                    style={{ 
+                      background: 'var(--bg-surface)', 
+                      borderColor: 'var(--border-default)',
+                      color: 'var(--text-primary)'
+                    }}
+                    placeholder="Dr. Rajesh Sharma"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Institutional Email</label>
               <input 
@@ -159,7 +248,9 @@ export default function LoginPage() {
               className="w-full py-2.5 mt-2 font-semibold" 
               disabled={isLoading}
             >
-              {isLoading ? 'Authenticating...' : 'Sign In'}
+              {isLoading 
+                ? (mode === 'signin' ? 'Authenticating...' : 'Creating Account...') 
+                : (mode === 'signin' ? 'Sign In' : 'Sign Up')}
             </Button>
 
             {error && (
@@ -167,12 +258,13 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-          </form>
 
-          <div className="mt-8 p-4 rounded-xl text-xs border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
-            <p style={{ color: 'var(--accent)' }} className="mb-1 text-[11px] uppercase tracking-wider font-bold">Supabase Auth Active</p>
-            <p style={{ color: 'var(--text-secondary)' }}>Sign in with your Supabase user credentials. Create users in your Supabase project → Authentication → Users.</p>
-          </div>
+            {successMsg && (
+              <div className="mt-3 px-3.5 py-2.5 rounded-lg text-sm border" style={{ background: 'rgba(46, 155, 114, 0.12)', borderColor: 'var(--success)', color: 'var(--success)' }}>
+                {successMsg}
+              </div>
+            )}
+          </form>
         </motion.div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-﻿import re
+import re
 from typing import Dict, Any
 from apify_client import ApifyClient
 from app.core.config import settings
@@ -19,6 +19,34 @@ class GoogleScholarConnector(AcademicSourceConnector):
         return url_or_id
 
     def fetch_and_normalize(self, identity: str) -> Dict[str, Any]:
+        if not settings.APIFY_API_TOKEN or settings.APIFY_API_TOKEN.lower() == "demo":
+            return {
+                "status": "completed",
+                "author": {
+                    "name": "Demo Faculty",
+                    "external_id": identity,
+                    "profile_url": f"https://scholar.google.com/citations?user={identity}",
+                    "h_index": 24,
+                    "total_citations": 1500
+                },
+                "publications": [
+                    {
+                        "title": "Machine Learning for Geospatial Data Analysis",
+                        "year": 2022,
+                        "venue": "IEEE Transactions on Geoscience",
+                        "doi": "10.1109/TGRS.2022.12345",
+                        "citation_count": 450
+                    },
+                    {
+                        "title": "Deep Neural Networks in Spatial Mapping",
+                        "year": 2020,
+                        "venue": "ACM SIGSPATIAL",
+                        "doi": None,
+                        "citation_count": 320
+                    }
+                ]
+            }
+
         client = ApifyClient(settings.APIFY_API_TOKEN)
         run_input = {"authorIds": [identity]}
         

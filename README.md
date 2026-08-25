@@ -95,14 +95,13 @@ For more details, see [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md).
 │   ├── VERCEL_DEPLOYMENT.md
 │   └── MVP_SCOPE.md
 │
-├── frontend/                 # Next.js 16 Application
-│   ├── app/                  # Application Routes (Landing, Dashboard, Faculty, Login)
-│   ├── components/           # Shared UI, Layouts, and Landing Page Modules
-│   ├── lib/                  # Utilities, Motion configs, Route definitions
-│   └── styles/               # Global CSS and Design Tokens
-│
-├── mock-data/                # Deterministic JSON datasets for the MVP prototype
-└── README.md
+└── frontend/                 # Next.js 16 Application
+    ├── app/                  # Application Routes (Landing, Dashboard, Faculty, Login)
+    ├── components/           # Shared UI, Layouts, and Landing Page Modules
+    ├── lib/                  # Utilities, Motion configs, Route definitions
+    ├── mock-data/            # Deterministic TypeScript datasets for the MVP prototype
+    ├── types/                # Shared TypeScript type definitions
+    └── public/               # Static assets
 ```
 
 ---

@@ -68,9 +68,9 @@ export default function FacultyDirectoryPage() {
             }}
           >
             <option value="All">All Statuses</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="PENDING">Pending</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="archived">Archived</option>
           </select>
         </div>
       </div>

@@ -3,14 +3,15 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, ChevronDown, ChevronRight, Activity, Database, ListChecks, FileText } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Activity, Database, ListChecks, FileText, FileSearch } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ROUTES } from '@/lib/constants/routes'
 import { MOCK_ASSESSMENTS } from '@/mock-data'
 
 export default function EvidencePage({ params }: { params: { id: string } }) {
-  const assessment = MOCK_ASSESSMENTS[params.id] || MOCK_ASSESSMENTS['assess-1']
-  
+  const assessment = MOCK_ASSESSMENTS[params.id] ?? null
+
   // Manage expansion state of levels (1 to 5)
   const [expandedLevels, setExpandedLevels] = useState<Record<number, boolean>>({
     1: true,
@@ -22,6 +23,20 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
 
   const toggleLevel = (level: number) => {
     setExpandedLevels(prev => ({ ...prev, [level]: !prev[level] }))
+  }
+
+  // Assessment not found — show empty state instead of displaying wrong data
+  if (!assessment) {
+    return (
+      <div className="max-w-4xl mx-auto py-16">
+        <EmptyState
+          icon={FileSearch}
+          title="Assessment Not Found"
+          description={`No assessment record exists for ID "${params.id}". It may have been deleted or the link is incorrect.`}
+          action={{ label: 'Back to Assessments', onClick: () => window.history.back() }}
+        />
+      </div>
+    )
   }
 
   // Example subset of rules for visual

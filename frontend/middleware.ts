@@ -1,4 +1,4 @@
-﻿import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
@@ -17,6 +17,7 @@ const PROTECTED_PREFIXES = [
   '/assessments',
   '/assessment',
   '/settings',
+  '/reports',
 ]
 
 export async function middleware(request: NextRequest) {

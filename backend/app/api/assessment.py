@@ -26,3 +26,14 @@ async def calculate_faculty_assessment(faculty_id: str, user: dict = Depends(get
         return calculate_assessment(faculty_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/faculty/{faculty_id}/insights")
+async def generate_insights(faculty_id: str, user: dict = Depends(get_current_user)):
+    from app.services.ai_insights import generate_faculty_insights
+    try:
+        insights = await generate_faculty_insights(faculty_id)
+        return insights
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))

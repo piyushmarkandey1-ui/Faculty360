@@ -116,6 +116,85 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
         </div>
       </div>
 
+      {/* AI Insights Banner */}
+      {assessment && !assessment.ai_insights && (
+        <div className="flex justify-end">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={async () => {
+              try {
+                // @ts-ignore (we'll import this above)
+                const { generateFacultyInsights } = await import('@/lib/api/client');
+                const insights = await generateFacultyInsights(params.id);
+                setAssessment({ ...assessment, ai_insights: insights });
+              } catch (e) {
+                console.error(e);
+                setErrorMsg('AI Service currently unavailable.');
+              }
+            }}
+            className="gap-2"
+          >
+            <Sparkles size={14} style={{ color: 'var(--warning)' }} />
+            Generate AI Insights
+          </Button>
+        </div>
+      )}
+
+      {assessment?.ai_insights && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-xl border flex flex-col gap-4" 
+          style={{ background: 'rgba(217, 146, 58, 0.05)', borderColor: 'rgba(217, 146, 58, 0.2)' }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="shrink-0" style={{ color: 'var(--warning)' }} size={20} />
+            <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--warning)' }}>
+              AI Interpretation
+              <Badge variant="warning" className="text-[10px] uppercase">Advisory Only</Badge>
+            </h3>
+          </div>
+          <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--text-primary)' }}>
+            {assessment.ai_insights.summary}
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-[var(--text-secondary)]">Key Insights</h4>
+              <ul className="text-sm space-y-2 list-disc pl-4 text-[var(--text-primary)]">
+                {assessment.ai_insights.keyInsights.map((ki: string, i: number) => <li key={i}>{ki}</li>)}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-[var(--text-secondary)]">Recommended Actions</h4>
+              <ul className="text-sm space-y-2 list-disc pl-4 text-[var(--text-primary)]">
+                {assessment.ai_insights.recommendedActions.map((ra: string, i: number) => <li key={i}>{ra}</li>)}
+              </ul>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2 p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+             <div>
+               <span className="text-xs font-semibold uppercase block mb-1 text-[var(--success)]">Strengths</span>
+               <p className="text-xs text-[var(--text-secondary)]">{assessment.ai_insights.strengthNarrative}</p>
+             </div>
+             <div>
+               <span className="text-xs font-semibold uppercase block mb-1 text-[var(--warning)]">Improvements</span>
+               <p className="text-xs text-[var(--text-secondary)]">{assessment.ai_insights.improvementNarrative}</p>
+             </div>
+             <div>
+               <span className="text-xs font-semibold uppercase block mb-1 text-[var(--accent)]">Trend</span>
+               <p className="text-xs text-[var(--text-secondary)]">{assessment.ai_insights.trendNarrative}</p>
+             </div>
+          </div>
+          
+          <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+            Scores are strictly computed by rules. AI is used only for interpretive summaries and cannot modify verified evaluation results.
+          </p>
+        </motion.div>
+      )}
+
       {/* Analytics Insights */}
       {assessment?.analytics && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

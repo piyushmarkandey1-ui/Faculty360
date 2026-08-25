@@ -185,3 +185,9 @@ export async function calculateFacultyAssessment(facultyId: string) {
     method: 'POST'
   })
 }
+
+export async function generateFacultyInsights(facultyId: string) {
+  return apiFetch(`/faculty/${facultyId}/insights`, {
+    method: 'POST'
+  })
+}

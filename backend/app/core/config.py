@@ -1,4 +1,4 @@
-﻿"""
+"""
 Application configuration.
 All values are loaded from environment variables (or .env file).
 """
@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: str
     SUPABASE_JWT_SECRET: str
+    GEMINI_API_KEY: str = ""
 
     # Apify
     APIFY_API_TOKEN: str

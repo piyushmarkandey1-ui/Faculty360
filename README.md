@@ -1,122 +1,54 @@
-# AcadLens
-**AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment**
-
-Smart India Hackathon 2026 — Problem Statement PS64
-
-> 🚀 **Live Demo:** [Deploying to Vercel...] *(See deployment instructions below)*
-
----
-
-## 📖 What is AcadLens?
-
-AcadLens resolves fragmented faculty information — scattered across Google Scholar, ResearchGate, and institutional systems — into a single, evidence-backed, assessable academic profile. It provides academic institutions with an auditable platform to assess research output, track performance, and resolve data conflicts.
-
-**Core Principle:**
-> RULES CALCULATE.
-> AI INTERPRETS.
-> HUMANS DECIDE.
-
-The deterministic rule engine computes all scores. The AI LLM generates interpretive narrative only. Humans make all consequential decisions.
+﻿<div align="center">
+  <img src="https://raw.githubusercontent.com/piyushmarkandey1-ui/Faculty360/main/frontend/public/logo.png" alt="AcadLens Logo" width="120" />
+  <h1>AcadLens</h1>
+  <p><b>AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment</b></p>
+  <p><i>Smart India Hackathon 2026 — Problem Statement 64</i></p>
+</div>
 
 ---
 
-## ✨ Prototype Features (Frontend MVP)
+## 📖 Overview
 
-This repository contains the **Frontend-only Prototype** for the SIH 2026 submission. It utilizes deterministic mock data to demonstrate the platform's vision without requiring the backend AI or database dependencies.
+**AcadLens** is a unified, deterministic, and verifiable platform designed to solve the critical data fragmentation problem in higher education institutions. When accreditation bodies (like NAAC, NBA, or NIRF) request faculty performance data, institutions often spend months manually aggregating messy, unverified spreadsheets.
 
-- **Cinematic Landing Experience:** A pinned, scroll-driven visual story explaining the data pipeline (Ingestion → Resolution → Assessment).
-- **Institution Dashboard:** A comprehensive view of the entire faculty network, data completeness, and overall assessment metrics.
-- **Faculty Directory & Profiles:** Individual, detailed views for professors, tracking canonical publications vs. scraped data.
-- **Conflict Resolution Engine:** Visual interface showing exactly where Google Scholar data conflicts with Institutional ERP data.
-- **Deterministic Assessment Breakdown:** Transparent score rings and parameter bars explaining precisely *why* a faculty member received their assessment score.
-- **Fully Responsive & Accessible:** Honors `prefers-reduced-motion` and scales perfectly from mobile to ultra-wide desktop.
+AcadLens acts as an institutional **Single Source of Truth**. It automatically fetches, merges, and resolves academic data from Google Scholar, ORCID, ResearchGate, and internal institutional databases (CSVs) to provide 100% verified, mathematically backed faculty assessments.
 
----
+## ✨ Key Features
 
-## 🛠 Tech Stack
+- **Multi-Source Data Aggregation:** Automatically pulls real-time publication, citation, and h-index data using the Apify API (Google Scholar) and ORCID integrations.
+- **Deterministic Assessment Engine:** Calculates a standardized score (0-100) based on customizable KPIs:
+  - Research Output
+  - Publication Quality
+  - Research Impact
+  - Outreach & Extension
+  - Academic Leadership
+- **Conflict Resolution Engine:** Intelligently flags discrepancies between different data sources (e.g., mismatched citation counts) and calculates a "Data Confidence Score".
+- **Chain of Evidence:** Every metric in the dashboard can be traced back to its original source URL, ensuring absolute transparency for auditors.
+- **One-Click NAAC/NBA Export:** Instantly export institutional CSV reports summarizing all faculty metrics and scores, entirely eliminating manual data entry.
 
-| Layer | Technology |
-|---|---|
-| **Frontend Framework** | Next.js 16 (App Router), React 19, TypeScript |
-| **Styling** | Tailwind CSS 4, CSS Variables for "Premium Academic Theme" |
-| **Animation Engine** | Framer Motion (Scroll-linked pipelines & micro-interactions) |
-| **Charts & Viz** | Recharts, SVG inline visualization |
-| **Icons** | Lucide React |
-| **Backend** | *FastAPI (Python) — planned for Phase 2* |
-| **Database** | *PostgreSQL / Supabase — planned for Phase 2* |
-| **Ingestion** | *Apify — planned for Phase 2* |
+## 🛠️ Technology Stack
 
----
+- **Frontend:** Next.js 14 (App Router), React, TypeScript, Tailwind CSS, Framer Motion, Recharts.
+- **Backend:** FastAPI (Python), Pandas (for robust CSV processing), Apify Client.
+- **Database & Auth:** Supabase (PostgreSQL, Row Level Security, JWT Authentication).
+- **Hosting:** Vercel (Frontend & Serverless API routing), Render (Backend).
 
-## 🚀 Getting Started (Local Development)
+## 🚀 Live Demo
 
-### 1. Run the Frontend Locally
+- **Frontend (App):** [https://acadlens.vercel.app](https://acadlens.vercel.app)
+- **Backend (API):** [https://acadlens-api.onrender.com/docs](https://acadlens-api.onrender.com/docs) *(Swagger UI)*
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## 📦 Deployment Instructions
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 2. Environment Variables
-
-The current frontend prototype requires **no environment variables** to run. All mock data is bundled locally for demonstration purposes.
-
-A template for future backend variables can be found in `frontend/.env.example`.
-
----
-
-## ☁️ Deployment to Vercel
-
-This repository is **Vercel Production Ready**.
-
-1. Navigate to your [Vercel Dashboard](https://vercel.com/dashboard).
-2. Click **Add New... > Project** and import this GitHub repository.
-3. **CRITICAL SETTINGS:**
-   - **Framework Preset**: Select `Next.js`
-   - **Root Directory**: Type `frontend` and save.
-4. Leave all build commands (`npm run build`) as default.
-5. Click **Deploy**.
-
-For more details, see [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md).
-
----
-
-## 📂 Repository Structure
-
-```
-/
-├── docs/                     # Architecture, design, and product specifications
-│   ├── A3P_MASTER_SPEC.md
-│   ├── DESIGN_SYSTEM.md
-│   ├── ARCHITECTURE.md
-│   ├── VERCEL_DEPLOYMENT.md
-│   └── MVP_SCOPE.md
-│
-└── frontend/                 # Next.js 16 Application
-    ├── app/                  # Application Routes (Landing, Dashboard, Faculty, Login)
-    ├── components/           # Shared UI, Layouts, and Landing Page Modules
-    ├── lib/                  # Utilities, Motion configs, Route definitions
-    ├── mock-data/            # Deterministic TypeScript datasets for the MVP prototype
-    ├── types/                # Shared TypeScript type definitions
-    └── public/               # Static assets
-```
-
----
-
-## 📚 Technical Documentation
-
-| Document | Purpose |
-|---|---|
-| [A3P_MASTER_SPEC.md](docs/A3P_MASTER_SPEC.md) | Product specification, pipeline, personas |
-| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Color system (Navy, Teal, Gold), typography, motion rules |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Frontend and backend architecture |
-| [DATABASE.md](docs/DATABASE.md) | PostgreSQL schema (boundary doc) |
-| [MVP_SCOPE.md](docs/MVP_SCOPE.md) | SIH hackathon scope, demo requirements |
-
----
+AcadLens is designed for modern serverless deployment. See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions on configuring Supabase, Render, and Vercel.
 
 ## 👥 Team
-**SIH 2026 Team** — National Institute of Technology / [Institution Name]
+
+* **Team Name:** [Insert Team Name]
+* **Hackathon:** Smart India Hackathon 2026
+* **Problem Statement:** PS64
+
+---
+<div align="center">
+  <sub>Built with ❤️ for SIH 2026</sub>
+</div>

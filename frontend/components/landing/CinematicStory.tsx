@@ -142,11 +142,9 @@ export function CinematicStory() {
     <div ref={containerRef} className="relative w-full" style={{ height: '450vh' }}>
       <div className="sticky top-0 h-screen w-full overflow-hidden" style={{ backgroundColor: IVORY }}>
         
-        {/* Background Grid & Ambient Glow */}
+        {/* Background Grid */}
         <div className="absolute inset-0 z-0 pointer-events-none opacity-40" 
              style={{ backgroundImage: 'linear-gradient(#E4E8EF 1px, transparent 1px), linear-gradient(90deg, #E4E8EF 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[120px] opacity-20 pointer-events-none transition-colors duration-1000"
-             style={{ backgroundColor: activeActIndex < 2 ? TEAL : BLUE }} />
 
         {/* ACT 01: COLLECT */}
         {opCollect > 0 && (

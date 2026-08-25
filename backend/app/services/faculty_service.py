@@ -1,4 +1,4 @@
-﻿"""
+"""
 Faculty service: handles DB operations and orchestrates syncs across connectors.
 """
 import logging
@@ -156,7 +156,7 @@ def sync_source(faculty_id: str, source_type: str, url_or_id: str) -> Dict[str, 
         "conflictsDetected": len(all_conflicts)
     }
 
-def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
+def process_institutional_batch(csv_content: str, category_override: str = None, dry_run: bool = False) -> Dict[str, Any]:
     """
     Process an institutional data CSV upload batch.
     """
@@ -180,6 +180,7 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
     records_imported = 0
     records_updated = 0
     unmatched_records = []
+    preview_data = []
     
     for row in records:
         emp_id = row.get("employee_id")
@@ -195,33 +196,39 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
             unmatched_records.append(row)
             continue
             
-        dup_check = supabase.table("institutional_records").select("id").eq("faculty_id", faculty_id).eq("category", row["category"]).eq("title", row["title"]).eq("year", row["year"]).execute()
+        category_to_use = category_override if category_override else row.get("category", "teaching")
+            
+        dup_check = supabase.table("institutional_records").select("id").eq("faculty_id", faculty_id).eq("category", category_to_use).eq("title", row.get("title", "")).eq("year", row.get("year", 0)).execute()
         
         record_data = {
             "faculty_id": faculty_id,
-            "category": row["category"],
-            "title": row["title"],
-            "description": row["description"],
-            "year": row["year"],
+            "category": category_to_use,
+            "title": row.get("title", ""),
+            "description": row.get("description", ""),
+            "year": row.get("year", 0),
             "source_type": "institutional",
             "is_verified": True
         }
         
+        preview_data.append({**record_data, "employee_id": emp_id, "email": email, "is_duplicate": bool(dup_check.data)})
+        
         if dup_check.data:
             record_data["id"] = dup_check.data[0]["id"]
-            supabase.table("institutional_records").upsert(record_data).execute()
+            if not dry_run:
+                supabase.table("institutional_records").upsert(record_data).execute()
             records_updated += 1
         else:
-            supabase.table("institutional_records").insert(record_data).execute()
+            if not dry_run:
+                supabase.table("institutional_records").insert(record_data).execute()
             records_imported += 1
             
-    if unmatched_records:
+    if unmatched_records and not dry_run:
         unmatched_inserts = []
         for ur in unmatched_records:
             unmatched_inserts.append({
                 "employee_id": ur.get("employee_id"),
                 "email": ur.get("email"),
-                "category": ur.get("category"),
+                "category": category_override if category_override else ur.get("category"),
                 "title": ur.get("title"),
                 "description": ur.get("description"),
                 "year": ur.get("year")
@@ -230,11 +237,12 @@ def process_institutional_batch(csv_content: str) -> Dict[str, Any]:
             supabase.table("unmatched_institutional_records").insert(unmatched_inserts).execute()
 
     return {
-        "status": "completed",
+        "status": "completed" if not dry_run else "dry_run",
         "recordsReceived": len(records),
         "recordsImported": records_imported,
         "recordsUpdated": records_updated,
         "unmatchedFaculty": len(unmatched_records),
         "invalidRecords": 0,
-        "duplicatesDetected": records_updated
+        "duplicatesDetected": records_updated,
+        "previewData": preview_data[:5] if dry_run else []
     }

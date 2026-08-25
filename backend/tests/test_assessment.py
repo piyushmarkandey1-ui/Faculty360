@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from app.services.assessment_engine import evaluate_rule
 
 def test_evaluate_rule_basic():
@@ -25,7 +25,7 @@ def test_generate_analytics_strengths():
         {"category": "Research", "rule_name": "Pub Volume", "computed_score": 90, "max_score": 100, "status": "VALID", "contribution_to_overall": 20.0, "refs": [1,2]},
         {"category": "Teaching", "rule_name": "Courses", "computed_score": 20, "max_score": 100, "status": "VALID", "contribution_to_overall": 4.0, "refs": [1]},
     ]
-    analytics = generate_analytics("fac1", param_scores, 85.0, {})
+    analytics = generate_analytics("00000000-0000-0000-0000-000000000001", param_scores, 85.0, {})
     
     assert len(analytics["strengths"]) == 1
     assert analytics["strengths"][0]["parameter"] == "Pub Volume"
@@ -39,7 +39,7 @@ def test_generate_analytics_missing_evidence():
     param_scores = [
         {"category": "Innovation", "rule_name": "Patents", "computed_score": 0, "max_score": 100, "status": "INSUFFICIENT_EVIDENCE", "contribution_to_overall": 10.0, "refs": []}
     ]
-    analytics = generate_analytics("fac1", param_scores, 10.0, {})
+    analytics = generate_analytics("00000000-0000-0000-0000-000000000001", param_scores, 10.0, {})
     assert len(analytics["improvementAreas"]) == 1
     assert analytics["improvementAreas"][0]["missingEvidence"] == True
     assert analytics["improvementAreas"][0]["potentialImpact"] == 10.0

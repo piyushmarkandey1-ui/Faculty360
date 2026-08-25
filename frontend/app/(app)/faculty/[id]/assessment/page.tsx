@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ParameterBar } from '@/components/ui/ParameterBar'
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge'
+import { HistoricalTrends } from '@/components/ui/HistoricalTrends'
 import { ROUTES } from '@/lib/constants/routes'
 import { MOCK_FACULTY_PROFILES } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
@@ -257,6 +258,9 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
           </div>
         </div>
       )}
+
+        {/* Historical Trends */}
+        <HistoricalTrends facultyId={params.id} />
 
       {/* Breakdown Section */}
       {assessment && (

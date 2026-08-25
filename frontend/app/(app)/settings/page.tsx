@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 import { InstitutionalUploadCard } from "@/components/ui/InstitutionalUploadCard";
+import { AssessmentConfig } from "@/components/ui/AssessmentConfig";
 
 export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false);
@@ -308,7 +309,28 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 5. Security & Access */}
+      {/* 4.5 Assessment Configuration */}
+      <section className="p-6 rounded-xl border space-y-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+        <div className="flex items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
+          <div className="p-2 rounded-lg bg-[var(--bg-elevated)] text-[var(--accent)]">
+            <Sliders size={18} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
+              5. Assessment Framework
+            </h2>
+            <p className="text-xs text-[var(--text-muted)]">
+              Configure weights, rules, and maximum scores for faculty evaluation.
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <AssessmentConfig />
+        </div>
+      </section>
+
+      {/* 6. Security & Access */}
       <section className="p-6 rounded-xl border space-y-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
         <div className="flex items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
           <div className="p-2 rounded-lg bg-[var(--bg-elevated)] text-[var(--accent)]">
@@ -316,7 +338,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
-              5. Security & Access
+              6. Security & Access
             </h2>
             <p className="text-xs text-[var(--text-muted)]">
               Institutional administrator credentials & session parameters
@@ -348,7 +370,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 6. Notifications */}
+      {/* 7. Notifications */}
       <section className="p-6 rounded-xl border space-y-4" style={{ background: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
         <div className="flex items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
           <div className="p-2 rounded-lg bg-[var(--bg-elevated)] text-[var(--accent)]">
@@ -356,7 +378,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
-              6. Notifications & Alerts
+              7. Notifications & Alerts
             </h2>
             <p className="text-xs text-[var(--text-muted)]">
               Automated reminders for data conflicts and verification tasks

@@ -1,4 +1,4 @@
-﻿import csv
+import csv
 import io
 from typing import Dict, Any, List
 from app.services.connectors.base import AcademicSourceConnector
@@ -14,7 +14,7 @@ class InstitutionalDataConnector(AcademicSourceConnector):
         Required columns: employee_id, email, category, title, year
         """
         required_cols = {"employee_id", "email", "category", "title", "year"}
-        allowed_categories = {"Teaching", "Mentoring", "Institutional Service", "Awards", "Projects", "Innovation", "Outreach"}
+        allowed_categories = {"teaching", "mentoring", "service", "awards", "projects", "innovation", "outreach", "leadership"}
         
         f = io.StringIO(csv_content)
         reader = csv.DictReader(f)

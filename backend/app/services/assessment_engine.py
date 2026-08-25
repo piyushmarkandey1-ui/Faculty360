@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from typing import Dict, Any, List
 from app.core.supabase import get_supabase_admin
 
@@ -18,37 +18,37 @@ DEFAULT_CONFIG = {
         {
             "id": "teaching", "name": "Teaching", "weight": 0.20,
             "parameters": [
-                {"id": "teach_courses", "name": "Courses Taught", "weight": 1.0, "max_score": 100, "rule": "count * 20", "evidence_requirement": "institutional_records.Teaching"}
+                {"id": "teach_courses", "name": "Courses Taught", "weight": 1.0, "max_score": 100, "rule": "count * 20", "evidence_requirement": "institutional_records.teaching"}
             ]
         },
         {
             "id": "mentoring", "name": "Mentoring", "weight": 0.10,
             "parameters": [
-                {"id": "mentor_students", "name": "Students Mentored", "weight": 1.0, "max_score": 100, "rule": "count * 25", "evidence_requirement": "institutional_records.Mentoring"}
+                {"id": "mentor_students", "name": "Students Mentored", "weight": 1.0, "max_score": 100, "rule": "count * 25", "evidence_requirement": "institutional_records.mentoring"}
             ]
         },
         {
             "id": "institutional_service", "name": "Institutional Service", "weight": 0.10,
             "parameters": [
-                {"id": "service_committees", "name": "Committee Memberships", "weight": 1.0, "max_score": 100, "rule": "count * 20", "evidence_requirement": "institutional_records.Institutional Service"}
+                {"id": "service_committees", "name": "Committee Memberships", "weight": 1.0, "max_score": 100, "rule": "count * 20", "evidence_requirement": "institutional_records.service"}
             ]
         },
         {
             "id": "innovation", "name": "Innovation", "weight": 0.10,
             "parameters": [
-                {"id": "innov_projects", "name": "Patents & Projects", "weight": 1.0, "max_score": 100, "rule": "count * 50", "evidence_requirement": "institutional_records.Innovation"}
+                {"id": "innov_projects", "name": "Patents & Projects", "weight": 1.0, "max_score": 100, "rule": "count * 50", "evidence_requirement": "institutional_records.innovation"}
             ]
         },
         {
             "id": "outreach", "name": "Outreach", "weight": 0.05,
             "parameters": [
-                {"id": "outreach_events", "name": "Public Outreach", "weight": 1.0, "max_score": 100, "rule": "count * 20", "evidence_requirement": "institutional_records.Outreach"}
+                {"id": "outreach_events", "name": "Public Outreach", "weight": 1.0, "max_score": 100, "rule": "count * 20", "evidence_requirement": "institutional_records.outreach"}
             ]
         },
         {
             "id": "academic_leadership", "name": "Academic Leadership", "weight": 0.05,
             "parameters": [
-                {"id": "lead_roles", "name": "Leadership Roles", "weight": 1.0, "max_score": 100, "rule": "count * 50", "evidence_requirement": "institutional_records.Awards"}
+                {"id": "lead_roles", "name": "Leadership Roles", "weight": 1.0, "max_score": 100, "rule": "count * 50", "evidence_requirement": "institutional_records.leadership"}
             ]
         }
     ]
@@ -117,7 +117,7 @@ def generate_analytics(faculty_id: str, parameter_scores: List[Dict[str, Any]], 
     
     # Trends calculation
     trends = {"direction": "INSUFFICIENT_DATA", "historical": []}
-    hist_res = supabase.table("assessments").select("total_score, created_at").eq("faculty_id", faculty_id).eq("status", "archived").order("created_at", desc=True).limit(5).execute()
+    hist_res = supabase.table("assessments").select("total_score, created_at").eq("faculty_id", faculty_id).in_("status", ["approved", "archived"]).order("created_at", desc=True).limit(5).execute()
     if hist_res.data and len(hist_res.data) > 0:
         prev_score = hist_res.data[0]["total_score"]
         if total_score > prev_score + 2:
@@ -242,7 +242,6 @@ def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
         "faculty_id": faculty_id,
         "framework_id": framework["id"],
         "total_score": round(total_score, 2),
-        "completeness_score": round(completeness, 2),
         "confidence_score": round(confidence, 2),
         "status": "approved",
         "evidence_count": evidence_count,
@@ -250,7 +249,7 @@ def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
         "analytics": analytics
     }
     
-    supabase.table("assessments").update({"status": "archived"}).eq("faculty_id", faculty_id).execute()
+    # Do not attempt to update status to 'archived' as it violates assessments_status_check constraint
     res = supabase.table("assessments").insert(assessment_record).execute()
     assessment_id = res.data[0]["id"]
     
@@ -259,13 +258,11 @@ def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
         kpi_inserts.append({
             "assessment_id": assessment_id,
             "rule_id": p["rule_id"],
-            "rule_name": p["rule_name"],
             "category": p["category"],
-            "raw_value": p["raw_value"],
             "computed_score": round(p["computed_score"], 2),
             "max_score": p["max_score"],
             "status": p["status"],
-            "rule_version": framework["version"]
+            "evidence": p.get("refs", [])
         })
         
     if kpi_inserts:

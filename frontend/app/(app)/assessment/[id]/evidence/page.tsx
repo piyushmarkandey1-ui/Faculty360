@@ -1,16 +1,23 @@
 'use client'
+import { useState, useEffect } from 'react'
 
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowLeft, ChevronDown, ChevronRight, Activity, Database, ListChecks, FileText, FileSearch } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ROUTES } from '@/lib/constants/routes'
-import { MOCK_ASSESSMENTS } from '@/mock-data'
 
 export default function EvidencePage({ params }: { params: { id: string } }) {
-  const assessment = MOCK_ASSESSMENTS[params.id] ?? null
+  useEffect(() => {
+    import('@/lib/api/client').then(({ apiFetch }) => {
+      // Assuming params.id is the faculty ID here as they correspond 1-1 right now in our UI routes
+      apiFetch(`/faculty/${params.id}/assessment`).then((data: any) => {
+        if(data) setAssessment(data)
+      }).catch(console.error)
+    })
+  }, [params.id])
+  const [assessment, setAssessment] = useState<any>(null)
 
   // Manage expansion state of levels (1 to 5)
   const [expandedLevels, setExpandedLevels] = useState<Record<number, boolean>>({
@@ -25,7 +32,7 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
     setExpandedLevels(prev => ({ ...prev, [level]: !prev[level] }))
   }
 
-  // Assessment not found — show empty state instead of displaying wrong data
+  // Assessment not found ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â show empty state instead of displaying wrong data
   if (!assessment) {
     return (
       <div className="max-w-4xl mx-auto py-16">
@@ -40,7 +47,7 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
   }
 
   // Example subset of rules for visual
-  const pubKpi = assessment.kpi_scores.find(k => k.category === 'research_output') ?? assessment.kpi_scores[0]
+  const pubKpi = assessment.kpi_scores.find((k: any) => k.category === 'research_output') ?? assessment.kpi_scores[0]
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -150,7 +157,7 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
                 <div className="flex-1 p-4 rounded-xl border bg-[var(--bg-surface)] border-[var(--border-subtle)]">
                   <h3 className="font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Level 5: Raw Sources</h3>
                   <div className="space-y-2">
-                    {(pubKpi.evidence ?? []).map((ev, i) => (
+                    {(pubKpi.evidence ?? []).map((ev: any, i: number) => (
                       <div key={i} className="flex items-center justify-between p-2 rounded bg-[var(--bg-elevated)] border border-[var(--border-default)]">
                         <div className="flex items-center gap-2">
                           <Badge variant="neutral">{ev.source_type}</Badge>
@@ -184,7 +191,7 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
-              {assessment.kpi_scores.map(kpi => (
+              {assessment.kpi_scores.map((kpi: any) => (
                 <tr key={kpi.id} className="hover:bg-[var(--bg-hover)] transition-colors">
                   <td className="px-4 py-3 text-[var(--text-primary)] font-medium">{kpi.rule_name}</td>
                   <td className="px-4 py-3 text-[var(--text-secondary)]">{kpi.category}</td>

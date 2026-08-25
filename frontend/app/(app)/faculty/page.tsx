@@ -1,19 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search, Filter, Plus } from 'lucide-react'
 import { ROUTES } from '@/lib/constants/routes'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { MOCK_FACULTY_LIST } from '@/mock-data'
+import { apiFetch } from '@/lib/api/client'
 import { formatRelativeTime } from '@/lib/utils/format'
 
 export default function FacultyDirectoryPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [facultyList, setFacultyList] = useState<any[]>([])
 
-  const filteredFaculty = MOCK_FACULTY_LIST.filter(fac => {
+  useEffect(() => {
+    apiFetch('/faculty').then((res: any) => setFacultyList(res.items || [])).catch(console.error)
+  }, [])
+
+  const filteredFaculty = facultyList.filter(fac => {
     const matchesSearch = fac.canonical_name.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === 'All' || fac.onboarding_status === statusFilter
     return matchesSearch && matchesStatus
@@ -26,7 +31,7 @@ export default function FacultyDirectoryPage() {
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Faculty Directory</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Showing {MOCK_FACULTY_LIST.length} active demo profiles (156 total indexed)
+            Showing {facultyList.length} indexed profiles
           </p>
         </div>
         <Link href={ROUTES.faculty.new}>

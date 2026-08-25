@@ -9,31 +9,33 @@ import {
 } from 'recharts'
 import { ROUTES } from '@/lib/constants/routes'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
-import { MOCK_DASHBOARD_SUMMARY, MOCK_FACULTY_LIST } from '@/mock-data'
+import { MOCK_FACULTY_LIST } from '@/mock-data'
 import { Badge } from '@/components/ui/Badge'
+import { apiFetch } from '@/lib/api/client'
 
 export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false)
+  const [summary, setSummary] = useState<any>(null)
   
   useEffect(() => {
     setIsClient(true)
+    apiFetch('/dashboard/summary').then(setSummary).catch(console.error)
   }, [])
 
-  // Distribution data
-  const distData = [
-    { name: '0-20', count: 5 },
-    { name: '20-40', count: 12 },
-    { name: '40-60', count: 35 },
-    { name: '60-80', count: 68 },
-    { name: '80-100', count: 28 },
-  ]
-
-  const qualityData = [
-    { name: 'Complete', value: 71.3, color: 'var(--success)' },
-    { name: 'Missing', value: 28.7, color: 'var(--border-default)' },
-  ]
-
   if (!isClient) return null // avoid hydration mismatch on recharts
+
+  const distData = [
+    { name: 'Research', score: summary?.categoryPerformance?.Research || 0 },
+    { name: 'Teaching', score: summary?.categoryPerformance?.Teaching || 0 },
+    { name: 'Mentoring', score: summary?.categoryPerformance?.Mentoring || 0 },
+    { name: 'Service', score: summary?.categoryPerformance?.["Institutional Service"] || 0 },
+    { name: 'Innovation', score: summary?.categoryPerformance?.Innovation || 0 },
+  ]
+
+  const qualityData = summary ? [
+    { name: 'Complete', value: summary.evidenceCompleteness, color: 'var(--success)' },
+    { name: 'Missing', value: 100 - summary.evidenceCompleteness, color: 'var(--border-default)' },
+  ] : []
 
   return (
     <div className="space-y-6">
@@ -46,10 +48,10 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Faculty', value: MOCK_DASHBOARD_SUMMARY.faculty_total, suffix: '' },
-          { label: 'Avg. Assessment Score', value: 81.2, suffix: '' },
-          { label: 'Avg. Completeness', value: MOCK_DASHBOARD_SUMMARY.avg_completeness, suffix: '%' },
-          { label: 'Pending Conflicts', value: MOCK_DASHBOARD_SUMMARY.pending_conflicts, suffix: '' },
+          { label: 'Total Faculty', value: summary?.totalFaculty || 0, suffix: '' },
+          { label: 'Avg. Assessment Score', value: summary?.averageAssessmentScore || 0, suffix: '' },
+          { label: 'Avg. Completeness', value: summary?.evidenceCompleteness || 0, suffix: '%' },
+          { label: 'Pending Conflicts', value: summary?.openConflicts || 0, suffix: '' },
         ].map((stat, i) => (
           <motion.div 
             key={i}
@@ -88,7 +90,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {MOCK_FACULTY_LIST.slice(0, 8).map((fac) => (
+                {summary?.recentFaculty?.map((fac: any) => (
                   <tr key={fac.id} className="hover:bg-[var(--bg-hover)] transition-colors group">
                     <td className="px-4 py-3">
                       <div className="font-medium text-[var(--text-primary)]">{fac.canonical_name}</div>
@@ -99,10 +101,8 @@ export default function DashboardPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-center gap-1">
-                        {fac.source_coverage.google_scholar && <div className="w-2 h-2 rounded-full bg-blue-500" title="Google Scholar" />}
-                        {fac.source_coverage.researchgate && <div className="w-2 h-2 rounded-full bg-green-500" title="ResearchGate" />}
-                        {fac.source_coverage.institutional && <div className="w-2 h-2 rounded-full bg-amber-500" title="Institutional" />}
-                        {fac.source_coverage.orcid && <div className="w-2 h-2 rounded-full bg-purple-500" title="ORCID" />}
+                        {/* Simplified source coverage since we don't return coverage obj */}
+                        <div className="w-2 h-2 rounded-full bg-blue-500" title="Google Scholar" />
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -176,7 +176,7 @@ export default function DashboardPage() {
 
       {/* Row 3 - Chart */}
       <div className="rounded-xl border p-5" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-        <h2 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Assessment Score Distribution</h2>
+        <h2 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Average Category Performance</h2>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={distData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -186,7 +186,7 @@ export default function DashboardPage() {
                 cursor={{ fill: 'var(--bg-hover)' }}
                 contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '8px' }}
               />
-              <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="score" fill="var(--accent)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

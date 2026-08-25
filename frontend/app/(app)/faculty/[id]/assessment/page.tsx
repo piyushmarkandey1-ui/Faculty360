@@ -14,7 +14,7 @@ import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge'
 import { ROUTES } from '@/lib/constants/routes'
 import { MOCK_FACULTY_PROFILES } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
-import { getFacultyAssessment, calculateFacultyAssessment } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
 
 export default function FacultyAssessmentPage({ params }: { params: { id: string } }) {
   const [isClient, setIsClient] = useState(false)
@@ -27,7 +27,7 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
     setLoading(true)
     setErrorMsg(null)
     try {
-      const res = await getFacultyAssessment(params.id)
+      const res = await apiFetch('/faculty/' + params.id + '/assessment')
       setAssessment(res)
     } catch (err: any) {
       if (err.status !== 404) {
@@ -47,7 +47,7 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
     setCalculating(true)
     setErrorMsg(null)
     try {
-      const res = await calculateFacultyAssessment(params.id)
+      const res = await apiFetch('/faculty/' + params.id + '/assessment/calculate', { method: 'POST' })
       // The API returns the calculated assessment summary, but we need the full assessment to render the UI
       // so we just reload it.
       await loadAssessment()
@@ -97,9 +97,9 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
               <div className="flex flex-wrap items-center gap-3">
                 <ConfidenceBadge confidence={assessment.confidence_score} />
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Completeness: {assessment.completeness_score}%</span>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ã¢â‚¬Â¢</span>
                 <Badge variant="success">Approved</Badge>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>•</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ã¢â‚¬Â¢</span>
                 <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatRelativeTime(assessment.created_at)}</span>
               </div>
             </>
@@ -125,8 +125,8 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
             onClick={async () => {
               try {
                 // @ts-ignore (we'll import this above)
-                const { generateFacultyInsights } = await import('@/lib/api/client');
-                const insights = await generateFacultyInsights(params.id);
+                const { apiFetch } = await import('@/lib/api/client');
+                const insights = await apiFetch('/faculty/' + params.id + '/insights', { method: 'POST' });
                 setAssessment({ ...assessment, ai_insights: insights });
               } catch (e) {
                 console.error(e);

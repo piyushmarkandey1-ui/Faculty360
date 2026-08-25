@@ -39,6 +39,11 @@ const navItems = [
     href: ROUTES.settings,
     icon: Settings,
   },
+  {
+    label: "Reports",
+    href: "/reports",
+    icon: ClipboardCheck,
+  }
 ];
 
 function Logo() {

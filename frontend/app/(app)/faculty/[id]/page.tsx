@@ -26,6 +26,26 @@ export interface SourceState {
 }
 
 export default function FacultyProfilePage({ params }: { params: { id: string } }) {
+  useEffect(() => {
+    import('@/lib/api/client').then(({ apiFetch }) => {
+      apiFetch(`/faculty/${params.id}`).then((data: any) => {
+        if(data && data.canonical_name) {
+          setProfile((prev: any) => ({
+             ...prev, 
+             entity: data,
+             unified_profile: data
+          }))
+        }
+      }).catch(console.error)
+      
+      apiFetch(`/faculty/${params.id}/publications`).then((data: any) => {
+        if(data && data.items && data.items.length > 0) {
+          setPublications(data.items)
+        }
+      }).catch(console.error)
+    })
+  }, [params.id])
+  const [publications, setPublications] = useState<any[]>(MOCK_PUBLICATIONS)
   const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'sources' | 'conflicts'>('overview')
   const [conflicts, setConflicts] = useState<ProfileConflict[]>(MOCK_CONFLICTS)
   const [loadingConflicts, setLoadingConflicts] = useState(false)
@@ -85,8 +105,8 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
   }
 
   // Default to fac-1 if not found
-  const profile = MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001']
-  const { entity, unified_profile, publications_count, latest_assessment } = profile
+  const [profile, setProfile] = useState<any>(MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001'])
+  const { entity, unified_profile, publications_count, latest_assessment } = profile || {}
 
   const resolveConflict = (id: string, _resolution: string) => {
     setConflicts(prev => prev.map(c => c.id === id ? { ...c, resolution: 'source_a' as const } : c))
@@ -110,7 +130,7 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
             <ConfidenceBadge confidence={latest_assessment?.confidence_score ?? 0} />
           </div>
           <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-            {entity.designation} • {entity.department} • {entity.institution}
+            {entity.designation} Ã¢â‚¬Â¢ {entity.department} Ã¢â‚¬Â¢ {entity.institution}
           </p>
           <div className="flex flex-wrap gap-2">
             {unified_profile.source_coverage.google_scholar && <SourceBadge source="google_scholar" status="active" />}
@@ -189,7 +209,7 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
               
               <h3 className="font-semibold mt-6 mb-3" style={{ color: 'var(--text-primary)' }}>Research Interests</h3>
               <div className="flex flex-wrap gap-2">
-                {unified_profile.research_interests.map((interest, i) => (
+                {unified_profile.research_interests?.map((interest: string, i: number) => (
                   <span key={i} className="px-3 py-1 rounded-full text-xs font-medium border" style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border-subtle)' }}>
                     {interest}
                   </span>
@@ -201,7 +221,7 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
 
         {activeTab === 'research' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            {MOCK_PUBLICATIONS.slice(0, 6).map((pub) => (
+            {publications.slice(0, 6).map((pub) => (
               <div key={pub.id} className="p-5 rounded-xl border hover:border-[var(--border-default)] transition-colors flex gap-4" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
                   <FileText size={20} />
@@ -209,15 +229,15 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-sm mb-1 truncate" style={{ color: 'var(--text-primary)' }} title={pub.title}>{pub.title}</h4>
                    <div className="text-xs mb-2 truncate" style={{ color: 'var(--text-secondary)' }}>
-                    {pub.venue} · {pub.year}
+                    {pub.venue} Ã‚Â· {pub.year}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <span>{pub.venue || 'Unknown Venue'}</span>
-                    <span>•</span>
+                    <span>Ã¢â‚¬Â¢</span>
                     <span>{pub.year}</span>
                     {pub.citation_count !== null && (
                       <>
-                        <span>•</span>
+                        <span>Ã¢â‚¬Â¢</span>
                         <span>{pub.citation_count} Citations</span>
                       </>
                     )}

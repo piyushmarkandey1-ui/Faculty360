@@ -1,17 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, GitMerge } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SourceBadge } from '@/components/ui/SourceBadge'
 import { ROUTES } from '@/lib/constants/routes'
-import { MOCK_CONFLICTS, MOCK_FACULTY_PROFILES } from '@/mock-data'
 
 export default function FacultyReviewPage({ params }: { params: { id: string } }) {
-  const profile = MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001']
-  const [conflicts, setConflicts] = useState(MOCK_CONFLICTS)
+  const [profile, setProfile] = useState<any>(null)
+  const [conflicts, setConflicts] = useState<any[]>([])
   const [duplicates, setDuplicates] = useState([
     { id: 'dup1', title1: 'Deep Learning for Medical Image Analysis', title2: 'Deep Learning in Medical Imaging', venue: 'IEEE TMI 2024', status: 'UNRESOLVED' },
     { id: 'dup2', title1: 'A Survey on Edge Computing', title2: 'Survey: Edge Computing Architectures', venue: 'ACM Computing Surveys', status: 'UNRESOLVED' },
@@ -30,7 +29,7 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <Link href={ROUTES.faculty.profile(profile.entity.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <Link href={ROUTES.faculty.profile(profile.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} className="mr-1" /> Back to Profile
         </Link>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Data Review Hub</h1>

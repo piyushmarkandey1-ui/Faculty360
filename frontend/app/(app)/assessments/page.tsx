@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -20,31 +20,29 @@ import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { ROUTES } from "@/lib/constants/routes";
-import { MOCK_FACULTY_LIST, MOCK_ASSESSMENTS, MOCK_FACULTY_PROFILES } from "@/mock-data";
 import { formatRelativeTime } from "@/lib/utils/format";
+import { apiFetch } from "@/lib/api/client";
 
 export default function AssessmentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [assessmentRows, setAssessmentRows] = useState<any[]>([]);
 
-  // Derive assessment rows from mock faculty profiles & list
-  const assessmentRows = MOCK_FACULTY_LIST.map((fac) => {
-    const profile = MOCK_FACULTY_PROFILES[fac.id] || MOCK_FACULTY_PROFILES["faculty-001"];
-    const assessment = profile?.latest_assessment
-      ? MOCK_ASSESSMENTS[profile.latest_assessment.id] || MOCK_ASSESSMENTS["assessment-001"]
-      : MOCK_ASSESSMENTS["assessment-001"];
-
-    return {
-      facultyId: fac.id,
-      name: fac.canonical_name,
-      department: fac.department,
-      designation: fac.designation,
-      score: assessment?.total_score ?? 84.7,
-      confidence: assessment?.confidence_score ?? 91,
-      completeness: fac.completeness_score,
-      status: assessment?.status ?? "draft",
-      lastAssessed: assessment?.assessed_at ?? fac.last_synced_at ?? "2026-08-20T08:05:00Z",
-    };
-  });
+  useEffect(() => {
+    apiFetch('/assessments').then((res: any) => {
+      const rows = res.items.map((item: any) => ({
+        facultyId: item.faculty.id,
+        name: item.faculty.canonical_name,
+        department: item.faculty.department,
+        designation: item.faculty.designation,
+        score: item.total_score || 0,
+        confidence: item.confidence_score || 0,
+        completeness: item.faculty.completeness_score || 0,
+        status: item.status || "draft",
+        lastAssessed: item.created_at,
+      }));
+      setAssessmentRows(rows);
+    }).catch(console.error);
+  }, []);
 
   const filteredRows = assessmentRows.filter((r) => {
     if (statusFilter === "All") return true;
@@ -52,13 +50,13 @@ export default function AssessmentsPage() {
   });
 
   // Calculate summary metrics
-  const avgScore = (
+  const avgScore = assessmentRows.length > 0 ? (
     assessmentRows.reduce((acc, r) => acc + r.score, 0) / assessmentRows.length
-  ).toFixed(1);
+  ).toFixed(1) : "0.0";
 
-  const avgConfidence = Math.round(
+  const avgConfidence = assessmentRows.length > 0 ? Math.round(
     assessmentRows.reduce((acc, r) => acc + r.confidence, 0) / assessmentRows.length
-  );
+  ) : 0;
 
   const pendingCount = assessmentRows.filter(
     (r) => r.status === "draft" || r.status === "submitted"

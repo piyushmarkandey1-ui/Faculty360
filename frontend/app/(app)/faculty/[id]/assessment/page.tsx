@@ -116,28 +116,67 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
         </div>
       </div>
 
-      {/* AI Insights Banner */}
-      {assessment?.ai_insights && (
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-xl border flex gap-4" 
-          style={{ background: 'rgba(217, 146, 58, 0.05)', borderColor: 'rgba(217, 146, 58, 0.2)' }}
-        >
-          <Sparkles className="shrink-0 mt-0.5" style={{ color: 'var(--warning)' }} />
-          <div>
-            <h3 className="font-semibold mb-1 flex items-center gap-2" style={{ color: 'var(--warning)' }}>
-              AI Interpretation
-              <Badge variant="warning" className="text-[10px] uppercase">Advisory Only</Badge>
-            </h3>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-              {assessment.ai_insights.insight_text}
-            </p>
-            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-              Scores are strictly computed by rules. AI is used only for interpretive summaries.
-            </p>
+      {/* Analytics Insights */}
+      {assessment?.analytics && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 p-6 rounded-xl border flex flex-col gap-4" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Why this score?</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-medium mb-2 text-[var(--success)]">Contributing Factors</h4>
+                <ul className="text-sm space-y-2 text-[var(--text-secondary)]">
+                  {assessment.analytics.whyThisScore.contributingFactors.map((f: string, i: number) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                  {assessment.analytics.whyThisScore.contributingFactors.length === 0 && <li>None identified.</li>}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-2 text-[var(--warning)]">Limitations</h4>
+                <ul className="text-sm space-y-2 text-[var(--text-secondary)]">
+                  {assessment.analytics.whyThisScore.limitations.map((f: string, i: number) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                  {assessment.analytics.whyThisScore.limitations.length === 0 && <li>None identified.</li>}
+                </ul>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t flex justify-between items-center" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div>
+                <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider block mb-1">Performance Trend</span>
+                <Badge variant={assessment.analytics.trends.direction === 'IMPROVING' ? 'success' : assessment.analytics.trends.direction === 'DECLINING' ? 'danger' : 'neutral'}>
+                  {assessment.analytics.trends.direction}
+                </Badge>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider block mb-1">Data Completeness</span>
+                <span className="text-sm font-medium">{assessment.analytics.dataQuality.evidenceCompleteness.toFixed(0)}% Verified</span>
+              </div>
+            </div>
           </div>
-        </motion.div>
+
+          <div className="p-6 rounded-xl border flex flex-col gap-4" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)' }}>
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Improvement Areas</h3>
+            <div className="space-y-4">
+              {assessment.analytics.improvementAreas.slice(0, 3).map((area: any, i: number) => (
+                <div key={i} className="text-sm">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium text-[var(--text-primary)]">{area.parameter}</span>
+                    <Badge variant={area.missingEvidence ? "danger" : "warning"} className="text-[10px]">
+                      {area.missingEvidence ? 'NO DATA' : 'LOW SCORE'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)]">{area.reason}</p>
+                  <p className="text-[10px] mt-1 text-[var(--text-muted)]">+ {area.potentialImpact} potential impact</p>
+                </div>
+              ))}
+              {assessment.analytics.improvementAreas.length === 0 && (
+                <div className="text-sm text-[var(--text-muted)]">No major improvement areas identified.</div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Breakdown Section */}

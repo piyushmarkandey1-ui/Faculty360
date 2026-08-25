@@ -1,7 +1,7 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import health, faculty
+from app.api import health, faculty, institutional
 
 app = FastAPI(title="AcadLens Backend")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(faculty.router)
+app.include_router(institutional.router)
 
 @app.get("/")
 async def root():

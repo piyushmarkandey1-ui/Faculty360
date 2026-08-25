@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SourceBadge } from "@/components/ui/SourceBadge";
+import { InstitutionalUploadCard } from "@/components/ui/InstitutionalUploadCard";
 
 export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false);
@@ -245,24 +246,39 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
-                4. Synchronization Engine
+                4. Synchronization Engine & Data Import
               </h2>
               <p className="text-xs text-[var(--text-muted)]">
-                Automated ingestion schedules & manual trigger
+                Manage automated scraping schedules and manual data uploads
               </p>
             </div>
           </div>
-
           <Button
             variant="secondary"
             size="sm"
             onClick={handleManualSync}
-            loading={syncing}
             className="gap-2"
           >
             <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
             Trigger Global Sync
           </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 pb-4 border-b border-[var(--border-subtle)]">
+          {/* Batch Data Import */}
+          <InstitutionalUploadCard />
+
+          {/* Sync Settings Placeholder for Future */}
+          <div className="p-5 rounded-xl border flex flex-col bg-[var(--bg-surface)] border-[var(--border-subtle)] justify-center items-center text-center">
+            <h3 className="font-medium text-sm text-[var(--text-primary)] mb-2">Automated Sync Schedule</h3>
+            <p className="text-xs text-[var(--text-secondary)] max-w-xs mx-auto mb-4">
+              Scraping pipelines run automatically based on the schedule configured below.
+            </p>
+            <div className="flex items-center gap-2 text-sm">
+              <Badge variant="neutral">Every 24 Hours</Badge>
+              <Badge variant="neutral">Delta Updates Only</Badge>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">

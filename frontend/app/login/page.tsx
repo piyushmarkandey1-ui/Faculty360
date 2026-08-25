@@ -6,20 +6,35 @@ import { motion } from 'framer-motion'
 import { ROUTES } from '@/lib/constants/routes'
 import { APP_NAME } from '@/lib/constants/config'
 import { Button } from '@/components/ui/Button'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('admin@acadlens.ac.in')
-  const [password, setPassword] = useState('demo2026')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
+    setError(null)
+
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (authError) {
+      setError(authError.message)
       setIsLoading(false)
-      router.push(ROUTES.dashboard)
-    }, 800)
+      return
+    }
+
+    // Refresh server components to pick up the new session, then navigate
+    router.refresh()
+    router.push(ROUTES.dashboard)
   }
 
   return (
@@ -146,12 +161,17 @@ export default function LoginPage() {
             >
               {isLoading ? 'Authenticating...' : 'Sign In'}
             </Button>
+
+            {error && (
+              <div className="mt-3 px-3.5 py-2.5 rounded-lg text-sm border" style={{ background: 'var(--danger-muted)', borderColor: 'var(--danger)', color: 'var(--danger)' }}>
+                {error}
+              </div>
+            )}
           </form>
 
           <div className="mt-8 p-4 rounded-xl text-xs border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
-            <p style={{ color: 'var(--accent)' }} className="mb-1 text-[11px] uppercase tracking-wider font-bold">Demo Credentials</p>
-            <p style={{ color: 'var(--text-primary)' }}><strong>Email:</strong> admin@acadlens.ac.in</p>
-            <p style={{ color: 'var(--text-primary)' }}><strong>Password:</strong> demo2026</p>
+            <p style={{ color: 'var(--accent)' }} className="mb-1 text-[11px] uppercase tracking-wider font-bold">Supabase Auth Active</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Sign in with your Supabase user credentials. Create users in your Supabase project → Authentication → Users.</p>
           </div>
         </motion.div>
       </div>

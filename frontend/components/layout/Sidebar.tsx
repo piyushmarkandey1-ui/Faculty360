@@ -10,11 +10,13 @@ import {
   ChevronRight,
   X,
   Menu,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { ROUTES } from "@/lib/constants/routes";
 import { APP_NAME } from "@/lib/constants/config";
+import { signOut } from "@/app/actions/auth";
 
 const navItems = [
   {
@@ -121,30 +123,41 @@ export function Sidebar({ className }: { className?: string }) {
 
       {/* Footer */}
       <div
-        className="px-5 py-4 border-t"
+        className="px-4 py-4 border-t"
         style={{ borderColor: "var(--border-default)" }}
       >
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
-            style={{ background: "var(--bg-elevated)", color: "var(--accent)" }}
-          >
-            A
-          </div>
-          <div>
-            <p
-              className="text-xs font-medium"
-              style={{ color: "var(--text-primary)" }}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold"
+              style={{ background: "var(--bg-elevated)", color: "var(--accent)" }}
             >
-              Admin
-            </p>
-            <p
-              className="text-[11px]"
-              style={{ color: "var(--text-muted)" }}
-            >
-              SIH Demo
-            </p>
+              A
+            </div>
+            <div className="min-w-0">
+              <p
+                className="text-xs font-medium truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Admin
+              </p>
+              <p
+                className="text-[11px] truncate"
+                style={{ color: "var(--text-muted)" }}
+              >
+                SIH Demo
+              </p>
+            </div>
           </div>
+          <form action={signOut}>
+            <button
+              type="submit"
+              title="Sign out"
+              className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors shrink-0"
+            >
+              <LogOut size={14} style={{ color: "var(--text-muted)" }} />
+            </button>
+          </form>
         </div>
       </div>
     </nav>

@@ -8,23 +8,58 @@ import { API_BASE_URL } from '@/lib/constants/config'
 import type { FacultySummary, FacultyProfileResponse, ProfileConflict, Publication } from '@/types/faculty'
 import type { Assessment, AssessmentSummary } from '@/types/assessment'
 
+import { createClient } from '@/lib/supabase/client'
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+async function getAuthToken() {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      // TODO: inject Authorization header from session
-    },
+  const token = await getAuthToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> || {})
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || API_BASE_URL
+  const res = await fetch(`${baseUrl}${path}`, {
     ...options,
+    headers,
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: { message: res.statusText } }))
-    throw new Error(error?.error?.message ?? 'API request failed')
+    const error = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(error?.detail ?? 'API request failed')
   }
 
   return res.json() as Promise<T>
+}
+
+// ── Scholar Sync ───────────────────────────────────────────────────────────
+
+export interface SyncScholarResult {
+  source: string
+  status: string
+  publicationsFound: number
+  publicationsAdded: number
+  publicationsUpdated: number
+  citations: number
+  hIndex: number
+}
+
+export async function syncGoogleScholar(facultyId: string, scholarUrl: string): Promise<SyncScholarResult> {
+  return apiFetch<SyncScholarResult>(`/faculty/${facultyId}/sources/google-scholar/sync`, {
+    method: 'POST',
+    body: JSON.stringify({ scholar_url: scholarUrl })
+  })
 }
 
 // ── Faculty ────────────────────────────────────────────────────────────────

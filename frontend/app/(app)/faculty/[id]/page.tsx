@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, RefreshCw, AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { FileText, RefreshCw, AlertTriangle, ShieldCheck, CheckCircle2, Loader2, Link as LinkIcon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ScoreRing } from '@/components/ui/ScoreRing'
 import { Badge } from '@/components/ui/Badge'
@@ -14,18 +14,43 @@ import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { ROUTES } from '@/lib/constants/routes'
 import { MOCK_FACULTY_PROFILES, MOCK_PUBLICATIONS, MOCK_CONFLICTS } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
+import { syncGoogleScholar, type SyncScholarResult } from '@/lib/api/client'
 
 export default function FacultyProfilePage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'sources' | 'conflicts'>('overview')
   const [conflicts, setConflicts] = useState(MOCK_CONFLICTS)
   
+  // Scholar Sync State
+  const [scholarSyncState, setScholarSyncState] = useState<'idle' | 'input' | 'syncing' | 'success' | 'error'>('idle')
+  const [scholarUrl, setScholarUrl] = useState('')
+  const [syncResult, setSyncResult] = useState<SyncScholarResult | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
   // Default to fac-1 if not found
   const profile = MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001']
   const { entity, unified_profile, publications_count, latest_assessment } = profile
 
+  const handleScholarSync = async () => {
+    if (!scholarUrl.includes('scholar.google')) {
+      setSyncError('Please enter a valid Google Scholar URL')
+      return
+    }
+    setScholarSyncState('syncing')
+    setSyncError(null)
+    try {
+      const res = await syncGoogleScholar(params.id, scholarUrl)
+      setSyncResult(res)
+      setScholarSyncState('success')
+    } catch (err: any) {
+      setSyncError(err.message || 'Failed to sync Google Scholar')
+      setScholarSyncState('error')
+    }
+  }
+
   const resolveConflict = (id: string, _resolution: string) => {
     setConflicts(prev => prev.map(c => c.id === id ? { ...c, resolution: 'source_a' as const } : c))
   }
+
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -167,8 +192,73 @@ export default function FacultyProfilePage({ params }: { params: { id: string } 
 
         {activeTab === 'sources' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Google Scholar Card with Sync UI */}
+            <div className="p-5 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <SourceBadge source="google_scholar" status="active" />
+                  <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>Google Scholar</span>
+                </div>
+                <Badge variant={scholarSyncState === 'success' ? 'success' : scholarSyncState === 'error' ? 'danger' : 'neutral'}>
+                  {scholarSyncState === 'success' ? 'Synced' : scholarSyncState === 'syncing' ? 'Syncing...' : 'Connected'}
+                </Badge>
+              </div>
+
+              {scholarSyncState === 'input' || scholarSyncState === 'syncing' ? (
+                <div className="flex flex-col gap-3 mt-auto border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Enter Scholar Profile URL</div>
+                  <input
+                    type="url"
+                    placeholder="https://scholar.google.com/citations?user=..."
+                    value={scholarUrl}
+                    onChange={(e) => setScholarUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors"
+                    style={{ background: 'var(--bg-base)', borderColor: 'var(--border-default)', color: 'var(--text-primary)' }}
+                    disabled={scholarSyncState === 'syncing'}
+                  />
+                  {syncError && <div className="text-xs" style={{ color: 'var(--danger)' }}>{syncError}</div>}
+                  <div className="flex gap-2">
+                    <Button variant="primary" size="sm" onClick={handleScholarSync} disabled={scholarSyncState === 'syncing'} className="flex-1 justify-center gap-2">
+                      {scholarSyncState === 'syncing' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                      {scholarSyncState === 'syncing' ? 'Syncing via Apify...' : 'Start Sync'}
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => {setScholarSyncState('idle'); setSyncError(null)}} disabled={scholarSyncState === 'syncing'}>Cancel</Button>
+                  </div>
+                </div>
+              ) : scholarSyncState === 'success' && syncResult ? (
+                <div className="mt-auto border-t pt-4" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="text-sm font-medium" style={{ color: 'var(--success)' }}>Sync Completed</div>
+                    <Button variant="secondary" size="sm" onClick={() => setScholarSyncState('idle')}>Dismiss</Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span style={{ color: 'var(--text-muted)' }}>Found:</span> {syncResult.publicationsFound}</div>
+                    <div><span style={{ color: 'var(--text-muted)' }}>Added:</span> {syncResult.publicationsAdded}</div>
+                    <div><span style={{ color: 'var(--text-muted)' }}>h-index:</span> {syncResult.hIndex}</div>
+                    <div><span style={{ color: 'var(--text-muted)' }}>Citations:</span> {syncResult.citations}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between items-end mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div>
+                    <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Records Found</div>
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{syncResult ? syncResult.publicationsFound : 82}</div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <div className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Last Synced</div>
+                      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{syncResult ? 'Just now' : '2 hours ago'}</div>
+                    </div>
+                    <Button variant="secondary" size="sm" onClick={() => setScholarSyncState('input')} className="gap-2">
+                      <RefreshCw size={12} /> Force Sync
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Other Source Cards */}
             {[
-              { id: 'google_scholar', name: 'Google Scholar', status: 'Healthy', records: 82, lastSync: '2 hours ago' },
               { id: 'researchgate', name: 'ResearchGate', status: 'Missing', records: 0, lastSync: 'Never' },
               { id: 'institutional', name: 'Institutional DB', status: 'Healthy', records: 87, lastSync: '1 day ago' },
               { id: 'orcid', name: 'ORCID', status: 'Healthy', records: 45, lastSync: '5 days ago' },

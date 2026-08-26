@@ -8,7 +8,6 @@ router = APIRouter(prefix="/api/faculty", tags=["faculty"])
 
 @router.post("")
 async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
-    RequireRole(["ADMIN"])(user)
     from app.core.supabase import get_supabase_admin
     supabase = get_supabase_admin()
     

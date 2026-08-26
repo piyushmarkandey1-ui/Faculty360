@@ -325,35 +325,88 @@ export default function NewFacultyPage() {
 
                           {/* Generous Preview Badges: Scholar, ORCID, Metrics */}
                           <div className="pt-2 border-t border-[var(--border-subtle)] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            {/* Semantic Scholar ID */}
                             <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
-                              <span className="text-[10px] text-[var(--text-muted)] block">Scholar ID</span>
-                              <span className="font-mono font-medium text-[var(--text-primary)] truncate block">
-                                {p.scholar_id || 'Not linked'}
-                              </span>
+                              <span className="text-[10px] text-[var(--text-muted)] block">S2 Author ID</span>
+                              {(p as any).semantic_scholar_id ? (
+                                <a href={(p as any).semantic_scholar_url} target="_blank" rel="noreferrer" className="font-mono font-semibold text-[var(--accent)] truncate block text-xs hover:underline">
+                                  {(p as any).semantic_scholar_id}
+                                </a>
+                              ) : (
+                                <a href={(p as any).semantic_scholar_url || p.scholar_url} target="_blank" rel="noreferrer" className="font-medium text-[var(--accent)] truncate block text-[11px] hover:underline">
+                                  Search S2 ↗
+                                </a>
+                              )}
                             </div>
+                            {/* ORCID */}
                             <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
                               <span className="text-[10px] text-[var(--text-muted)] block">ORCID</span>
-                              <span className="font-mono font-medium text-[var(--text-primary)] truncate block">
-                                {p.orcid_id || 'Not linked'}
-                              </span>
+                              {p.orcid_id ? (
+                                <a href={p.orcid_url} target="_blank" rel="noreferrer" className="font-mono font-semibold text-purple-500 truncate block text-xs hover:underline">
+                                  {p.orcid_id}
+                                </a>
+                              ) : (
+                                <a href={p.orcid_url} target="_blank" rel="noreferrer" className="font-medium text-purple-400 text-[11px] hover:underline">
+                                  Search ORCID ↗
+                                </a>
+                              )}
                             </div>
+                            {/* Citations */}
                             <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
                               <span className="text-[10px] text-[var(--text-muted)] block">Citations</span>
                               <span className="font-bold text-[var(--text-primary)]">
-                                {typeof p.citations === 'number' ? p.citations.toLocaleString() : p.citations || '0'}
+                                {typeof p.citations === 'number' && p.citations > 0 ? p.citations.toLocaleString() : '—'}
                               </span>
                             </div>
+                            {/* h-index */}
                             <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
                               <span className="text-[10px] text-[var(--text-muted)] block">h-index</span>
-                              <span className="font-bold text-[var(--success)]">
-                                {p.h_index || '—'}
-                              </span>
+                              <span className="font-bold text-[var(--success)]">{p.h_index || '—'}</span>
                             </div>
+                            {/* Papers */}
+                            <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
+                              <span className="text-[10px] text-[var(--text-muted)] block">Papers</span>
+                              <span className="font-bold text-[var(--text-primary)]">{(p as any).paper_count || '—'}</span>
+                            </div>
+                            {/* Source */}
+                            <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
+                              <span className="text-[10px] text-[var(--text-muted)] block">Source</span>
+                              <span className="text-[10px] font-semibold text-[var(--accent)]">{p.source || 'Live'}</span>
+                            </div>
+                          </div>
+
+                          {/* Platform Link Badges */}
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {(p as any).semantic_scholar_url && (
+                              <a href={(p as any).semantic_scholar_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 font-semibold">
+                                <ExternalLink size={9} /> Semantic Scholar
+                              </a>
+                            )}
+                            {p.orcid_url && (
+                              <a href={p.orcid_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 font-semibold">
+                                <ExternalLink size={9} /> ORCID
+                              </a>
+                            )}
+                            {(p as any).dblp_url && (
+                              <a href={(p as any).dblp_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] bg-amber-500/10 text-amber-600 border border-amber-500/20 hover:bg-amber-500/20 font-semibold">
+                                <ExternalLink size={9} /> DBLP
+                              </a>
+                            )}
+                            {p.scholar_url && (
+                              <a href={p.scholar_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] bg-green-500/10 text-green-600 border border-green-500/20 hover:bg-green-500/20 font-semibold">
+                                <ExternalLink size={9} /> Scholar
+                              </a>
+                            )}
+                            {p.institution_url && (
+                              <a href={p.institution_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 hover:bg-[var(--accent)]/20 font-semibold">
+                                <Building2 size={9} /> University Page
+                              </a>
+                            )}
                           </div>
 
                           {p.topics && p.topics.length > 0 && (
                             <div className="text-[11px] text-[var(--text-muted)]">
-                              <strong className="text-[var(--text-secondary)]">Specializations:</strong> {p.topics.join(' • ')}
+                              <strong className="text-[var(--text-secondary)]">Topics:</strong> {p.topics.join(' • ')}
                             </div>
                           )}
                         </div>

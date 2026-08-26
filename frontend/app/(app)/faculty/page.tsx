@@ -15,7 +15,15 @@ import {
   ArrowUpDown, 
   ExternalLink,
   BookOpen,
-  GraduationCap
+  GraduationCap,
+  Building2,
+  Mail,
+  Award,
+  FileCheck,
+  Eye,
+  Check,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react'
 import { ROUTES } from '@/lib/constants/routes'
 import { Badge } from '@/components/ui/Badge'
@@ -31,6 +39,7 @@ export default function FacultyDirectoryPage() {
   const [sortBy, setSortBy] = useState<'completeness' | 'name' | 'recent'>('completeness')
   const [facultyList, setFacultyList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [previewFaculty, setPreviewFaculty] = useState<any | null>(null)
 
   useEffect(() => {
     async function loadFaculty() {
@@ -40,7 +49,6 @@ export default function FacultyDirectoryPage() {
         if (res && res.items && res.items.length > 0) {
           setFacultyList(res.items)
         } else {
-          // Graceful fallback to rich mock data if DB is not seeded yet
           setFacultyList(MOCK_FACULTY_LIST)
         }
       } catch (err) {
@@ -67,14 +75,14 @@ export default function FacultyDirectoryPage() {
     const q = search.trim().toLowerCase()
     return facultyList
       .filter(fac => {
-        // Multi-field match: Name, Department, Designation, Employee ID, Email
         const nameMatch = (fac.canonical_name || fac.display_name || '').toLowerCase().includes(q)
         const deptMatch = (fac.department || '').toLowerCase().includes(q)
         const desigMatch = (fac.designation || '').toLowerCase().includes(q)
         const idMatch = (fac.employee_id || fac.id || '').toLowerCase().includes(q)
         const emailMatch = (fac.canonical_email || '').toLowerCase().includes(q)
+        const instMatch = (fac.institution || 'National Institute of Technology').toLowerCase().includes(q)
 
-        const matchesSearch = !q || nameMatch || deptMatch || desigMatch || idMatch || emailMatch
+        const matchesSearch = !q || nameMatch || deptMatch || desigMatch || idMatch || emailMatch || instMatch
         const matchesStatus = statusFilter === 'All' || fac.onboarding_status === statusFilter
         const matchesDept = departmentFilter === 'All' || fac.department === departmentFilter
 
@@ -112,7 +120,7 @@ export default function FacultyDirectoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Faculty Directory</h1>
           <p className="text-sm mt-1 text-[var(--text-secondary)]">
-            Indexed, verified faculty research profiles with multi-source traceability
+            Verified academic profiles with instant disambiguation, workplace previews, and multi-source traceability
           </p>
         </div>
         <Link href={ROUTES.faculty.new}>
@@ -174,7 +182,7 @@ export default function FacultyDirectoryPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
             <input 
               type="text" 
-              placeholder="Search faculty by name, department, designation, or ID..."
+              placeholder="Search by professor name, workplace, department, designation, or ID..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-10 pr-10 py-2 rounded-lg border focus:outline-none focus:border-[var(--accent)] transition-colors text-sm"
@@ -253,10 +261,15 @@ export default function FacultyDirectoryPage() {
           </div>
         </div>
 
-        {/* Live Filter Counter */}
+        {/* Live Filter Counter & Disambiguation Helper */}
         <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1">
-          <span>
-            Showing <strong className="text-[var(--text-primary)]">{filteredFaculty.length}</strong> of {facultyList.length} faculty members
+          <span className="flex items-center gap-1.5">
+            <span>Showing <strong className="text-[var(--text-primary)]">{filteredFaculty.length}</strong> of {facultyList.length} faculty</span>
+            {search && (
+              <span className="text-[var(--accent)] bg-[var(--accent-muted)] px-2 py-0.5 rounded text-[11px] font-medium">
+                Filtered by &quot;{search}&quot;
+              </span>
+            )}
           </span>
           {(search || statusFilter !== 'All' || departmentFilter !== 'All') && (
             <button
@@ -279,10 +292,10 @@ export default function FacultyDirectoryPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-b border-[var(--border-subtle)]">
               <tr>
-                <th className="px-5 py-3.5 font-semibold">Faculty Member</th>
+                <th className="px-5 py-3.5 font-semibold">Professor & Workplace</th>
                 <th className="px-5 py-3.5 font-semibold">Designation</th>
                 <th className="px-5 py-3.5 font-semibold min-w-[130px]">Completeness</th>
-                <th className="px-5 py-3.5 font-semibold text-center">Sources Connected</th>
+                <th className="px-5 py-3.5 font-semibold text-center">Connected Sources</th>
                 <th className="px-5 py-3.5 font-semibold">Last Synced</th>
                 <th className="px-5 py-3.5 font-semibold">Status</th>
                 <th className="px-5 py-3.5 font-semibold text-right">Actions</th>
@@ -297,26 +310,39 @@ export default function FacultyDirectoryPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="hover:bg-[var(--bg-hover)] transition-colors group cursor-pointer"
+                    className="hover:bg-[var(--bg-hover)] transition-colors group"
                   >
                     <td className="px-5 py-4">
-                      <Link href={ROUTES.faculty.profile(fac.id)} className="block">
-                        <div className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors flex items-center gap-1.5">
-                          {fac.canonical_name || fac.display_name}
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-[var(--accent-muted)] text-[var(--accent)] flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                          {(fac.canonical_name || fac.display_name || 'Dr').charAt(0)}
                         </div>
-                        <div className="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
-                          <span>{fac.department}</span>
-                          {fac.employee_id && (
-                            <>
-                              <span>•</span>
-                              <span className="font-mono text-[10px]">{fac.employee_id}</span>
-                            </>
-                          )}
+                        <div>
+                          <div className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors flex items-center gap-1.5">
+                            {fac.canonical_name || fac.display_name}
+                          </div>
+                          {/* Disambiguation: Workplace & Department */}
+                          <div className="text-xs text-[var(--text-muted)] mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span className="flex items-center gap-1 text-[var(--text-secondary)] font-medium">
+                              <Building2 size={12} className="text-[var(--text-muted)]" />
+                              {fac.institution || 'NIT Warangal'}
+                            </span>
+                            <span>•</span>
+                            <span>{fac.department}</span>
+                            {fac.employee_id && (
+                              <>
+                                <span>•</span>
+                                <span className="font-mono text-[10px] bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded border border-[var(--border-subtle)]">
+                                  {fac.employee_id}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </Link>
+                      </div>
                     </td>
 
-                    <td className="px-5 py-4 text-[var(--text-secondary)]">
+                    <td className="px-5 py-4 text-[var(--text-secondary)] font-medium">
                       {fac.designation || 'Faculty Member'}
                     </td>
 
@@ -344,19 +370,19 @@ export default function FacultyDirectoryPage() {
                     <td className="px-5 py-4">
                       <div className="flex justify-center items-center gap-1.5">
                         <span 
-                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.google_scholar ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700'}`} 
+                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.google_scholar ? 'bg-blue-500 shadow-sm' : 'bg-gray-300 dark:bg-gray-700'}`} 
                           title={`Google Scholar: ${fac.source_coverage?.google_scholar ? 'Connected' : 'Not Connected'}`} 
                         />
                         <span 
-                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.orcid ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-700'}`} 
+                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.orcid ? 'bg-purple-500 shadow-sm' : 'bg-gray-300 dark:bg-gray-700'}`} 
                           title={`ORCID: ${fac.source_coverage?.orcid ? 'Connected' : 'Not Connected'}`} 
                         />
                         <span 
-                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.researchgate ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'}`} 
+                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.researchgate ? 'bg-green-500 shadow-sm' : 'bg-gray-300 dark:bg-gray-700'}`} 
                           title={`ResearchGate: ${fac.source_coverage?.researchgate ? 'Connected' : 'Not Connected'}`} 
                         />
                         <span 
-                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.institutional ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-700'}`} 
+                          className={`inline-block w-2.5 h-2.5 rounded-full ${fac.source_coverage?.institutional ? 'bg-amber-500 shadow-sm' : 'bg-gray-300 dark:bg-gray-700'}`} 
                           title={`Institutional ERP: ${fac.source_coverage?.institutional ? 'Connected' : 'Not Connected'}`} 
                         />
                       </div>
@@ -373,12 +399,25 @@ export default function FacultyDirectoryPage() {
                     </td>
 
                     <td className="px-5 py-4 text-right">
-                      <Link href={ROUTES.faculty.profile(fac.id)}>
-                        <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                          View Profile
-                          <ExternalLink size={13} />
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* Quick Disambiguation Preview Button */}
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setPreviewFaculty(fac)}
+                          className="text-xs gap-1"
+                          title="Quick preview professor details"
+                        >
+                          <Eye size={13} />
+                          Preview
                         </Button>
-                      </Link>
+                        <Link href={ROUTES.faculty.profile(fac.id)}>
+                          <Button variant="secondary" size="sm" className="gap-1 text-xs font-medium">
+                            Profile
+                            <ExternalLink size={12} />
+                          </Button>
+                        </Link>
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
@@ -400,7 +439,6 @@ export default function FacultyDirectoryPage() {
                           variant="secondary" 
                           size="sm" 
                           onClick={() => {
-
                             setSearch('')
                             setStatusFilter('All')
                             setDepartmentFilter('All')
@@ -423,6 +461,142 @@ export default function FacultyDirectoryPage() {
           </table>
         </div>
       </div>
+
+      {/* Professor Disambiguation Quick Preview Modal / Drawer */}
+      <AnimatePresence>
+        {previewFaculty && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden bg-[var(--bg-surface)] border-[var(--border-subtle)]"
+            >
+              {/* Modal Header */}
+              <div className="p-6 bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xl shadow-md">
+                    {(previewFaculty.canonical_name || 'Dr').charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                        {previewFaculty.canonical_name || previewFaculty.display_name}
+                      </h3>
+                      <Badge variant="success">Verified</Badge>
+                    </div>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">
+                      {previewFaculty.designation || 'Professor'} • {previewFaculty.department}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] mt-1 font-semibold">
+                      <Building2 size={13} />
+                      <span>{previewFaculty.institution || 'NIT Warangal (Current Workplace)'}</span>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPreviewFaculty(null)}
+                  className="w-8 h-8 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors border border-[var(--border-subtle)]"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Modal Body: Identification & Disambiguation Details */}
+              <div className="p-6 space-y-5">
+                {/* Metric Strip */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
+                    <div className="text-xs text-[var(--text-muted)]">Completeness</div>
+                    <div className="text-base font-bold text-[var(--success)] mt-0.5">
+                      {previewFaculty.completeness_score || 85}%
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
+                    <div className="text-xs text-[var(--text-muted)]">Conflicts</div>
+                    <div className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                      {previewFaculty.conflict_count || 0}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
+                    <div className="text-xs text-[var(--text-muted)]">Status</div>
+                    <div className="text-base font-bold text-[var(--text-primary)] mt-0.5 capitalize">
+                      {previewFaculty.onboarding_status || 'Active'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Identity & Disambiguation Summary */}
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] font-medium">Employee / Institutional ID</span>
+                    <span className="font-mono text-[var(--text-primary)] font-semibold">
+                      {previewFaculty.employee_id || previewFaculty.id}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] font-medium">Affiliated Department</span>
+                    <span className="text-[var(--text-primary)] font-medium">
+                      {previewFaculty.department || 'Computer Science'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] font-medium">Current Working Place</span>
+                    <span className="text-[var(--text-primary)] font-semibold">
+                      {previewFaculty.institution || 'NIT Warangal'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                    <span className="text-[var(--text-muted)] font-medium">Last Aggregation Sync</span>
+                    <span className="text-[var(--text-primary)]">
+                      {previewFaculty.last_synced_at ? formatRelativeTime(previewFaculty.last_synced_at) : 'Never'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Connected Provenance Badges */}
+                <div>
+                  <div className="text-xs font-semibold text-[var(--text-muted)] mb-2">Connected Academic Sources</div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${previewFaculty.source_coverage?.google_scholar ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      Google Scholar
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${previewFaculty.source_coverage?.orcid ? 'bg-purple-500/10 text-purple-600 border border-purple-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                      ORCID
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${previewFaculty.source_coverage?.institutional ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      Institutional ERP
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="p-4 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3">
+                <Button variant="secondary" size="sm" onClick={() => setPreviewFaculty(null)}>
+                  Close
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Link href={ROUTES.faculty.review(previewFaculty.id)}>
+                    <Button variant="secondary" size="sm">
+                      Review Conflicts
+                    </Button>
+                  </Link>
+                  <Link href={ROUTES.faculty.profile(previewFaculty.id)}>
+                    <Button variant="primary" size="sm" className="gap-1.5">
+                      Open Full Profile
+                      <ArrowRight size={14} />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

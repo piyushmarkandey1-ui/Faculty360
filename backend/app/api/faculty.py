@@ -214,6 +214,27 @@ async def get_all_faculty(user: dict = Depends(get_current_user)):
         
     return {"items": items}
 
+@router.post("/discover")
+async def discover_faculty(payload: dict):
+    """
+    Public academic discovery endpoint: searches public databases (Scholar, ORCID),
+    synthesizes university webpage URLs, and returns generous preview details for disambiguation.
+    """
+    from app.services.discovery import discover_faculty_public_profiles
+    query = payload.get("query", "")
+    institution = payload.get("institution")
+    results = await discover_faculty_public_profiles(query, institution)
+    return {"items": results}
+
+@router.get("/discover")
+async def discover_faculty_get(q: str = "", institution: str = None):
+    """
+    GET version of public academic discovery.
+    """
+    from app.services.discovery import discover_faculty_public_profiles
+    results = await discover_faculty_public_profiles(q, institution)
+    return {"items": results}
+
 @router.get("/{faculty_id}")
 async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_user)):
     verify_faculty_access(faculty_id, user)
@@ -251,25 +272,5 @@ async def get_faculty_publications(faculty_id: str, user: dict = Depends(get_cur
     res = supabase.table("publications").select("*, publication_sources(source_type, source_url)").eq("faculty_id", faculty_id).order("year", desc=True).execute()
     return {"items": res.data if res.data else []}
 
-@router.post("/discover")
-async def discover_faculty(payload: dict):
-    """
-    Public academic discovery endpoint: searches public databases (Scholar, ORCID),
-    synthesizes university webpage URLs, and returns generous preview details for disambiguation.
-    """
-    from app.services.discovery import discover_faculty_public_profiles
-    query = payload.get("query", "")
-    institution = payload.get("institution")
-    results = await discover_faculty_public_profiles(query, institution)
-    return {"items": results}
-
-@router.get("/discover")
-async def discover_faculty_get(q: str = "", institution: str = None):
-    """
-    GET version of public academic discovery.
-    """
-    from app.services.discovery import discover_faculty_public_profiles
-    results = await discover_faculty_public_profiles(q, institution)
-    return {"items": results}
 
 

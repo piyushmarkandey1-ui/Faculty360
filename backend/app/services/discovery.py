@@ -136,39 +136,32 @@ async def discover_faculty_public_profiles(query: str, institution: Optional[str
 
     results = []
 
-    # 1. Search in curated public presets for instant zero-latency match
+    # 1. Instant match in curated public presets (0ms latency)
     q_lower = clean_q.lower()
     inst_lower = (institution or "").strip().lower()
 
     for preset in CURATED_PUBLIC_DISCOVERY_PRESETS:
-        name_match = q_lower in preset["name"].lower()
+        name_match = q_lower in preset["name"].lower() or preset["name"].lower() in q_lower
         inst_match = not inst_lower or inst_lower in preset["institution"].lower()
         topic_match = any(q_lower in t.lower() for t in preset["topics"])
         
-        if (name_match and inst_match) or (inst_match and topic_match):
+        if (name_match and inst_match) or (inst_match and topic_match) or (name_match):
             results.append(preset)
 
-    # 2. Query ORCID Open API for live author search
+    # If we already found good verified preset matches, return immediately for instant snappy UX!
+    if len(results) >= 2:
+        return results
+
+    # 2. Fast query to ORCID Open API (2.5s max timeout)
     try:
         orcid_results = await _search_orcid_public_api(clean_q, institution)
         for r in orcid_results:
-            # Check for duplicates
             if not any(existing.get("orcid_id") == r.get("orcid_id") for existing in results):
                 results.append(r)
     except Exception as e:
-        logger.warning(f"ORCID live search failed: {e}")
+        logger.debug(f"ORCID search skipped/failed: {e}")
 
-    # 3. If Gemini API Key is available and we have fewer than 3 results, use AI to infer official public links
-    if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "demo" and len(results) < 2:
-        try:
-            ai_results = await _discover_with_gemini_ai(clean_q, institution)
-            for ar in ai_results:
-                if not any(existing["name"].lower() == ar["name"].lower() and existing["institution"].lower() == ar["institution"].lower() for existing in results):
-                    results.append(ar)
-        except Exception as e:
-            logger.warning(f"Gemini AI discovery failed: {e}")
-
-    # 4. If no results found, generate a smart structured discovery draft so the user can easily proceed
+    # 3. If still empty, return a smart structured draft
     if not results:
         results.append({
             "name": clean_q,
@@ -191,6 +184,7 @@ async def discover_faculty_public_profiles(query: str, institution: Optional[str
         })
 
     return results
+
 
 async def _search_orcid_public_api(name: str, institution: Optional[str] = None) -> List[Dict[str, Any]]:
     """

@@ -163,46 +163,86 @@ class GoogleScholarConnector(AcademicSourceConnector):
 
     def _fetch_apify(self, scholar_id: str) -> Dict[str, Any]:
         """
-        Fetches Google Scholar profile using the Apify actor.
+        Fetches Google Scholar profile using the Apify actor via direct REST API or client.
         """
-        if ApifyClient is None:
-            raise ValueError("apify-client package is not installed. Please run 'pip install apify-client' to use Apify.")
+        if not settings.APIFY_API_TOKEN or settings.APIFY_API_TOKEN == "demo":
+            raise ValueError("APIFY_API_TOKEN is not configured.")
 
-        client = ApifyClient(settings.APIFY_API_TOKEN)
-        run_input = {"authorIds": [scholar_id]}
+        profile_url = f"https://scholar.google.com/citations?user={scholar_id}"
+        run_input = {
+            "authorIds": [scholar_id],
+            "startUrls": [{"url": profile_url}],
+            "keyword": scholar_id,
+            "search_keyword": scholar_id,
+            "maxItems": 100
+        }
 
+        actor_id = settings.APIFY_GOOGLE_SCHOLAR_ACTOR_ID or "marco.gullo/google-scholar-scraper"
+        clean_actor_id = actor_id.replace("/", "~")
+        headers = {"Authorization": f"Bearer {settings.APIFY_API_TOKEN}"}
 
-        run = client.actor(settings.APIFY_GOOGLE_SCHOLAR_ACTOR_ID).call(run_input=run_input)
-        if not run or "defaultDatasetId" not in run:
-            raise ValueError("Apify actor run failed or did not return a dataset ID")
+        with httpx.Client(timeout=60.0) as client:
+            run_url = f"https://api.apify.com/v2/acts/{clean_actor_id}/run-sync-get-dataset-items?timeout=45"
+            resp = client.post(run_url, headers=headers, json=run_input)
+            if resp.status_code not in (200, 201):
+                run_url_async = f"https://api.apify.com/v2/acts/{clean_actor_id}/runs"
+                resp_async = client.post(run_url_async, headers=headers, json=run_input)
+                if resp_async.status_code not in (200, 201):
+                    raise ValueError(f"Apify actor call failed ({resp_async.status_code}): {resp_async.text[:200]}")
+                run_data = resp_async.json().get("data", {})
+                dataset_id = run_data.get("defaultDatasetId")
+                if not dataset_id:
+                    raise ValueError("Apify run did not return dataset ID")
+                import time
+                time.sleep(6)
+                ds_resp = client.get(f"https://api.apify.com/v2/datasets/{dataset_id}/items", headers=headers)
+                items = ds_resp.json() if ds_resp.status_code == 200 else []
+            else:
+                items = resp.json()
 
-        items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
-        if not items:
-            raise ValueError(f"No data found in Apify dataset for Scholar ID: {scholar_id}")
-
-        data = items[0]
-        author_info = data.get("author", {})
-        extracted_id = author_info.get("scholarId", scholar_id)
+        if not items or not isinstance(items, list):
+            raise ValueError(f"No items returned from Apify for Scholar ID: {scholar_id}")
 
         normalized_pubs = []
-        for article in data.get("articles", []):
-            title = article.get("title", "").strip()
+        author_name = ""
+        h_index = 0
+        total_citations = 0
+
+        first_item = items[0] if items else {}
+        if "author" in first_item and isinstance(first_item["author"], dict):
+            author_info = first_item["author"]
+            author_name = author_info.get("name", "")
+            h_index = int(author_info.get("hIndex", 0) or 0)
+            total_citations = int(author_info.get("totalCitations", 0) or 0)
+            article_list = first_item.get("articles", [])
+        else:
+            article_list = items
+
+        for article in article_list:
+            if not isinstance(article, dict):
+                continue
+            title = (article.get("title") or article.get("article_title") or "").strip()
             if not title:
                 continue
 
-            year_val = article.get("year")
+            year_val = article.get("year") or article.get("publication_year")
             try:
                 year = int(year_val) if year_val else None
-            except ValueError:
+            except (ValueError, TypeError):
                 year = None
 
-            cites = article.get("citedBy", {})
-            citation_count = cites.get("count", 0) if isinstance(cites, dict) else (int(cites) if str(cites).isdigit() else 0)
+            cites = article.get("citedBy") or article.get("citations") or article.get("cited_by", 0)
+            if isinstance(cites, dict):
+                citation_count = int(cites.get("count") or cites.get("value") or 0)
+            elif str(cites).isdigit():
+                citation_count = int(cites)
+            else:
+                citation_count = 0
 
             normalized_pubs.append({
                 "title": title,
                 "year": year,
-                "venue": article.get("publication", ""),
+                "venue": article.get("publication") or article.get("venue") or article.get("journal", ""),
                 "doi": None,
                 "citation_count": citation_count
             })
@@ -210,14 +250,15 @@ class GoogleScholarConnector(AcademicSourceConnector):
         return {
             "status": "completed",
             "author": {
-                "name": author_info.get("name", ""),
-                "external_id": extracted_id,
-                "profile_url": f"https://scholar.google.com/citations?user={extracted_id}",
-                "h_index": int(author_info.get("hIndex", 0) or 0),
-                "total_citations": int(author_info.get("totalCitations", 0) or 0)
+                "name": author_name,
+                "external_id": scholar_id,
+                "profile_url": profile_url,
+                "h_index": h_index,
+                "total_citations": total_citations
             },
             "publications": normalized_pubs
         }
+
 
     def _fetch_direct_scrape(self, scholar_id: str) -> Dict[str, Any]:
         """

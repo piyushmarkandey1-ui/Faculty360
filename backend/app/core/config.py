@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     # Google Scholar APIs
     SERPAPI_API_KEY: str = Field(default="", validation_alias=AliasChoices("SERPAPI_API_KEY", "SERP_API_KEY"))
     APIFY_API_TOKEN: str = Field(default="", validation_alias=AliasChoices("APIFY_API_TOKEN", "APIFY_TOKEN"))
-    APIFY_GOOGLE_SCHOLAR_ACTOR_ID: str = "biscience/google-scholar-scraper"
+    APIFY_GOOGLE_SCHOLAR_ACTOR_ID: str = "marco.gullo/google-scholar-scraper"
+
 
     # CORS — allow Next.js dev server and production domain
     CORS_ORIGINS: List[str] = [

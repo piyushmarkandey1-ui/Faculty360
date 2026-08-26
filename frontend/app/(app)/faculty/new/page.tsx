@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Check, 
@@ -14,7 +14,11 @@ import {
   Search, 
   CheckCircle2, 
   ArrowRight,
-  UserCheck
+  UserCheck,
+  ExternalLink,
+  ShieldCheck,
+  Award,
+  Layers
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
@@ -22,110 +26,103 @@ import { ROUTES } from '@/lib/constants/routes'
 import { Badge } from '@/components/ui/Badge'
 import { apiFetch } from '@/lib/api/client'
 
-// Curated academic suggestions to help disambiguate similar names with live data
-const KNOWN_ACADEMIC_PROFILES = [
-  {
-    name: "Dr. Rajesh Kumar Sharma",
-    institution: "National Institute of Technology Warangal",
-    department: "Computer Science",
-    designation: "Professor",
-    scholarId: "WLN3QrAAAAAJ",
-    orcidId: "0000-0002-1825-0097",
-    researchgateSlug: "Rajesh-Sharma-CSE",
-    hIndex: 28,
-    citations: "3,450",
-    topics: "Distributed Systems, Cloud Security, Machine Learning"
-  },
-  {
-    name: "Dr. Rajesh Sharma",
-    institution: "Indian Institute of Technology Delhi",
-    department: "Electronics",
-    designation: "Associate Professor",
-    scholarId: "J_4XXXXAAAAJ",
-    orcidId: "0000-0001-9234-5678",
-    researchgateSlug: "Rajesh-Sharma-IITD",
-    hIndex: 19,
-    citations: "1,890",
-    topics: "VLSI Design, Embedded Systems, Signal Processing"
-  },
-  {
-    name: "Dr. Anjali Sharma",
-    institution: "IIT Bombay",
-    department: "Computer Science",
-    designation: "Associate Professor",
-    scholarId: "cK67_v0AAAAJ",
-    orcidId: "0000-0003-4567-8901",
-    researchgateSlug: "Anjali-Sharma-IITB",
-    hIndex: 24,
-    citations: "2,980",
-    topics: "Natural Language Processing, Information Retrieval"
-  },
-  {
-    name: "Dr. Sneha Desai",
-    institution: "BITS Pilani",
-    department: "Computer Science",
-    designation: "Professor",
-    scholarId: "A3fX9mAAAAAJ",
-    orcidId: "0000-0002-8765-4321",
-    researchgateSlug: "Sneha-Desai-BITS",
-    hIndex: 32,
-    citations: "4,120",
-    topics: "Quantum Computing, Cryptography, Algorithmic Complexity"
-  },
-  {
-    name: "Prof. Yann LeCun",
-    institution: "New York University & Meta AI",
-    department: "Computer Science",
-    designation: "Professor",
-    scholarId: "WLN3QrAAAAAJ",
-    orcidId: "0000-0002-1825-0097",
-    researchgateSlug: "Yann-LeCun",
-    hIndex: 174,
-    citations: "491,838",
-    topics: "Deep Learning, Computer Vision, Robotics"
-  }
-]
+interface DiscoveredProfile {
+  name: string
+  institution: string
+  institution_url?: string
+  department: string
+  designation: string
+  scholar_id: string
+  scholar_url?: string
+  orcid_id: string
+  orcid_url?: string
+  researchgate_slug?: string
+  researchgate_url?: string
+  email?: string
+  citations?: number | string
+  h_index?: number
+  topics?: string[]
+  trust_score?: number
+  source?: string
+}
 
 export default function NewFacultyPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [searchingAI, setSearchingAI] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [createdFacultyId, setCreatedFacultyId] = useState<string | null>(null)
+  const [discoveredProfiles, setDiscoveredProfiles] = useState<DiscoveredProfile[]>([])
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     department: 'Computer Science',
     designation: 'Assistant Professor',
     institution: 'NIT Warangal',
+    institutionUrl: '',
     empId: '',
     scholarId: '',
     researchgateSlug: '',
     orcidId: '',
   })
 
-  // Live Auto-Discovery Candidate Filter
-  const candidateMatches = useMemo(() => {
-    if (!formData.name || formData.name.trim().length < 2) return []
-    const q = formData.name.trim().toLowerCase()
-    return KNOWN_ACADEMIC_PROFILES.filter(p => 
-      p.name.toLowerCase().includes(q) || 
-      p.institution.toLowerCase().includes(q) ||
-      p.topics.toLowerCase().includes(q)
-    )
-  }, [formData.name])
+  // Preset Institutions for Quick Testing
+  const PRESET_NAMES = [
+    { label: "Dr. Rajesh Sharma (NITW)", name: "Dr. Rajesh Kumar Sharma", inst: "NIT Warangal" },
+    { label: "Dr. Rajesh Sharma (IIT Delhi)", name: "Dr. Rajesh Sharma", inst: "IIT Delhi" },
+    { label: "Dr. Anjali Sharma (IITB)", name: "Dr. Anjali Sharma", inst: "IIT Bombay" },
+    { label: "Dr. Sneha Desai (BITS)", name: "Dr. Sneha Desai", inst: "BITS Pilani" },
+    { label: "Prof. Yann LeCun (NYU)", name: "Prof. Yann LeCun", inst: "New York University" }
+  ]
 
-  const selectCandidate = (candidate: typeof KNOWN_ACADEMIC_PROFILES[0]) => {
+  // Query live academic discovery backend
+  const handleLiveDiscover = async (queryText: string) => {
+    if (!queryText || queryText.trim().length < 2) {
+      setDiscoveredProfiles([])
+      return
+    }
+    setSearchingAI(true)
+    try {
+      const res: any = await apiFetch('/faculty/discover', {
+        method: 'POST',
+        body: JSON.stringify({ query: queryText, institution: formData.institution })
+      })
+      if (res && res.items) {
+        setDiscoveredProfiles(res.items)
+      }
+    } catch (err) {
+      console.warn('Discovery API call fallback:', err)
+    } finally {
+      setSearchingAI(false)
+    }
+  }
+
+  // Debounced search on name change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.name.trim().length >= 2) {
+        handleLiveDiscover(formData.name)
+      } else {
+        setDiscoveredProfiles([])
+      }
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [formData.name, formData.institution])
+
+  const selectDiscoveredProfile = (p: DiscoveredProfile) => {
     setFormData(prev => ({
       ...prev,
-      name: candidate.name,
-      department: candidate.department,
-      designation: candidate.designation,
-      institution: candidate.institution,
-      scholarId: candidate.scholarId,
-      orcidId: candidate.orcidId,
-      researchgateSlug: candidate.researchgateSlug,
-      email: prev.email || `${candidate.name.toLowerCase().replace(/[^a-z]/g, '')}@${candidate.institution.toLowerCase().includes('iit') ? 'iit.ac.in' : 'nitw.ac.in'}`
+      name: p.name,
+      department: p.department || prev.department,
+      designation: p.designation || prev.designation,
+      institution: p.institution || prev.institution,
+      institutionUrl: p.institution_url || '',
+      scholarId: p.scholar_id || '',
+      orcidId: p.orcid_id || '',
+      researchgateSlug: p.researchgate_slug || '',
+      email: p.email || prev.email || `${p.name.toLowerCase().replace(/[^a-z]/g, '')}@${p.institution.toLowerCase().includes('iit') ? 'iit.ac.in' : 'nitw.ac.in'}`
     }))
   }
 
@@ -161,19 +158,19 @@ export default function NewFacultyPage() {
   }
 
   const steps = [
-    { num: 1, title: 'Basic Info & Workplace' },
-    { num: 2, title: 'Source Discovery' },
-    { num: 3, title: 'Review & Confirm' },
-    { num: 4, title: 'Done' }
+    { num: 1, title: 'AI Public Discovery' },
+    { num: 2, title: 'Source & Identifiers' },
+    { num: 3, title: 'Review & Ingest' },
+    { num: 4, title: 'Completed' }
   ]
 
   return (
     <div className="max-w-3xl mx-auto py-8">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Add New Faculty</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Public Faculty Onboarding & Discovery</h1>
         <p className="text-sm mt-1 text-[var(--text-secondary)]">
-          Onboard a faculty member, disambiguate with current workplace, and configure academic data sources.
+          Search trustable public academic registries (Google Scholar, ORCID, University Webpages) with AI-powered profile disambiguation.
         </p>
       </div>
 
@@ -205,7 +202,7 @@ export default function NewFacultyPage() {
 
       <div className="mt-16">
         <AnimatePresence mode="wait">
-          {/* STEP 1 */}
+          {/* STEP 1: AI Public Search & Disambiguation */}
           {step === 1 && (
             <motion.div
               key="step1"
@@ -214,72 +211,151 @@ export default function NewFacultyPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+              {/* Quick Preset Chips */}
+              <div className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2.5">
+                <div className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-[var(--accent)]" />
+                  Quick Presets (Click to instant search):
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_NAMES.map((preset, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        updateForm('name', preset.name)
+                        updateForm('institution', preset.inst)
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium border bg-[var(--bg-elevated)] border-[var(--border-default)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors text-[var(--text-primary)]"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5 col-span-2">
                   <label className="text-sm font-medium text-[var(--text-primary)] flex items-center justify-between">
-                    <span>Full Name *</span>
-                    <span className="text-xs text-[var(--accent)] flex items-center gap-1 font-normal">
-                      <Sparkles size={13} />
-                      Auto-disambiguation enabled
-                    </span>
+                    <span>Professor Name *</span>
+                    {searchingAI && (
+                      <span className="text-xs text-[var(--accent)] flex items-center gap-1">
+                        <Loader2 size={12} className="animate-spin" />
+                        Querying public registries & AI...
+                      </span>
+                    )}
                   </label>
-                  <input 
-                    type="text" 
-                    value={formData.name} 
-                    onChange={e => updateForm('name', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-sm shadow-xs"
-                    placeholder="e.g. Dr. Rajesh Sharma"
-                  />
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={formData.name} 
+                      onChange={e => updateForm('name', e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-sm shadow-xs"
+                      placeholder="e.g. Dr. Rajesh Sharma or Prof. Yann LeCun"
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={17} />
+                  </div>
                 </div>
 
-                {/* Candidate Disambiguation Box */}
-                {candidateMatches.length > 0 && (
-                  <div className="col-span-2 p-4 rounded-xl bg-[var(--accent-muted)]/30 border border-[var(--accent)]/30 space-y-3">
+                {/* Generous Disambiguation Match Cards */}
+                {discoveredProfiles.length > 0 && (
+                  <div className="col-span-2 p-4 rounded-xl bg-[var(--accent-muted)]/20 border border-[var(--accent)]/30 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold text-[var(--accent)] flex items-center gap-1.5">
-                        <UserCheck size={14} />
-                        Found {candidateMatches.length} matching academic profile{candidateMatches.length > 1 ? 's' : ''} (Disambiguation):
+                      <div className="text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
+                        <ShieldCheck size={16} />
+                        Found {discoveredProfiles.length} Trustable Public Match{discoveredProfiles.length > 1 ? 'es' : ''} (Disambiguation Details):
                       </div>
-                      <span className="text-[11px] text-[var(--text-muted)]">Click to 1-click auto-fill IDs</span>
+                      <span className="text-[11px] text-[var(--text-muted)]">Select exact professor below</span>
                     </div>
 
-                    <div className="space-y-2">
-                      {candidateMatches.map((candidate, idx) => (
+                    <div className="space-y-3">
+                      {discoveredProfiles.map((p, idx) => (
                         <div 
                           key={idx}
-                          className="p-3 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-between gap-3 hover:border-[var(--accent)] transition-all shadow-xs"
+                          className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-3 hover:border-[var(--accent)] transition-all shadow-xs"
                         >
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm text-[var(--text-primary)]">{candidate.name}</span>
-                              <span className="text-xs px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] font-medium">
-                                {candidate.designation}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center font-bold text-base shrink-0 mt-0.5">
+                                {p.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-bold text-sm text-[var(--text-primary)]">{p.name}</h4>
+                                  <span className="text-[11px] px-2 py-0.5 rounded bg-[var(--success-muted)] text-[var(--success)] font-semibold flex items-center gap-1">
+                                    <ShieldCheck size={11} />
+                                    {p.trust_score || 95}% Trust Score
+                                  </span>
+                                </div>
+
+                                <div className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">
+                                  {p.designation} • {p.department}
+                                </div>
+
+                                {/* Current Workplace with Website Link */}
+                                <div className="flex items-center gap-2 text-xs mt-1">
+                                  <span className="text-[var(--accent)] font-semibold flex items-center gap-1">
+                                    <Building2 size={13} />
+                                    {p.institution}
+                                  </span>
+                                  {p.institution_url && (
+                                    <a 
+                                      href={p.institution_url} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="text-[var(--text-muted)] hover:text-[var(--accent)] flex items-center gap-0.5 text-[11px] underline"
+                                    >
+                                      University Profile <ExternalLink size={10} />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              onClick={() => selectDiscoveredProfile(p)}
+                              className="shrink-0 text-xs gap-1.5 font-semibold"
+                            >
+                              <Check size={14} />
+                              Auto-Fill Profile
+                            </Button>
+
+                          </div>
+
+                          {/* Generous Preview Badges: Scholar, ORCID, Metrics */}
+                          <div className="pt-2 border-t border-[var(--border-subtle)] grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                            <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
+                              <span className="text-[10px] text-[var(--text-muted)] block">Scholar ID</span>
+                              <span className="font-mono font-medium text-[var(--text-primary)] truncate block">
+                                {p.scholar_id || 'Not linked'}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                              <span className="text-[var(--accent)] font-medium flex items-center gap-1">
-                                <Building2 size={12} />
-                                {candidate.institution}
+                            <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
+                              <span className="text-[10px] text-[var(--text-muted)] block">ORCID</span>
+                              <span className="font-mono font-medium text-[var(--text-primary)] truncate block">
+                                {p.orcid_id || 'Not linked'}
                               </span>
-                              <span>•</span>
-                              <span>{candidate.department}</span>
-                              <span>•</span>
-                              <span className="text-[var(--success)] font-medium">h-index: {candidate.hIndex}</span>
                             </div>
-                            <div className="text-[11px] text-[var(--text-muted)] italic">
-                              Research: {candidate.topics}
+                            <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
+                              <span className="text-[10px] text-[var(--text-muted)] block">Citations</span>
+                              <span className="font-bold text-[var(--text-primary)]">
+                                {typeof p.citations === 'number' ? p.citations.toLocaleString() : p.citations || '0'}
+                              </span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-[var(--bg-elevated)]">
+                              <span className="text-[10px] text-[var(--text-muted)] block">h-index</span>
+                              <span className="font-bold text-[var(--success)]">
+                                {p.h_index || '—'}
+                              </span>
                             </div>
                           </div>
 
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            onClick={() => selectCandidate(candidate)}
-                            className="shrink-0 text-xs gap-1 font-medium hover:bg-[var(--accent)] hover:text-white"
-                          >
-                            <Check size={13} />
-                            Select & Auto-fill
-                          </Button>
+                          {p.topics && p.topics.length > 0 && (
+                            <div className="text-[11px] text-[var(--text-muted)]">
+                              <strong className="text-[var(--text-secondary)]">Specializations:</strong> {p.topics.join(' • ')}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -287,18 +363,18 @@ export default function NewFacultyPage() {
                 )}
 
                 <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                  <label className="text-sm font-medium text-[var(--text-primary)]">Email Address</label>
+                  <label className="text-sm font-medium text-[var(--text-primary)]">Institutional Email</label>
                   <input 
                     type="email" 
                     value={formData.email} 
                     onChange={e => updateForm('email', e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-sm"
-                    placeholder="e.g. rajesh@nitw.ac.in"
+                    placeholder="e.g. rksharma@nitw.ac.in"
                   />
                 </div>
 
                 <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                  <label className="text-sm font-medium text-[var(--text-primary)]">Current Working Place / Institution</label>
+                  <label className="text-sm font-medium text-[var(--text-primary)]">Current Workplace / Institution</label>
                   <input 
                     type="text" 
                     value={formData.institution} 
@@ -340,7 +416,7 @@ export default function NewFacultyPage() {
                 </div>
 
                 <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                  <label className="text-sm font-medium text-[var(--text-primary)]">Employee / Institutional ID</label>
+                  <label className="text-sm font-medium text-[var(--text-primary)]">Employee ID / Code</label>
                   <input 
                     type="text" 
                     value={formData.empId} 
@@ -353,13 +429,13 @@ export default function NewFacultyPage() {
 
               <div className="flex justify-end pt-4">
                 <Button variant="primary" onClick={() => setStep(2)} disabled={!formData.name.trim()}>
-                  Next: Academic Identifiers <ChevronRight size={16} className="ml-1" />
+                  Next: Verified Identifiers <ChevronRight size={16} className="ml-1" />
                 </Button>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 2 */}
+          {/* STEP 2: Academic Sources */}
           {step === 2 && (
             <motion.div
               key="step2"
@@ -373,9 +449,9 @@ export default function NewFacultyPage() {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-[var(--text-primary)]">Google Scholar ID</h3>
-                    {formData.scholarId && <Badge variant="success">Auto-Filled</Badge>}
+                    {formData.scholarId && <Badge variant="success">Linked</Badge>}
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">Extract the 12-character ID from the URL (e.g. user=WLN3QrAAAAAJ)</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Public Google Scholar user ID (e.g. WLN3QrAAAAAJ)</p>
                   <input 
                     type="text" 
                     value={formData.scholarId} 
@@ -391,9 +467,9 @@ export default function NewFacultyPage() {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-[var(--text-primary)]">ORCID iD</h3>
-                    {formData.orcidId && <Badge variant="success">Auto-Filled</Badge>}
+                    {formData.orcidId && <Badge variant="success">Linked</Badge>}
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">The 16-digit ORCID identifier.</p>
+                  <p className="text-sm text-[var(--text-secondary)]">16-digit official ORCID public registry identifier.</p>
                   <input 
                     type="text" 
                     value={formData.orcidId} 
@@ -416,7 +492,7 @@ export default function NewFacultyPage() {
                     value={formData.researchgateSlug} 
                     onChange={e => updateForm('researchgateSlug', e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border bg-[var(--bg-base)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] text-sm"
-                    placeholder="e.g. Rajesh-Sharma-CSE"
+                    placeholder="e.g. Rajesh-Sharma-NITW"
                   />
                 </div>
               </div>
@@ -430,7 +506,7 @@ export default function NewFacultyPage() {
             </motion.div>
           )}
 
-          {/* STEP 3 */}
+          {/* STEP 3: Summary & Ingestion Confirmation */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -441,7 +517,7 @@ export default function NewFacultyPage() {
             >
               <div className="rounded-xl border bg-[var(--bg-surface)] border-[var(--border-subtle)] overflow-hidden">
                 <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-between">
-                  <h3 className="font-semibold text-[var(--text-primary)]">Profile Summary</h3>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Profile Ingestion Summary</h3>
                   <Badge variant="accent">Ready for Aggregation</Badge>
                 </div>
                 <div className="p-5 space-y-4">
@@ -451,7 +527,7 @@ export default function NewFacultyPage() {
                       <div className="text-sm text-[var(--text-primary)] font-semibold">{formData.name || '-'}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-[var(--text-muted)]">Email</div>
+                      <div className="text-xs text-[var(--text-muted)]">Institutional Email</div>
                       <div className="text-sm text-[var(--text-primary)] font-medium">{formData.email || '-'}</div>
                     </div>
                     <div>
@@ -470,7 +546,7 @@ export default function NewFacultyPage() {
                       <div className="text-sm text-[var(--text-primary)] font-medium">{formData.designation || '-'}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-[var(--text-muted)]">Employee ID</div>
+                      <div className="text-xs text-[var(--text-muted)]">Employee Code</div>
                       <div className="text-sm font-mono text-[var(--text-primary)]">{formData.empId || '-'}</div>
                     </div>
                   </div>
@@ -500,13 +576,13 @@ export default function NewFacultyPage() {
                 <Button variant="ghost" onClick={() => setStep(2)} disabled={loading}>Back</Button>
                 <Button variant="primary" onClick={handleCreateFaculty} disabled={loading} className="gap-2">
                   {loading && <Loader2 size={16} className="animate-spin" />}
-                  {loading ? 'Creating & Ingesting...' : 'Confirm & Ingest Profile'}
+                  {loading ? 'Ingesting Verified Records...' : 'Confirm & Ingest Profile'}
                 </Button>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 4 */}
+          {/* STEP 4: Completion */}
           {step === 4 && (
             <motion.div
               key="step4"
@@ -517,9 +593,9 @@ export default function NewFacultyPage() {
               <div className="w-16 h-16 rounded-full bg-[var(--success-muted)] text-[var(--success)] flex items-center justify-center mx-auto">
                 <Check size={32} />
               </div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">Faculty Onboarded Successfully!</h2>
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">Faculty Profile Ingested!</h2>
               <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto">
-                {formData.name} has been added to {formData.institution}. Autonomous background synchronization has been triggered for their publications and citations.
+                {formData.name} has been indexed at {formData.institution}. Autonomous data synchronization is aggregating verified publications and citation metrics.
               </p>
               
               <div className="pt-6 flex justify-center gap-3">

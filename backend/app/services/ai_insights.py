@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import httpx
 from typing import Dict, Any
@@ -38,9 +38,10 @@ async def generate_faculty_insights(faculty_id: str) -> Dict[str, Any]:
         ]
     }
     
-    # 4. If no API key, return a mock deterministic insight structure so the UI works
-    if not settings.GEMINI_API_KEY:
-        logger.warning("GEMINI_API_KEY not found. Returning deterministic mock insights.")
+    # 4. If no valid API key, generate dynamic data-driven insights structure
+    gemini_key = (settings.GEMINI_API_KEY or "").strip().strip('"').strip("'")
+    if not gemini_key or gemini_key in ("demo", "undefined", "null", "none"):
+        logger.info("Using deterministic analysis generator for insights.")
         mock = generate_mock_insights(context)
         supabase.table("assessments").update({"ai_insights": mock}).eq("id", assessment["id"]).execute()
         return mock

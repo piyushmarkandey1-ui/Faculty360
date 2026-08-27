@@ -44,8 +44,9 @@ class GoogleScholarConnector(AcademicSourceConnector):
         """
         errors: List[str] = []
 
-        # 1. Try SerpApi if key is provided
-        if settings.SERPAPI_API_KEY:
+        # 1. Try SerpApi if valid key is provided
+        serp_key = (settings.SERPAPI_API_KEY or "").strip().strip('"').strip("'")
+        if serp_key and serp_key not in ("demo", "undefined", "null", "none"):
             try:
                 logger.info(f"Attempting SerpApi Google Scholar extraction for ID: {identity}")
                 return self._fetch_serpapi(identity)
@@ -53,8 +54,9 @@ class GoogleScholarConnector(AcademicSourceConnector):
                 logger.warning(f"SerpApi fetch failed for {identity}: {e}")
                 errors.append(f"SerpApi error: {str(e)}")
 
-        # 2. Try Apify if token is provided
-        if settings.APIFY_API_TOKEN:
+        # 2. Try Apify if valid token is provided
+        apify_token = (settings.APIFY_API_TOKEN or "").strip().strip('"').strip("'")
+        if apify_token and apify_token not in ("demo", "undefined", "null", "none"):
             try:
                 logger.info(f"Attempting Apify Google Scholar extraction for ID: {identity}")
                 return self._fetch_apify(identity)

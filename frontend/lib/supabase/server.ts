@@ -1,4 +1,4 @@
-﻿import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 /**
@@ -9,9 +9,14 @@ import { cookies } from 'next/headers'
 export async function createClient() {
   const cookieStore = await cookies()
 
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cdupsgwzannwmjopjyor.supabase.co'
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_cTShNqV_MfRClLRTHwuQcw_Kn01GBGG'
+  const url = String(rawUrl).replace(/[\r\n\s"']+/g, '').replace(/\/+$/, '')
+  const key = String(rawKey).replace(/[\r\n\s"']+/g, '')
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() {

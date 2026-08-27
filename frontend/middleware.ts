@@ -23,11 +23,12 @@ const PROTECTED_PREFIXES = [
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cdupsgwzannwmjopjyor.supabase.co'
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_cTShNqV_MfRClLRTHwuQcw_Kn01GBGG'
+  const supabaseUrl = String(rawUrl).replace(/[\r\n\s"']+/g, '').replace(/\/+$/, '')
+  const supabaseAnonKey = String(rawKey).replace(/[\r\n\s"']+/g, '')
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    // Supabase credentials not set in local dev — bypass auth check gracefully
     return supabaseResponse
   }
 

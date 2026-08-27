@@ -6,8 +6,10 @@ import { createBrowserClient } from '@supabase/ssr'
  * Reads credentials from public env vars — safe to use in the browser.
  */
 export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cdupsgwzannwmjopjyor.supabase.co'
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_cTShNqV_MfRClLRTHwuQcw_Kn01GBGG'
+  const url = String(rawUrl).replace(/[\r\n\s"']+/g, '').replace(/\/+$/, '')
+  const key = String(rawKey).replace(/[\r\n\s"']+/g, '')
   return createBrowserClient(url, key)
 }
 

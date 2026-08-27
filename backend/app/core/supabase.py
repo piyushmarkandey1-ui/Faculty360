@@ -13,6 +13,7 @@ except ImportError:
 
 
 import os
+import re
 
 @lru_cache(maxsize=1)
 def get_supabase_admin() -> Client:
@@ -20,8 +21,16 @@ def get_supabase_admin() -> Client:
     if create_client is None:
         raise ImportError("supabase package is not installed. Please run 'pip install supabase'.")
     
-    url = (settings.SUPABASE_URL or os.environ.get("SUPABASE_URL", "")).strip().strip('"').strip("'").strip()
-    key = (settings.SUPABASE_SERVICE_ROLE_KEY or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")).strip().strip('"').strip("'").strip()
+    raw_url = settings.SUPABASE_URL or os.environ.get("SUPABASE_URL", "") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+    raw_key = (
+        settings.SUPABASE_SERVICE_ROLE_KEY
+        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        or os.environ.get("SUPABASE_KEY", "")
+        or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
+    )
+    
+    url = re.sub(r'[\r\n\s"\' ]+', '', str(raw_url)).rstrip('/')
+    key = re.sub(r'[^a-zA-Z0-9_\-\.\+/=]', '', str(raw_key))
     
     if not url or not key:
         raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured in environment.")

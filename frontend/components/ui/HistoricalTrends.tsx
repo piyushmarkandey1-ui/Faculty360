@@ -1,26 +1,23 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Loader2, TrendingUp, AlertTriangle } from 'lucide-react'
+
+import { apiFetch } from '@/lib/api/client'
 
 export function HistoricalTrends({ facultyId }: { facultyId: string }) {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!facultyId || facultyId === 'undefined') {
+      setLoading(false)
+      return
+    }
     async function fetchHistory() {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
-        const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        const res = await fetch(`${baseUrl}/faculty/${facultyId}/assessment/history`, {
-          headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
-        })
-        if (!res.ok) throw new Error('Failed to fetch history')
-        const result = await res.json()
+        const result = await apiFetch<any>(`/faculty/${facultyId}/assessment/history`)
         setData(result)
       } catch (e) {
         console.error(e)

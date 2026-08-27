@@ -51,8 +51,13 @@ async def publish_framework(payload: dict, user: dict = Depends(get_current_user
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+def validate_faculty_id(faculty_id: str):
+    if not faculty_id or str(faculty_id).strip().lower() in ("undefined", "null", "none", ""):
+        raise HTTPException(status_code=400, detail="Invalid faculty ID")
+
 @router.get("/api/faculty/{faculty_id}/assessment")
 async def get_assessment(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     supabase = get_supabase_admin()
     res = supabase.table("assessments").select("*, kpi_scores(*)").eq("faculty_id", faculty_id).eq("status", "approved").order("created_at", desc=True).limit(1).execute()
@@ -62,6 +67,7 @@ async def get_assessment(faculty_id: str, user: dict = Depends(get_current_user)
 
 @router.get("/api/faculty/{faculty_id}/assessment/history")
 async def get_assessment_history(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     supabase = get_supabase_admin()
     res = supabase.table("assessments").select("*, kpi_scores(*)").eq("faculty_id", faculty_id).in_("status", ["approved", "archived"]).order("created_at", desc=True).limit(10).execute()
@@ -95,6 +101,7 @@ async def get_assessment_history(faculty_id: str, user: dict = Depends(get_curre
 
 @router.post("/api/faculty/{faculty_id}/assessment/calculate")
 async def calculate_faculty_assessment(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     try:
         result = calculate_assessment(faculty_id)
@@ -105,6 +112,7 @@ async def calculate_faculty_assessment(faculty_id: str, user: dict = Depends(get
 
 @router.post("/api/faculty/{faculty_id}/insights")
 async def generate_insights(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     from app.services.ai_insights import generate_faculty_insights
     try:

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { ArrowLeft, Sparkles, FileSearch, Loader2 } from 'lucide-react'
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer 
@@ -19,7 +19,15 @@ import { apiFetch } from '@/lib/api/client'
 
 export default function FacultyAssessmentPage() {
   const routeParams = useParams()
-  const facultyId = (routeParams?.id as string) || ''
+  const pathname = usePathname()
+
+  let facultyId = (routeParams?.id as string) || ''
+  if (!facultyId || facultyId === 'undefined') {
+    const match = pathname?.match(/\/faculty\/([a-zA-Z0-9_-]+)/)
+    if (match && match[1] && match[1] !== 'new') {
+      facultyId = match[1]
+    }
+  }
 
   const [isClient, setIsClient] = useState(false)
   const [assessment, setAssessment] = useState<any>(null)
@@ -28,7 +36,10 @@ export default function FacultyAssessmentPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
   const loadAssessment = async () => {
-    if (!facultyId) return
+    if (!facultyId || facultyId === 'undefined') {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setErrorMsg(null)
     try {

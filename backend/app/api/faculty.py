@@ -6,6 +6,10 @@ from app.services import faculty_service
 
 router = APIRouter(prefix="/api/faculty", tags=["faculty"])
 
+def validate_faculty_id(faculty_id: str):
+    if not faculty_id or str(faculty_id).strip().lower() in ("undefined", "null", "none", ""):
+        raise HTTPException(status_code=400, detail="Invalid faculty ID")
+
 @router.post("")
 async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     from app.core.supabase import get_supabase_admin
@@ -319,6 +323,7 @@ async def discover_faculty_get(q: str = "", institution: str = None):
 
 @router.get("/{faculty_id}")
 async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     from app.core.supabase import get_supabase_admin
     supabase = get_supabase_admin()
@@ -381,6 +386,7 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
 
 @router.get("/{faculty_id}/publications")
 async def get_faculty_publications(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     from app.core.supabase import get_supabase_admin
     supabase = get_supabase_admin()

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { FileText, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Search, Building2, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ScoreRing } from '@/components/ui/ScoreRing'
@@ -26,7 +26,15 @@ export interface SourceState {
 
 export default function FacultyProfilePage() {
   const routeParams = useParams()
-  const facultyId = (routeParams?.id as string) || ''
+  const pathname = usePathname()
+
+  let facultyId = (routeParams?.id as string) || ''
+  if (!facultyId || facultyId === 'undefined') {
+    const match = pathname?.match(/\/faculty\/([a-zA-Z0-9_-]+)/)
+    if (match && match[1] && match[1] !== 'new') {
+      facultyId = match[1]
+    }
+  }
 
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
@@ -44,7 +52,10 @@ export default function FacultyProfilePage() {
 
   // Load real profile and publications
   useEffect(() => {
-    if (!facultyId) return
+    if (!facultyId || facultyId === 'undefined') {
+      setLoading(false)
+      return
+    }
     let isMounted = true
 
     async function loadData() {

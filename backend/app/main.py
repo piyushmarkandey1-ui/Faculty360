@@ -20,6 +20,16 @@ app.include_router(assessment.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 
+from fastapi.responses import JSONResponse
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "traceback": traceback.format_exc()}
+    )
+
 @app.get("/")
 async def root():
     return {"message": "AcadLens API is running"}

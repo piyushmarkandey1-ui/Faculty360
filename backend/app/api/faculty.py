@@ -264,7 +264,9 @@ async def get_all_faculty(user: dict = Depends(get_current_user)):
     
     items = []
     for f in (res.data or []):
-        up = f.get("unified_profiles") or {}
+        up = f.get("unified_profiles")
+        if isinstance(up, list) and len(up) > 0:
+            up = up[0]
         sc = up.get("source_coverage") if isinstance(up, dict) else {}
         f["source_coverage"] = sc or {"google_scholar": False, "orcid": False, "researchgate": False, "institutional": False}
         items.append(f)

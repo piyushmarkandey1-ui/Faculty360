@@ -45,6 +45,7 @@ interface DiscoveredProfile {
   scholar_url?: string
   orcid_id?: string
   orcid_url?: string
+  openalex_id?: string
   semantic_scholar_id?: string
   semantic_scholar_url?: string
   dblp_url?: string
@@ -159,6 +160,7 @@ export default function NewFacultyPage() {
       orcidId: p.orcid_id || '',
       orcid_id: p.orcid_id || '',
       orcid_url: p.orcid_url || '',
+      openalex_id: p.openalex_id || '',
       semantic_scholar_id: p.semantic_scholar_id || '',
       semantic_scholar_url: p.semantic_scholar_url || '',
       dblp_url: p.dblp_url || '',

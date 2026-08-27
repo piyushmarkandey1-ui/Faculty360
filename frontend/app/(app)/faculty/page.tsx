@@ -23,7 +23,9 @@ import {
   Eye,
   Check,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  Loader2
 } from 'lucide-react'
 import { ROUTES } from '@/lib/constants/routes'
 import { Badge } from '@/components/ui/Badge'
@@ -39,6 +41,25 @@ export default function FacultyDirectoryPage() {
   const [facultyList, setFacultyList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [previewFaculty, setPreviewFaculty] = useState<any | null>(null)
+  const [facultyToDelete, setFacultyToDelete] = useState<any | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  async function confirmDelete() {
+    if (!facultyToDelete) return
+    setDeleting(true)
+    try {
+      await apiFetch(`/faculty/${facultyToDelete.id}`, { method: 'DELETE' })
+      setFacultyList(prev => prev.filter(f => f.id !== facultyToDelete.id))
+      if (previewFaculty?.id === facultyToDelete.id) {
+        setPreviewFaculty(null)
+      }
+      setFacultyToDelete(null)
+    } catch (err) {
+      console.error('Failed to delete faculty profile:', err)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     async function loadFaculty() {
@@ -416,6 +437,15 @@ export default function FacultyDirectoryPage() {
                             <ExternalLink size={12} />
                           </Button>
                         </Link>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setFacultyToDelete(fac)}
+                          className="text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 p-1.5 h-8 w-8"
+                          title="Delete faculty profile"
+                        >
+                          <Trash2 size={13} />
+                        </Button>
                       </div>
                     </td>
                   </motion.tr>
@@ -461,113 +491,75 @@ export default function FacultyDirectoryPage() {
         </div>
       </div>
 
-      {/* Professor Disambiguation Quick Preview Modal / Drawer */}
+      {/* Disambiguation Preview Modal */}
       <AnimatePresence>
         {previewFaculty && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <motion.div 
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden bg-[var(--bg-surface)] border-[var(--border-subtle)]"
+              className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
             >
               {/* Modal Header */}
-              <div className="p-6 bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xl shadow-md">
-                    {(previewFaculty.canonical_name || 'Dr').charAt(0)}
+              <div className="p-6 border-b border-[var(--border-subtle)] flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[var(--accent-muted)] text-[var(--accent)] flex items-center justify-center font-bold text-lg">
+                    {(previewFaculty.canonical_name || previewFaculty.display_name || 'Dr').charAt(0)}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-[var(--text-primary)]">
-                        {previewFaculty.canonical_name || previewFaculty.display_name}
-                      </h3>
-                      <Badge variant="success">Verified</Badge>
-                    </div>
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">
-                      {previewFaculty.designation || 'Professor'} • {previewFaculty.department}
+                    <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                      {previewFaculty.canonical_name || previewFaculty.display_name}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {previewFaculty.designation || 'Faculty Member'}
                     </p>
-                    <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] mt-1 font-semibold">
-                      <Building2 size={13} />
-                      <span>{previewFaculty.institution || 'Academic Institution'}</span>
-                    </div>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setPreviewFaculty(null)}
-                  className="w-8 h-8 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors border border-[var(--border-subtle)]"
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
 
-              {/* Modal Body: Identification & Disambiguation Details */}
-              <div className="p-6 space-y-5">
-                {/* Metric Strip */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
-                    <div className="text-xs text-[var(--text-muted)]">Completeness</div>
-                    <div className="text-base font-bold text-[var(--success)] mt-0.5">
-                      {previewFaculty.completeness_score || 85}%
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
-                    <div className="text-xs text-[var(--text-muted)]">Conflicts</div>
-                    <div className="text-base font-bold text-[var(--text-primary)] mt-0.5">
-                      {previewFaculty.conflict_count || 0}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
-                    <div className="text-xs text-[var(--text-muted)]">Status</div>
-                    <div className="text-base font-bold text-[var(--text-primary)] mt-0.5 capitalize">
-                      {previewFaculty.onboarding_status || 'Active'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Identity & Disambiguation Summary */}
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
-                    <span className="text-[var(--text-muted)] font-medium">Employee / Institutional ID</span>
-                    <span className="font-mono text-[var(--text-primary)] font-semibold">
-                      {previewFaculty.employee_id || previewFaculty.id}
+              {/* Modal Body: Verified Identity Attributes */}
+              <div className="p-6 space-y-4 text-sm">
+                <div className="bg-[var(--bg-elevated)] p-4 rounded-xl space-y-3 border border-[var(--border-subtle)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--text-muted)] font-medium">Current Workplace</span>
+                    <span className="font-semibold text-[var(--text-primary)] text-right flex items-center gap-1.5">
+                      <Building2 size={14} className="text-[var(--accent)]" />
+                      {previewFaculty.institution || 'National Institute of Technology Raipur'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
-                    <span className="text-[var(--text-muted)] font-medium">Affiliated Department</span>
-                    <span className="text-[var(--text-primary)] font-medium">
-                      {previewFaculty.department || 'Computer Science'}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--text-muted)] font-medium">Department</span>
+                    <span className="font-semibold text-[var(--text-primary)] text-right">
+                      {previewFaculty.department}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
-                    <span className="text-[var(--text-muted)] font-medium">Current Working Place</span>
-                    <span className="text-[var(--text-primary)] font-semibold">
-                      {previewFaculty.institution || 'Academic Institution'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
+                  {previewFaculty.canonical_email && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[var(--text-muted)] font-medium">Email Address</span>
+                      <span className="font-mono text-xs text-[var(--accent)] text-right">
+                        {previewFaculty.canonical_email}
+                      </span>
+                    </div>
+                  )}
+                  {previewFaculty.employee_id && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[var(--text-muted)] font-medium">Employee / Faculty ID</span>
+                      <span className="font-mono text-xs text-[var(--text-secondary)] text-right">
+                        {previewFaculty.employee_id}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
                     <span className="text-[var(--text-muted)] font-medium">Last Aggregation Sync</span>
                     <span className="text-[var(--text-primary)]">
                       {previewFaculty.last_synced_at ? formatRelativeTime(previewFaculty.last_synced_at) : 'Never'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Connected Provenance Badges */}
-                <div>
-                  <div className="text-xs font-semibold text-[var(--text-muted)] mb-2">Connected Academic Sources</div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${previewFaculty.source_coverage?.google_scholar ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      Google Scholar
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${previewFaculty.source_coverage?.orcid ? 'bg-purple-500/10 text-purple-600 border border-purple-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                      ORCID
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 ${previewFaculty.source_coverage?.institutional ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      Institutional ERP
                     </span>
                   </div>
                 </div>
@@ -575,15 +567,19 @@ export default function FacultyDirectoryPage() {
 
               {/* Modal Footer Actions */}
               <div className="p-4 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3">
-                <Button variant="secondary" size="sm" onClick={() => setPreviewFaculty(null)}>
-                  Close
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setFacultyToDelete(previewFaculty)}
+                  className="text-xs text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  Delete Profile
                 </Button>
                 <div className="flex items-center gap-2">
-                  <Link href={ROUTES.faculty.review(previewFaculty.id)}>
-                    <Button variant="secondary" size="sm">
-                      Review Conflicts
-                    </Button>
-                  </Link>
+                  <Button variant="secondary" size="sm" onClick={() => setPreviewFaculty(null)}>
+                    Close
+                  </Button>
                   <Link href={ROUTES.faculty.profile(previewFaculty.id)}>
                     <Button variant="primary" size="sm" className="gap-1.5">
                       Open Full Profile
@@ -591,6 +587,50 @@ export default function FacultyDirectoryPage() {
                     </Button>
                   </Link>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {facultyToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center mx-auto">
+                <Trash2 size={24} />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Delete Faculty Profile?</h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Are you sure you want to permanently delete <strong className="text-[var(--text-primary)]">{facultyToDelete.canonical_name || facultyToDelete.display_name}</strong>? All associated publications, assessment scores, and identity records will be permanently removed.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  disabled={deleting}
+                  onClick={() => setFacultyToDelete(null)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  disabled={deleting}
+                  onClick={confirmDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white border-transparent gap-1.5"
+                >
+                  {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {deleting ? 'Deleting...' : 'Delete Profile'}
+                </Button>
               </div>
             </motion.div>
           </div>

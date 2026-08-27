@@ -173,6 +173,9 @@ async def _fetch_openalex(client: httpx.AsyncClient, name: str, institution: Opt
             if not any(isinstance(i, dict) and inst_lower in (i.get("display_name") or "").lower() for i in insts):
                 continue
 
+        raw_oa_id = item.get("id") or ""
+        openalex_id = raw_oa_id.replace("https://openalex.org/", "").strip()
+
         raw_orcid = item.get("orcid") or ""
         orcid_id = raw_orcid.replace("https://orcid.org/", "").strip()
         orcid_url = f"https://orcid.org/{orcid_id}" if orcid_id else f"https://orcid.org/orcid-search/search?searchQuery={urllib.parse.quote(display_name)}"
@@ -215,6 +218,7 @@ async def _fetch_openalex(client: httpx.AsyncClient, name: str, institution: Opt
             "scholar_url": scholar_search_url,
             "orcid_id": orcid_id or None,
             "orcid_url": orcid_url,
+            "openalex_id": openalex_id or None,
             "semantic_scholar_id": None,
             "semantic_scholar_url": None,
             "dblp_url": f"https://dblp.org/search?q={urllib.parse.quote(display_name)}",
@@ -324,26 +328,51 @@ async def _fetch_dblp(client: httpx.AsyncClient, name: str) -> List[Dict[str, An
     return results
 
 
-def _infer_department(topics: List[str], affiliation: str) -> str:
+def _infer_department(topics: List[str], affiliation: str = "") -> str:
     """Infer academic department based on research topics and affiliation."""
-    topics_str = " ".join(topics).lower()
-    if any(k in topics_str for k in ["quantum", "optics", "physics", "photonics"]):
-        return "Department of Physics"
-    elif any(k in topics_str for k in ["computer", "ai", "machine learning", "software", "network", "data", "deep learning", "nlp", "sentiment"]):
-        return "Department of Computer Science & Engineering"
-    elif any(k in topics_str for k in ["electronics", "telecom", "vlsi", "signal", "circuits", "5g", "microwave", "semiconductor"]):
-        return "Department of Electronics & Communication"
-    elif any(k in topics_str for k in ["electrical", "power", "smart grid", "control", "energy"]):
-        return "Department of Electrical Engineering"
-    elif any(k in topics_str for k in ["mechanical", "thermal", "fluid", "robotics", "manufacturing"]):
-        return "Department of Mechanical Engineering"
-    elif any(k in topics_str for k in ["materials", "metallurgy", "nano", "composite"]):
-        return "Department of Metallurgical & Materials Engineering"
-    elif any(k in topics_str for k in ["civil", "structural", "concrete", "earthquake", "transportation"]):
+    topics_str = (" ".join(topics) + " " + affiliation).lower()
+    
+    # 1. Civil & Structural Engineering (checked early so words like 'concrete materials' or 'soil interface' don't get misclassified as Metallurgy)
+    if any(k in topics_str for k in ["civil", "structural", "concrete", "earthquake", "seismic", "soil", "geotechnical", "rc frame", "transportation", "hydrology", "water resources", "bridge", "blast loads"]):
         return "Department of Civil Engineering"
-    elif any(k in topics_str for k in ["sustainability", "business", "economics", "management", "finance"]):
+    # 2. Computer Science & Engineering
+    elif any(k in topics_str for k in ["computer", "ai", "machine learning", "software", "network", "deep learning", "nlp", "cyber", "cloud", "algorithms", "sentiment", "data science"]):
+        return "Department of Computer Science & Engineering"
+    # 3. Electronics & Communication
+    elif any(k in topics_str for k in ["electronics", "telecom", "vlsi", "signal", "circuits", "5g", "6g", "microwave", "semiconductor", "embedded", "antenna", "communication"]):
+        return "Department of Electronics & Communication"
+    # 4. Electrical Engineering
+    elif any(k in topics_str for k in ["electrical", "power systems", "smart grid", "high voltage", "power electronics", "renewable energy", "induction motor", "control systems", "electric vehicles"]):
+        return "Department of Electrical Engineering"
+    # 5. Mechanical Engineering
+    elif any(k in topics_str for k in ["mechanical", "thermal", "fluid dynamics", "robotics", "manufacturing", "cad", "cam", "turbomachinery", "aerodynamics", "combustion", "heat transfer"]):
+        return "Department of Mechanical Engineering"
+    # 6. Chemical Engineering
+    elif any(k in topics_str for k in ["chemical engineering", "process control", "catalysis", "petroleum", "polymer", "biochemical", "separation process"]):
+        return "Department of Chemical Engineering"
+    # 7. Metallurgical & Materials Engineering
+    elif any(k in topics_str for k in ["metallurgy", "materials science", "nanomaterials", "alloys", "crystal structure", "corrosion", "welding metallurgy", "powder metallurgy", "steel"]):
+        return "Department of Metallurgical & Materials Engineering"
+    # 8. Biotechnology / Biomedical
+    elif any(k in topics_str for k in ["biotech", "biomedical", "bioinformatics", "genetics", "microbiology", "cellular", "drug delivery"]):
+        return "Department of Biotechnology"
+    # 9. Architecture & Planning
+    elif any(k in topics_str for k in ["architecture", "urban planning", "landscape", "building design", "housing"]):
+        return "Department of Architecture & Planning"
+    # 10. Physics / Applied Sciences
+    elif any(k in topics_str for k in ["physics", "quantum", "optics", "photonics", "condensed matter", "laser", "astrophysics"]):
+        return "Department of Physics"
+    # 11. Chemistry
+    elif any(k in topics_str for k in ["chemistry", "organic chemistry", "inorganic chemistry", "spectroscopy"]):
+        return "Department of Chemistry"
+    # 12. Mathematics
+    elif any(k in topics_str for k in ["mathematics", "statistics", "numerical analysis", "topology", "applied math"]):
+        return "Department of Mathematics"
+    # 13. Management & Humanities
+    elif any(k in topics_str for k in ["business", "management", "economics", "finance", "marketing", "humanities"]):
         return "School of Management & Business Studies"
-    return "Faculty of Engineering & Sciences"
+        
+    return "Department of Engineering & Technology"
 
 
 def _infer_topics(institution: str) -> List[str]:

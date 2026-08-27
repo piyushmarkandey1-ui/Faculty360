@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { useParams, usePathname } from 'next/navigation'
-import { FileText, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Search, Building2, UserX } from 'lucide-react'
+import { useParams, usePathname, useRouter } from 'next/navigation'
+import { FileText, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Search, Building2, UserX, Trash2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ScoreRing } from '@/components/ui/ScoreRing'
 import { Badge } from '@/components/ui/Badge'
@@ -25,6 +25,7 @@ export interface SourceState {
 }
 
 export default function FacultyProfilePage() {
+  const router = useRouter()
   const routeParams = useParams()
   const pathname = usePathname()
 
@@ -42,6 +43,20 @@ export default function FacultyProfilePage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'sources' | 'conflicts'>('overview')
   const [conflicts, setConflicts] = useState<ProfileConflict[]>([])
   const [loadingConflicts, setLoadingConflicts] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDeleteProfile() {
+    if (!facultyId) return
+    setDeleting(true)
+    try {
+      await apiFetch(`/faculty/${facultyId}`, { method: 'DELETE' })
+      router.push(ROUTES.faculty.list)
+    } catch (err) {
+      console.error('Failed to delete faculty profile:', err)
+      setDeleting(false)
+    }
+  }
   
   // Multi-source Sync State
   const [sourceStates, setSourceStates] = useState<Record<string, SourceState>>({
@@ -247,13 +262,23 @@ export default function FacultyProfilePage() {
             <Link href={ROUTES.faculty.assessment(facultyId)}>
               <Button variant="primary" className="w-full justify-center">Run Assessment</Button>
             </Link>
-            <Button 
-              variant="secondary" 
-              className="w-full justify-center gap-2"
-              onClick={() => setActiveTab('sources')}
-            >
-              <RefreshCw size={14} /> Sync Data
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="secondary" 
+                className="flex-1 justify-center gap-1.5 text-xs"
+                onClick={() => setActiveTab('sources')}
+              >
+                <RefreshCw size={13} /> Sync Data
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-500/10 px-2.5 h-9"
+                onClick={() => setShowDeleteModal(true)}
+                title="Delete faculty profile"
+              >
+                <Trash2 size={14} />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -327,7 +352,7 @@ export default function FacultyProfilePage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-base font-semibold text-[var(--text-primary)]">Verified Publications ({publications.length})</h3>
-              <span className="text-xs text-[var(--text-muted)]">Live verified across OpenAlex, Semantic Scholar & Google Scholar</span>
+              <span className="text-xs text-[var(--text-muted)]">Live verified across OpenAlex, Semantic Scholar & CrossRef</span>
             </div>
             
             {publications.length === 0 ? (
@@ -337,131 +362,191 @@ export default function FacultyProfilePage() {
               </div>
             ) : (
               <div className="grid gap-3">
-                {publications.map(pub => (
-                  <div key={pub.id} className="p-5 rounded-xl border bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-[var(--border-default)] transition-colors flex gap-4">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--bg-elevated)] text-[var(--text-muted)]">
-                      <FileText size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm mb-1 text-[var(--text-primary)]" title={pub.title}>{pub.title}</h4>
-                      <div className="text-xs mb-2 text-[var(--text-secondary)]">
-                        {pub.venue || 'Academic Venue'} {pub.year ? `• ${pub.year}` : ''}
+                {publications.map(pub => {
+                  const sourceUrl = pub.doi 
+                    ? `https://doi.org/${pub.doi}`
+                    : pub.source_type === 'openalex'
+                    ? `https://openalex.org/works?search=${encodeURIComponent(pub.title)}`
+                    : pub.source_type === 'semantic_scholar'
+                    ? `https://www.semanticscholar.org/search?q=${encodeURIComponent(pub.title)}`
+                    : `https://scholar.google.com/scholar?q=${encodeURIComponent(pub.title)}`
+                  
+                  return (
+                    <div key={pub.id} className="p-5 rounded-xl border bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-[var(--border-default)] transition-colors flex gap-4">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--bg-elevated)] text-[var(--text-muted)]">
+                        <FileText size={20} />
                       </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)]">
-                        {pub.doi && (
-                          <a 
-                            href={`https://doi.org/${pub.doi}`} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline font-mono text-[11px]"
-                          >
-                            DOI: {pub.doi}
-                          </a>
-                        )}
-                        {typeof pub.citation_count === 'number' && pub.citation_count > 0 && (
-                          <span className="font-medium text-[var(--text-primary)]">
-                            {pub.citation_count} Citations
-                          </span>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm mb-1 text-[var(--text-primary)] leading-snug" title={pub.title}>
+                          {pub.title}
+                        </h4>
+                        <div className="text-xs mb-2 text-[var(--text-secondary)]">
+                          {pub.venue || 'Academic Journal / Conference'} {pub.year ? `• ${pub.year}` : ''}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)]">
+                          {pub.doi && (
+                            <a 
+                              href={`https://doi.org/${pub.doi}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-[11px] flex items-center gap-1"
+                            >
+                              <span>DOI: {pub.doi}</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          )}
+                          {typeof pub.citation_count === 'number' && pub.citation_count > 0 && (
+                            <span className="font-semibold text-[var(--text-primary)]">
+                              {pub.citation_count} Citations
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end justify-between gap-2">
+                        <SourceBadge source={pub.source_type || 'openalex'} status="active" />
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-[var(--accent)] hover:underline font-medium bg-[var(--accent-muted)]/20 px-2 py-1 rounded-md border border-[var(--accent-muted)]/40 hover:bg-[var(--accent-muted)]/40 transition-colors"
+                          title="Open original publication source in a new tab"
+                        >
+                          <span>Original Source</span>
+                          <ExternalLink size={11} />
+                        </a>
                       </div>
                     </div>
-                    <div className="shrink-0">
-                      <SourceBadge source={pub.source_type || 'openalex'} status="active" />
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </motion.div>
         )}
 
         {activeTab === 'sources' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Syncable Sources */}
-            {[
-              { id: 'google_scholar', name: 'Google Scholar', defaultUrlText: 'https://scholar.google.com/citations?user=...' },
-              { id: 'orcid', name: 'ORCID', defaultUrlText: 'https://orcid.org/0000-0002-...' },
-              { id: 'researchgate', name: 'ResearchGate', defaultUrlText: 'https://www.researchgate.net/profile/...' }
-            ].map(src => {
-              const state = sourceStates[src.id]
-              const isConnected = Boolean(unified_profile.source_coverage?.[src.id])
-              return (
-                <div key={src.id} className="p-5 rounded-2xl border flex flex-col bg-[var(--bg-surface)] border-[var(--border-subtle)]">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <SourceBadge source={src.id as any} status="active" />
-                      <span className="font-medium text-sm text-[var(--text-primary)]">{src.name}</span>
-                    </div>
-                    <Badge variant={state.status === 'success' ? 'success' : state.status === 'error' ? 'danger' : isConnected ? 'success' : 'neutral'}>
-                      {state.status === 'success' ? 'Synced' : state.status === 'syncing' ? 'Syncing...' : isConnected ? 'Connected' : 'Not Connected'}
-                    </Badge>
-                  </div>
-
-                  {state.status === 'input' || state.status === 'syncing' || state.status === 'error' ? (
-                    <div className="flex flex-col gap-3 mt-auto border-t border-[var(--border-subtle)] pt-4">
-                      <div className="text-xs text-[var(--text-secondary)]">Enter Profile URL or ID</div>
-                      <input
-                        type="url"
-                        placeholder={src.defaultUrlText}
-                        value={state.url}
-                        onChange={(e) => updateSourceState(src.id, { url: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors bg-[var(--bg-base)] border-[var(--border-default)] text-[var(--text-primary)]"
-                        disabled={state.status === 'syncing'}
-                      />
-                      {state.error && <div className="text-xs text-[var(--danger)]">{state.error}</div>}
-                      <div className="flex gap-2">
-                        <Button variant="primary" size="sm" onClick={() => handleSourceSync(src.id)} disabled={state.status === 'syncing'} className="flex-1 justify-center gap-2">
-                          {state.status === 'syncing' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                          {state.status === 'syncing' ? 'Syncing...' : 'Start Sync'}
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle', error: null })} disabled={state.status === 'syncing'}>Cancel</Button>
-                      </div>
-                    </div>
-                  ) : state.status === 'success' && state.result ? (
-                    <div className="mt-auto border-t border-[var(--border-subtle)] pt-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <div className="text-sm font-medium text-[var(--success)]">Sync Completed</div>
-                        <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle' })}>Dismiss</Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><span className="text-[var(--text-muted)]">Found:</span> {state.result.publicationsFound}</div>
-                        <div><span className="text-[var(--text-muted)]">Added:</span> {state.result.publicationsAdded}</div>
-                        <div><span className="text-[var(--text-muted)]">h-index:</span> {state.result.hIndex}</div>
-                        <div><span className="text-[var(--text-muted)]">Citations:</span> {state.result.citations}</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between items-end mt-auto pt-4 border-t border-[var(--border-subtle)]">
-                      <div>
-                        <div className="text-xs mb-0.5 text-[var(--text-muted)]">Status</div>
-                        <div className="font-medium text-sm text-[var(--text-primary)]">
-                          {isConnected ? 'Active & Synced' : 'Ready to Connect'}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            {/* Connected Identities with Live Links */}
+            {(profile?.identities || []).length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Connected Academic Identities</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {(profile?.identities || []).map((ident: any) => (
+                    <div key={ident.id || ident.source_type} className="p-4 rounded-xl border bg-[var(--bg-surface)] border-[var(--border-subtle)] flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <SourceBadge source={ident.source_type} status="active" />
+                        <div>
+                          <div className="text-sm font-semibold text-[var(--text-primary)] capitalize">
+                            {ident.source_type.replace('_', ' ')}
+                          </div>
+                          <div className="text-xs text-[var(--text-muted)] font-mono truncate max-w-[200px]">
+                            {ident.external_id || 'Connected'}
+                          </div>
                         </div>
                       </div>
-                      <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'input' })} className="gap-2">
-                        <RefreshCw size={12} /> {isConnected ? 'Re-sync' : 'Connect'}
-                      </Button>
+                      {ident.profile_url && (
+                        <a
+                          href={ident.profile_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-[var(--accent)] font-medium hover:underline bg-[var(--bg-elevated)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]"
+                        >
+                          <span>View Profile</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              )
-            })}
-
-            {/* Institutional Data Card */}
-            <div className="p-5 rounded-2xl border flex flex-col bg-[var(--bg-surface)] border-[var(--border-subtle)]">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <SourceBadge source="institutional" status="active" />
-                  <span className="font-medium text-sm text-[var(--text-primary)]">Institutional DB</span>
-                </div>
-                <Badge variant="success">Connected</Badge>
               </div>
-              <div className="flex justify-between items-end mt-auto pt-4 border-t border-[var(--border-subtle)]">
-                <div>
-                  <div className="text-xs mb-0.5 text-[var(--text-muted)]">Workplace</div>
-                  <div className="font-medium text-sm text-[var(--text-primary)]">{entity.institution || 'NIT Raipur'}</div>
+            )}
+
+            {/* Syncable Sources */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { id: 'google_scholar', name: 'Google Scholar', defaultUrlText: 'https://scholar.google.com/citations?user=...' },
+                { id: 'orcid', name: 'ORCID', defaultUrlText: 'https://orcid.org/0000-0002-...' },
+                { id: 'researchgate', name: 'ResearchGate', defaultUrlText: 'https://www.researchgate.net/profile/...' }
+              ].map(src => {
+                const state = sourceStates[src.id]
+                const isConnected = Boolean(unified_profile.source_coverage?.[src.id])
+                return (
+                  <div key={src.id} className="p-5 rounded-2xl border flex flex-col bg-[var(--bg-surface)] border-[var(--border-subtle)]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <SourceBadge source={src.id as any} status="active" />
+                        <span className="font-medium text-sm text-[var(--text-primary)]">{src.name}</span>
+                      </div>
+                      <Badge variant={state.status === 'success' ? 'success' : state.status === 'error' ? 'danger' : isConnected ? 'success' : 'neutral'}>
+                        {state.status === 'success' ? 'Synced' : state.status === 'syncing' ? 'Syncing...' : isConnected ? 'Connected' : 'Not Connected'}
+                      </Badge>
+                    </div>
+
+                    {state.status === 'input' || state.status === 'syncing' || state.status === 'error' ? (
+                      <div className="flex flex-col gap-3 mt-auto border-t border-[var(--border-subtle)] pt-4">
+                        <div className="text-xs text-[var(--text-secondary)]">Enter Profile URL or ID</div>
+                        <input
+                          type="url"
+                          placeholder={src.defaultUrlText}
+                          value={state.url}
+                          onChange={(e) => updateSourceState(src.id, { url: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none transition-colors bg-[var(--bg-base)] border-[var(--border-default)] text-[var(--text-primary)]"
+                          disabled={state.status === 'syncing'}
+                        />
+                        {state.error && <div className="text-xs text-[var(--danger)]">{state.error}</div>}
+                        <div className="flex gap-2">
+                          <Button variant="primary" size="sm" onClick={() => handleSourceSync(src.id)} disabled={state.status === 'syncing'} className="flex-1 justify-center gap-2">
+                            {state.status === 'syncing' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                            {state.status === 'syncing' ? 'Syncing...' : 'Start Sync'}
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle', error: null })} disabled={state.status === 'syncing'}>Cancel</Button>
+                        </div>
+                      </div>
+                    ) : state.status === 'success' && state.result ? (
+                      <div className="mt-auto border-t border-[var(--border-subtle)] pt-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="text-sm font-medium text-[var(--success)]">Sync Completed</div>
+                          <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'idle' })}>Dismiss</Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-[var(--text-muted)]">Found:</span> {state.result.publicationsFound}</div>
+                          <div><span className="text-[var(--text-muted)]">Added:</span> {state.result.publicationsAdded}</div>
+                          <div><span className="text-[var(--text-muted)]">h-index:</span> {state.result.hIndex}</div>
+                          <div><span className="text-[var(--text-muted)]">Citations:</span> {state.result.citations}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-end mt-auto pt-4 border-t border-[var(--border-subtle)]">
+                        <div>
+                          <div className="text-xs mb-0.5 text-[var(--text-muted)]">Status</div>
+                          <div className="font-medium text-sm text-[var(--text-primary)]">
+                            {isConnected ? 'Active & Synced' : 'Ready to Connect'}
+                          </div>
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={() => updateSourceState(src.id, { status: 'input' })} className="gap-2">
+                          <RefreshCw size={12} /> {isConnected ? 'Re-sync' : 'Connect'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Institutional Data Card */}
+              <div className="p-5 rounded-2xl border flex flex-col bg-[var(--bg-surface)] border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <SourceBadge source="institutional" status="active" />
+                    <span className="font-medium text-sm text-[var(--text-primary)]">Institutional DB</span>
+                  </div>
+                  <Badge variant="success">Connected</Badge>
                 </div>
-                <Badge variant="neutral" className="text-xs">Auto-Synced</Badge>
+                <div className="flex justify-between items-end mt-auto pt-4 border-t border-[var(--border-subtle)]">
+                  <div>
+                    <div className="text-xs mb-0.5 text-[var(--text-muted)]">Workplace</div>
+                    <div className="font-medium text-sm text-[var(--text-primary)]">{entity.institution || 'Academic Institution'}</div>
+                  </div>
+                  <Badge variant="neutral" className="text-xs">Auto-Synced</Badge>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -533,6 +618,50 @@ export default function FacultyProfilePage() {
           </motion.div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden p-6 space-y-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center mx-auto">
+                <Trash2 size={24} />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">Delete Faculty Profile?</h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Are you sure you want to permanently delete <strong className="text-[var(--text-primary)]">{unified_profile.display_name || entity.canonical_name}</strong>? All publications, assessments, and provenance records for this faculty member will be removed.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  disabled={deleting}
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  disabled={deleting}
+                  onClick={handleDeleteProfile}
+                  className="bg-red-600 hover:bg-red-700 text-white border-transparent gap-1.5"
+                >
+                  {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {deleting ? 'Deleting...' : 'Delete Profile'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

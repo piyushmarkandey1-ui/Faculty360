@@ -36,6 +36,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     orcid_url = payload.get("orcid_url") or (f"https://orcid.org/{orcid_id}" if orcid_id else "")
     s2_id = payload.get("semantic_scholar_id") or payload.get("semanticScholarId") or ""
     s2_url = payload.get("semantic_scholar_url") or (f"https://www.semanticscholar.org/author/{s2_id}" if s2_id else "")
+    openalex_id = payload.get("openalex_id") or payload.get("openalexId") or ""
     dblp_url = payload.get("dblp_url") or ""
     researchgate_slug = payload.get("researchgateSlug") or payload.get("researchgate_slug") or ""
     
@@ -63,65 +64,72 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
         inst_res = supabase.table("institutions").select("id").limit(1).execute()
         institution_id = inst_res.data[0]["id"] if inst_res.data else "00000000-0000-0000-0000-000000000001"
 
+    faculty_id = str(uuid.uuid4())
+    
+    # Insert faculty record
     faculty_record = {
-        "institution_id": institution_id,
+        "id": faculty_id,
         "canonical_name": canonical_name,
-        "canonical_email": email,
         "department": department,
         "designation": designation,
+        "canonical_email": email,
         "employee_id": emp_id,
-        "onboarding_status": "active",
-        "completeness_score": 90 if (email and (orcid_id or scholar_id or s2_id)) else 75,
-        "conflict_count": 0
+        "institution_id": institution_id,
+        "completeness_score": 85,
+        "conflict_count": 0,
+        "created_at": "now()"
     }
     
-    res = supabase.table("faculty").insert(faculty_record).execute()
-    if not res.data:
-        raise HTTPException(status_code=500, detail="Failed to create faculty record")
-        
-    new_faculty = res.data[0]
-    faculty_id = new_faculty["id"]
+    fac_res = supabase.table("faculty").insert(faculty_record).execute()
+    new_faculty = fac_res.data[0] if fac_res.data else faculty_record
     
-    # Create unified profile
-    bio_text = f"Faculty member at {institution_name}" + (f", specialized in {', '.join(topics[:3])}." if topics else ".")
-    unified_profile = {
+    # Unified profile entry
+    supabase.table("unified_profiles").insert({
         "faculty_id": faculty_id,
         "display_name": canonical_name,
-        "bio": bio_text,
+        "bio": f"Faculty member at {institution_name}, specialized in {', '.join(topics[:3]) if topics else department}.",
         "research_interests": topics,
         "source_coverage": {
             "google_scholar": bool(scholar_id or scholar_url),
-            "orcid": bool(orcid_id),
-            "semantic_scholar": bool(s2_id or s2_url),
-            "dblp": bool(dblp_url),
+            "orcid": bool(orcid_id or orcid_url),
             "researchgate": bool(researchgate_slug),
             "institutional": True
         }
-    }
-    supabase.table("unified_profiles").insert(unified_profile).execute()
+    }).execute()
     
-    # Insert academic identities (only schema-supported source types: google_scholar, orcid, researchgate, institutional)
+    # Insert academic identities
     identities_to_insert = []
     if scholar_id or scholar_url:
         identities_to_insert.append({
             "faculty_id": faculty_id,
             "source_type": "google_scholar",
-            "external_id": scholar_id or canonical_name,
-            "profile_url": scholar_url or f"https://scholar.google.com/citations?view_op=search_authors&mauthors={canonical_name}"
+            "external_id": scholar_id or "auto",
+            "profile_url": scholar_url or f"https://scholar.google.com/citations?view_op=search_authors&mauthors={canonical_name}",
+            "status": "active"
         })
-    if orcid_id:
+    if orcid_id or orcid_url:
         identities_to_insert.append({
             "faculty_id": faculty_id,
             "source_type": "orcid",
-            "external_id": orcid_id,
-            "profile_url": orcid_url or f"https://orcid.org/{orcid_id}"
+            "external_id": orcid_id or "auto",
+            "profile_url": orcid_url or f"https://orcid.org/orcid-search/search?searchQuery={canonical_name}",
+            "status": "active"
         })
     if researchgate_slug:
         identities_to_insert.append({
             "faculty_id": faculty_id,
             "source_type": "researchgate",
             "external_id": researchgate_slug,
-            "profile_url": f"https://www.researchgate.net/profile/{researchgate_slug}"
+            "profile_url": f"https://www.researchgate.net/profile/{researchgate_slug}",
+            "status": "active"
+        })
+    else:
+        identities_to_insert.append({
+            "faculty_id": faculty_id,
+            "source_type": "institutional",
+            "external_id": emp_id,
+            "profile_url": f"https://{institution_name.lower().replace(' ', '')}.edu/faculty/{emp_id}",
+            "status": "active"
         })
         
     if identities_to_insert:
@@ -140,7 +148,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     except Exception:
         pass
 
-    # Auto-sync publications from OpenAlex & Semantic Scholar
+    # Auto-sync publications from OpenAlex & Semantic Scholar with full author verification
     try:
         await asyncio.wait_for(
             auto_sync_faculty_publications(
@@ -148,9 +156,11 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
                 name=canonical_name,
                 orcid_id=orcid_id,
                 s2_id=s2_id,
-                scholar_id=scholar_id
+                scholar_id=scholar_id,
+                openalex_id=openalex_id,
+                affiliation=institution_name
             ),
-            timeout=6.0
+            timeout=8.0
         )
     except Exception as e:
         # If timeout or error, continue gracefully
@@ -391,6 +401,58 @@ async def get_faculty_publications(faculty_id: str, user: dict = Depends(get_cur
     supabase = get_supabase_admin()
     res = supabase.table("publications").select("*, publication_sources(source_type, source_url)").eq("faculty_id", faculty_id).order("year", desc=True).execute()
     return {"items": res.data if res.data else []}
+
+@router.delete("/{faculty_id}")
+async def delete_faculty(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
+    RequireRole(["ADMIN", "REVIEWER"])(user)
+    from app.core.supabase import get_supabase_admin
+    supabase = get_supabase_admin()
+    
+    # 1. Fetch faculty name for audit
+    fac_res = supabase.table("faculty").select("id, canonical_name").eq("id", faculty_id).execute()
+    if not fac_res.data:
+        raise HTTPException(status_code=404, detail="Faculty profile not found")
+    name = fac_res.data[0].get("canonical_name", faculty_id)
+    
+    # 2. Cleanup linked child tables safely
+    try:
+        supabase.table("profile_conflicts").delete().eq("faculty_id", faculty_id).execute()
+    except Exception: pass
+    
+    try:
+        supabase.table("institutional_records").delete().eq("faculty_id", faculty_id).execute()
+    except Exception: pass
+    
+    try:
+        supabase.table("academic_identities").delete().eq("faculty_id", faculty_id).execute()
+    except Exception: pass
+    
+    try:
+        supabase.table("unified_profiles").delete().eq("faculty_id", faculty_id).execute()
+    except Exception: pass
+    
+    # Delete kpi_scores then assessments
+    try:
+        assess_res = supabase.table("assessments").select("id").eq("faculty_id", faculty_id).execute()
+        for a in (assess_res.data or []):
+            supabase.table("kpi_scores").delete().eq("assessment_id", a["id"]).execute()
+        supabase.table("assessments").delete().eq("faculty_id", faculty_id).execute()
+    except Exception: pass
+    
+    # Delete publication_sources then publications
+    try:
+        pubs_res = supabase.table("publications").select("id").eq("faculty_id", faculty_id).execute()
+        for p in (pubs_res.data or []):
+            supabase.table("publication_sources").delete().eq("publication_id", p["id"]).execute()
+        supabase.table("publications").delete().eq("faculty_id", faculty_id).execute()
+    except Exception: pass
+    
+    # 3. Delete the faculty record
+    supabase.table("faculty").delete().eq("id", faculty_id).execute()
+    log_audit("DELETE_FACULTY", "faculty", faculty_id, f"Deleted profile for {name}", user.get("sub"))
+    
+    return {"success": True, "message": f"Faculty profile for {name} deleted successfully"}
 
 
 

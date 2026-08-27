@@ -180,12 +180,14 @@ export default function FacultyAssessmentPage() {
     await loadAssessment()
   }
 
-  // Format data for radar chart
-  const radarData = assessment?.kpi_scores?.map((kpi: any) => ({
-    subject: kpi.category,
-    A: kpi.computed_score,
-    fullMark: kpi.max_score,
-  })) || []
+  // Format data for radar chart (only categories with connected data sources)
+  const radarData = assessment?.kpi_scores
+    ?.filter((kpi: any) => kpi.status !== 'SOURCE_UNAVAILABLE')
+    ?.map((kpi: any) => ({
+      subject: kpi.category,
+      A: kpi.computed_score,
+      fullMark: kpi.max_score,
+    })) || []
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -431,19 +433,29 @@ export default function FacultyAssessmentPage() {
                   <div className="flex justify-between items-center mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{kpi.rule_name}</span>
-                      {kpi.status === 'INSUFFICIENT_EVIDENCE' && (
+                      {kpi.status === 'SOURCE_UNAVAILABLE' ? (
+                        <Badge variant="neutral" className="text-[10px]">SOURCE NOT CONNECTED</Badge>
+                      ) : kpi.status === 'INSUFFICIENT_EVIDENCE' ? (
                         <Badge variant="danger" className="text-[10px]">MISSING EVIDENCE</Badge>
+                      ) : (
+                        <Badge variant="success" className="text-[10px]">VERIFIED</Badge>
                       )}
                     </div>
-                    <Link 
-                      href={ROUTES.assessment.evidence(assessment.id)} 
-                      className="text-xs flex items-center gap-1 hover:underline" 
-                      style={{ color: 'var(--accent)' }}
-                    >
-                      <FileSearch size={12} /> View Evidence
-                    </Link>
+                    {kpi.status !== 'SOURCE_UNAVAILABLE' && (
+                      <Link 
+                        href={ROUTES.assessment.evidence(assessment.id)} 
+                        className="text-xs flex items-center gap-1 hover:underline" 
+                        style={{ color: 'var(--accent)' }}
+                      >
+                        <FileSearch size={12} /> View Evidence
+                      </Link>
+                    )}
                   </div>
-                  <ParameterBar label={kpi.category} score={kpi.computed_score} maxScore={kpi.max_score} />
+                  <ParameterBar 
+                    label={kpi.category} 
+                    score={kpi.status === 'SOURCE_UNAVAILABLE' ? 0 : kpi.computed_score} 
+                    maxScore={kpi.max_score} 
+                  />
                 </div>
               ))}
             </div>

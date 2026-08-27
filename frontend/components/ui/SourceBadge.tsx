@@ -1,8 +1,10 @@
 import React from 'react';
 import { cn } from '@/lib/utils/cn';
 
+export type AcademicSourceType = 'google_scholar' | 'researchgate' | 'institutional' | 'orcid' | 'openalex' | 'semantic_scholar' | 'dblp' | string;
+
 interface SourceBadgeProps {
-  source: 'google_scholar' | 'researchgate' | 'institutional' | 'orcid';
+  source: AcademicSourceType;
   status: 'active' | 'syncing' | 'error' | 'pending';
   lastSynced?: string | null;
   className?: string;
@@ -12,7 +14,10 @@ const SOURCE_LABELS: Record<string, string> = {
   google_scholar: 'Google Scholar',
   researchgate: 'ResearchGate',
   institutional: 'Institutional',
-  orcid: 'ORCID'
+  orcid: 'ORCID',
+  openalex: 'OpenAlex',
+  semantic_scholar: 'Semantic Scholar',
+  dblp: 'DBLP'
 };
 
 const STATUS_COLORS = {

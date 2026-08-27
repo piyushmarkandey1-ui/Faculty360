@@ -36,8 +36,14 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || API_BASE_URL;
-  const res = await fetch(`${baseUrl}${path}`, {
+  const rawBase = (process.env.NEXT_PUBLIC_API_URL || API_BASE_URL || "/api").trim();
+  const baseUrl = rawBase.replace(/[\r\n\s]+/g, "").replace(/\/+$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const targetUrl = baseUrl.endsWith("/api") && cleanPath.startsWith("/api")
+    ? `${baseUrl}${cleanPath.slice(4)}`
+    : `${baseUrl}${cleanPath}`;
+
+  const res = await fetch(targetUrl, {
     ...options,
     headers,
   });

@@ -7,11 +7,8 @@ export const APP_DESCRIPTION =
   'AI-Enabled Academic Profile Analytics for Evidence-Based Faculty Assessment'
 export const APP_TAGLINE = 'See the complete academic picture.'
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (typeof window !== 'undefined'
-    ? `${window.location.origin}/api`
-    : 'https://faculty360.vercel.app/api')
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'https://faculty360.vercel.app/api');
+export const API_BASE_URL = rawApiUrl.replace(/[\r\n\s]+/g, '').replace(/\/+$/, '');
 
 
 /** Source types supported by the platform */

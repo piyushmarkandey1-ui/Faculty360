@@ -104,32 +104,28 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
             "faculty_id": faculty_id,
             "source_type": "google_scholar",
             "external_id": scholar_id or "auto",
-            "profile_url": scholar_url or f"https://scholar.google.com/citations?view_op=search_authors&mauthors={canonical_name}",
-            "status": "active"
+            "profile_url": scholar_url or f"https://scholar.google.com/citations?view_op=search_authors&mauthors={canonical_name}"
         })
     if orcid_id or orcid_url:
         identities_to_insert.append({
             "faculty_id": faculty_id,
             "source_type": "orcid",
             "external_id": orcid_id or "auto",
-            "profile_url": orcid_url or f"https://orcid.org/orcid-search/search?searchQuery={canonical_name}",
-            "status": "active"
+            "profile_url": orcid_url or f"https://orcid.org/orcid-search/search?searchQuery={canonical_name}"
         })
     if researchgate_slug:
         identities_to_insert.append({
             "faculty_id": faculty_id,
             "source_type": "researchgate",
             "external_id": researchgate_slug,
-            "profile_url": f"https://www.researchgate.net/profile/{researchgate_slug}",
-            "status": "active"
+            "profile_url": f"https://www.researchgate.net/profile/{researchgate_slug}"
         })
     else:
         identities_to_insert.append({
             "faculty_id": faculty_id,
             "source_type": "institutional",
             "external_id": emp_id,
-            "profile_url": f"https://{institution_name.lower().replace(' ', '')}.edu/faculty/{emp_id}",
-            "status": "active"
+            "profile_url": f"https://{institution_name.lower().replace(' ', '')}.edu/faculty/{emp_id}"
         })
         
     if identities_to_insert:

@@ -35,9 +35,10 @@ async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] =
         }
 
     try:
+        secret = (settings.SUPABASE_JWT_SECRET or "").strip().strip('"').strip("'").strip()
         payload = jwt.decode(
             token,
-            settings.SUPABASE_JWT_SECRET,
+            secret,
             algorithms=["HS256"],
             options={"verify_aud": False},
         )

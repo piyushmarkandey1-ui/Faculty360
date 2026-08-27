@@ -30,11 +30,24 @@ class Settings(BaseSettings):
     ]
 
 
+    @classmethod
+    def sanitize_val(cls, val):
+        if isinstance(val, str):
+            val = val.strip().strip('"').strip("'").strip()
+        return val
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    def __init__(self, **values):
+        super().__init__(**values)
+        for field in ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET", "APIFY_API_TOKEN", "GEMINI_API_KEY"]:
+            val = getattr(self, field, "")
+            if isinstance(val, str):
+                setattr(self, field, val.strip().strip('"').strip("'").strip())
 
 
 settings = Settings()

@@ -9,7 +9,6 @@ import {
 } from 'recharts'
 import { ROUTES } from '@/lib/constants/routes'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
-import { MOCK_FACULTY_LIST } from '@/mock-data'
 import { Badge } from '@/components/ui/Badge'
 import { apiFetch } from '@/lib/api/client'
 

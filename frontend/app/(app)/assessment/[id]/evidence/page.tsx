@@ -1,23 +1,47 @@
 'use client'
 import { useState, useEffect } from 'react'
 
+import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowLeft, ChevronDown, ChevronRight, Activity, Database, ListChecks, FileText, FileSearch } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ROUTES } from '@/lib/constants/routes'
+import { apiFetch } from '@/lib/api/client'
 
-export default function EvidencePage({ params }: { params: { id: string } }) {
-  useEffect(() => {
-    import('@/lib/api/client').then(({ apiFetch }) => {
-      // Assuming params.id is the faculty ID here as they correspond 1-1 right now in our UI routes
-      apiFetch(`/faculty/${params.id}/assessment`).then((data: any) => {
-        if(data) setAssessment(data)
-      }).catch(console.error)
-    })
-  }, [params.id])
+export default function EvidencePage() {
+  const routeParams = useParams()
+  const assessmentId = (routeParams?.id as string) || ''
+
   const [assessment, setAssessment] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!assessmentId) return
+    let isMounted = true
+    setLoading(true)
+
+    // Check if assessmentId is an assessment ID or faculty ID
+    apiFetch(`/faculty/${assessmentId}/assessment`)
+      .then((data: any) => {
+        if (isMounted && data) setAssessment(data)
+      })
+      .catch(() => {
+        // Fallback: try direct assessment fetch
+        apiFetch(`/api/assessments`)
+          .then((res: any) => {
+            const found = res?.items?.find((a: any) => a.id === assessmentId)
+            if (isMounted && found) setAssessment(found)
+          })
+          .catch(() => {})
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+
+    return () => { isMounted = false }
+  }, [assessmentId])
 
   // Manage expansion state of levels (1 to 5)
   const [expandedLevels, setExpandedLevels] = useState<Record<number, boolean>>({
@@ -40,7 +64,7 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
         <EmptyState
           icon={FileSearch}
           title="Assessment Not Found"
-          description={`No assessment record exists for ID "${params.id}". It may have been deleted or the link is incorrect.`}
+          description={`No assessment record exists for ID "${assessmentId}". It may have been deleted or the link is incorrect.`}
           action={{ label: 'Back to Assessments', onClick: () => window.history.back() }}
         />
       </div>
@@ -48,13 +72,13 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
   }
 
   // Example subset of rules for visual
-  const pubKpi = assessment.kpi_scores.find((k: any) => k.category === 'research_output') ?? assessment.kpi_scores[0]
+  const pubKpi = assessment.kpi_scores?.find((k: any) => k.category === 'research_output') ?? assessment.kpi_scores?.[0]
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div>
-        <Link href={ROUTES.faculty.assessment(assessment.faculty_id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <Link href={ROUTES.faculty.assessment(assessment.faculty_id || assessmentId)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} className="mr-1" /> Back to Assessment
         </Link>
         <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Evidence Trail</h1>
@@ -65,7 +89,7 @@ export default function EvidencePage({ params }: { params: { id: string } }) {
           <ChevronRight size={14} />
           <span>Faculty</span>
           <ChevronRight size={14} />
-          <span>Assessment #{params.id}</span>
+          <span>Assessment #{assessmentId.slice(0, 8)}</span>
           <ChevronRight size={14} />
           <span style={{ color: 'var(--text-primary)' }}>Evidence</span>
         </div>

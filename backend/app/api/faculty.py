@@ -147,7 +147,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
                 s2_id=s2_id,
                 scholar_id=scholar_id
             ),
-            timeout=4.5
+            timeout=6.0
         )
     except Exception as e:
         # If timeout or error, continue gracefully
@@ -340,14 +340,42 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
         "source_coverage": {"google_scholar": False, "orcid": False, "researchgate": False, "institutional": False}
     }
     
-    pubs_count_res = supabase.table("publications").select("id", count="exact").eq("faculty_id", faculty_id).execute()
+    # Publications and citation metrics
+    pubs_res = supabase.table("publications").select("id, citation_count").eq("faculty_id", faculty_id).execute()
+    pubs_data = pubs_res.data or []
+    publications_count = len(pubs_data)
+    total_citations = sum(p.get("citation_count") or 0 for p in pubs_data)
+    
+    # Calculate real h-index from publications citations
+    sorted_citations = sorted([p.get("citation_count") or 0 for p in pubs_data], reverse=True)
+    h_index = 0
+    for idx, c in enumerate(sorted_citations):
+        if c >= idx + 1:
+            h_index = idx + 1
+        else:
+            break
+            
+    # Institutional records (projects, mentoring/students)
+    inst_records_res = supabase.table("institutional_records").select("id, category").eq("faculty_id", faculty_id).execute()
+    inst_records = inst_records_res.data or []
+    projects_count = sum(1 for r in inst_records if r.get("category") in ("Projects", "Innovation"))
+    students_count = sum(1 for r in inst_records if r.get("category") == "Mentoring")
+    
+    # Academic identities
+    identities_res = supabase.table("academic_identities").select("*").eq("faculty_id", faculty_id).execute()
+    identities = identities_res.data or []
     
     assess_res = supabase.table("assessments").select("id, total_score, completeness_score, confidence_score, status, assessed_at").eq("faculty_id", faculty_id).eq("status", "approved").order("created_at", desc=True).limit(1).execute()
     
     return {
         "entity": entity,
         "unified_profile": unified_profile,
-        "publications_count": pubs_count_res.count or 0,
+        "publications_count": publications_count,
+        "total_citations": total_citations,
+        "h_index": h_index,
+        "projects_count": projects_count,
+        "students_count": students_count,
+        "identities": identities,
         "latest_assessment": assess_res.data[0] if assess_res.data else None
     }
 

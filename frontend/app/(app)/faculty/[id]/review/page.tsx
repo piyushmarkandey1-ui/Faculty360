@@ -3,29 +3,30 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, GitMerge, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SourceBadge } from '@/components/ui/SourceBadge'
 import { ROUTES } from '@/lib/constants/routes'
 import { apiFetch } from '@/lib/api/client'
 
-export default function FacultyReviewPage({ params }: { params: { id: string } }) {
+export default function FacultyReviewPage() {
+  const routeParams = useParams()
+  const facultyId = (routeParams?.id as string) || ''
+
   const [profile, setProfile] = useState<any>(null)
   const [conflicts, setConflicts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [duplicates, setDuplicates] = useState([
-    { id: 'dup1', title1: 'Deep Learning for Medical Image Analysis', title2: 'Deep Learning in Medical Imaging', venue: 'IEEE TMI 2024', status: 'UNRESOLVED' },
-    { id: 'dup2', title1: 'A Survey on Edge Computing', title2: 'Survey: Edge Computing Architectures', venue: 'ACM Computing Surveys', status: 'UNRESOLVED' },
-    { id: 'dup3', title1: 'Robust Reinforcement Learning', title2: 'Robust RL for Robotics', venue: 'NeurIPS 2023', status: 'UNRESOLVED' }
-  ])
+  const [duplicates, setDuplicates] = useState<any[]>([])
 
   useEffect(() => {
+    if (!facultyId) return
     async function loadData() {
       try {
         setLoading(true)
         const [facRes, confRes] = await Promise.all([
-          apiFetch<any>(`/faculty/${params.id}`).catch(() => null),
-          apiFetch<any>(`/faculty/${params.id}/conflicts`).catch(() => ({ items: [] }))
+          apiFetch<any>(`/faculty/${facultyId}`).catch(() => null),
+          apiFetch<any>(`/faculty/${facultyId}/conflicts`).catch(() => ({ items: [] }))
         ])
         if (facRes) setProfile(facRes)
         if (confRes?.items) setConflicts(confRes.items)
@@ -36,11 +37,11 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
       }
     }
     loadData()
-  }, [params.id])
+  }, [facultyId])
 
   const resolveConflict = async (id: string, resolution: 'source_a' | 'source_b' = 'source_a') => {
     try {
-      await apiFetch(`/faculty/${params.id}/conflicts/${id}`, {
+      await apiFetch(`/faculty/${facultyId}/conflicts/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ resolution })
       })
@@ -54,7 +55,7 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
 
   const resolveDuplicate = async (id: string, action: 'merge' | 'separate' = 'merge') => {
     try {
-      await apiFetch(`/faculty/${params.id}/duplicates/resolve`, {
+      await apiFetch(`/faculty/${facultyId}/duplicates/resolve`, {
         method: 'POST',
         body: JSON.stringify({ publication_id: id, action })
       })
@@ -72,7 +73,7 @@ export default function FacultyReviewPage({ params }: { params: { id: string } }
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <Link href={ROUTES.faculty.profile(params.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <Link href={ROUTES.faculty.profile(facultyId)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} className="mr-1" /> Back to Profile
         </Link>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Data Review Hub</h1>

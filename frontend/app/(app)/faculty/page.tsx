@@ -30,7 +30,6 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { apiFetch } from '@/lib/api/client'
 import { formatRelativeTime } from '@/lib/utils/format'
-import { MOCK_FACULTY_LIST } from '@/mock-data'
 
 export default function FacultyDirectoryPage() {
   const [search, setSearch] = useState('')
@@ -46,14 +45,14 @@ export default function FacultyDirectoryPage() {
       try {
         setLoading(true)
         const res: any = await apiFetch('/faculty')
-        if (res && res.items && res.items.length > 0) {
+        if (res && res.items) {
           setFacultyList(res.items)
         } else {
-          setFacultyList(MOCK_FACULTY_LIST)
+          setFacultyList([])
         }
       } catch (err) {
-        console.warn('API fetch fallback to local seed data:', err)
-        setFacultyList(MOCK_FACULTY_LIST)
+        console.error('Failed to load faculty directory:', err)
+        setFacultyList([])
       } finally {
         setLoading(false)
       }
@@ -325,7 +324,7 @@ export default function FacultyDirectoryPage() {
                           <div className="text-xs text-[var(--text-muted)] mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <span className="flex items-center gap-1 text-[var(--text-secondary)] font-medium">
                               <Building2 size={12} className="text-[var(--text-muted)]" />
-                              {fac.institution || 'NIT Warangal'}
+                              {fac.institution || 'Academic Institution'}
                             </span>
                             <span>•</span>
                             <span>{fac.department}</span>
@@ -490,7 +489,7 @@ export default function FacultyDirectoryPage() {
                     </p>
                     <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] mt-1 font-semibold">
                       <Building2 size={13} />
-                      <span>{previewFaculty.institution || 'NIT Warangal (Current Workplace)'}</span>
+                      <span>{previewFaculty.institution || 'Academic Institution'}</span>
                     </div>
                   </div>
                 </div>
@@ -543,7 +542,7 @@ export default function FacultyDirectoryPage() {
                   <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
                     <span className="text-[var(--text-muted)] font-medium">Current Working Place</span>
                     <span className="text-[var(--text-primary)] font-semibold">
-                      {previewFaculty.institution || 'NIT Warangal'}
+                      {previewFaculty.institution || 'Academic Institution'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">

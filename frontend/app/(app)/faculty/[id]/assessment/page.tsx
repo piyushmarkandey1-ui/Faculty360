@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { ArrowLeft, Sparkles, FileSearch, Loader2 } from 'lucide-react'
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer 
@@ -13,11 +14,13 @@ import { ParameterBar } from '@/components/ui/ParameterBar'
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge'
 import { HistoricalTrends } from '@/components/ui/HistoricalTrends'
 import { ROUTES } from '@/lib/constants/routes'
-import { MOCK_FACULTY_PROFILES } from '@/mock-data'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { apiFetch } from '@/lib/api/client'
 
-export default function FacultyAssessmentPage({ params }: { params: { id: string } }) {
+export default function FacultyAssessmentPage() {
+  const routeParams = useParams()
+  const facultyId = (routeParams?.id as string) || ''
+
   const [isClient, setIsClient] = useState(false)
   const [assessment, setAssessment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -25,10 +28,11 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
   const loadAssessment = async () => {
+    if (!facultyId) return
     setLoading(true)
     setErrorMsg(null)
     try {
-      const res = await apiFetch('/faculty/' + params.id + '/assessment')
+      const res = await apiFetch('/faculty/' + facultyId + '/assessment')
       setAssessment(res)
     } catch (err: any) {
       if (err.status !== 404) {
@@ -41,14 +45,17 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
 
   useEffect(() => {
     setIsClient(true)
-    loadAssessment()
-  }, [params.id])
+    if (facultyId) {
+      loadAssessment()
+    }
+  }, [facultyId])
 
   const handleRunAssessment = async () => {
+    if (!facultyId) return
     setCalculating(true)
     setErrorMsg(null)
     try {
-      const res = await apiFetch('/faculty/' + params.id + '/assessment/calculate', { method: 'POST' })
+      const res = await apiFetch('/faculty/' + facultyId + '/assessment/calculate', { method: 'POST' })
       // The API returns the calculated assessment summary, but we need the full assessment to render the UI
       // so we just reload it.
       await loadAssessment()
@@ -58,8 +65,6 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
       setCalculating(false)
     }
   }
-
-  const profile = MOCK_FACULTY_PROFILES[params.id] || MOCK_FACULTY_PROFILES['faculty-001']
 
   // Format data for radar chart
   const radarData = assessment?.kpi_scores?.map((kpi: any) => ({
@@ -72,7 +77,7 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Back link */}
       <div>
-        <Link href={ROUTES.faculty.profile(params.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <Link href={ROUTES.faculty.profile(facultyId)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} className="mr-1" /> Back to Profile
         </Link>
       </div>
@@ -128,7 +133,7 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
               try {
                 // @ts-ignore (we'll import this above)
                 const { apiFetch } = await import('@/lib/api/client');
-                const insights = await apiFetch('/faculty/' + params.id + '/insights', { method: 'POST' });
+                const insights = await apiFetch('/faculty/' + facultyId + '/insights', { method: 'POST' });
                 setAssessment({ ...assessment, ai_insights: insights });
               } catch (e) {
                 console.error(e);
@@ -261,7 +266,7 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
       )}
 
         {/* Historical Trends */}
-        <HistoricalTrends facultyId={params.id} />
+        <HistoricalTrends facultyId={facultyId} />
 
       {/* Breakdown Section */}
       {assessment && (

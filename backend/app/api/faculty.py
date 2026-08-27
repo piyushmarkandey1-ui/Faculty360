@@ -132,7 +132,6 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
         baseline_assessment = {
             "faculty_id": faculty_id,
             "total_score": 88.5,
-            "completeness_score": 90.0,
             "confidence_score": 95.0,
             "status": "approved",
             "evidence_count": len(identities_to_insert) + 5
@@ -370,7 +369,7 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
     identities_res = supabase.table("academic_identities").select("*").eq("faculty_id", faculty_id).execute()
     identities = identities_res.data or []
     
-    assess_res = supabase.table("assessments").select("id, total_score, completeness_score, confidence_score, status, assessed_at").eq("faculty_id", faculty_id).eq("status", "approved").order("created_at", desc=True).limit(1).execute()
+    assess_res = supabase.table("assessments").select("id, total_score, confidence_score, status, created_at").eq("faculty_id", faculty_id).eq("status", "approved").order("created_at", desc=True).limit(1).execute()
     
     return {
         "entity": entity,

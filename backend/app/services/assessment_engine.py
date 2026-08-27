@@ -243,16 +243,20 @@ def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
         "framework_id": framework["id"],
         "total_score": round(total_score, 2),
         "confidence_score": round(confidence, 2),
-        "completeness_score": round(completeness, 2),
         "status": "approved",
         "evidence_count": evidence_count,
         "missing_evidence_count": missing_evidence_count,
         "analytics": analytics
     }
     
-    # Do not attempt to update status to 'archived' as it violates assessments_status_check constraint
     res = supabase.table("assessments").insert(assessment_record).execute()
     assessment_id = res.data[0]["id"]
+    
+    # Update faculty table completeness score
+    try:
+        supabase.table("faculty").update({"completeness_score": int(completeness)}).eq("id", faculty_id).execute()
+    except Exception:
+        pass
     
     kpi_inserts = []
     for p in parameter_scores:

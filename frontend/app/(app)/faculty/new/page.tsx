@@ -471,7 +471,7 @@ export default function NewFacultyPage() {
                             <Button
                               variant="secondary"
                               size="sm"
-                              onClick={() => router.push(ROUTES.faculty.detail(existingId))}
+                              onClick={() => router.push(ROUTES.faculty.profile(existingId))}
                               className="font-semibold text-xs px-4 py-2 rounded-xl shadow-sm gap-1.5 min-w-[120px] border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 dark:text-emerald-400"
                             >
                               <CheckCircle2 size={14} className="text-emerald-500" />

@@ -17,10 +17,11 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     if not canonical_name:
         raise HTTPException(status_code=400, detail="Faculty name is required")
         
+    import uuid
     department = payload.get("department") or "Computer Science & Engineering"
     designation = payload.get("designation") or "Professor / Researcher"
-    email = payload.get("email") or payload.get("canonical_email") or ""
-    emp_id = payload.get("empId") or payload.get("employee_id") or ""
+    email = payload.get("email") or payload.get("canonical_email") or f"{canonical_name.lower().replace(' ', '.')}@academic.edu"
+    emp_id = payload.get("empId") or payload.get("employee_id") or f"FAC-{uuid.uuid4().hex[:6].upper()}"
     institution_name = payload.get("institution") or payload.get("affiliation") or "Academic Institution"
     topics = payload.get("topics") or []
     
@@ -75,7 +76,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     }
     supabase.table("unified_profiles").insert(unified_profile).execute()
     
-    # Insert academic identities
+    # Insert academic identities (only schema-supported source types: google_scholar, orcid, researchgate, institutional)
     identities_to_insert = []
     if scholar_id or scholar_url:
         identities_to_insert.append({
@@ -91,19 +92,12 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
             "external_id": orcid_id,
             "profile_url": orcid_url or f"https://orcid.org/{orcid_id}"
         })
-    if s2_id or s2_url:
+    if researchgate_slug:
         identities_to_insert.append({
             "faculty_id": faculty_id,
-            "source_type": "semantic_scholar",
-            "external_id": s2_id or canonical_name,
-            "profile_url": s2_url or f"https://www.semanticscholar.org/author/{s2_id}"
-        })
-    if dblp_url:
-        identities_to_insert.append({
-            "faculty_id": faculty_id,
-            "source_type": "dblp",
-            "external_id": canonical_name,
-            "profile_url": dblp_url
+            "source_type": "researchgate",
+            "external_id": researchgate_slug,
+            "profile_url": f"https://www.researchgate.net/profile/{researchgate_slug}"
         })
         
     if identities_to_insert:
@@ -123,14 +117,21 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     except Exception:
         pass
 
-    # Background auto-sync publications from OpenAlex / Semantic Scholar
-    asyncio.create_task(auto_sync_faculty_publications(
-        faculty_id=faculty_id,
-        name=canonical_name,
-        orcid_id=orcid_id,
-        s2_id=s2_id,
-        scholar_id=scholar_id
-    ))
+    # Auto-sync publications from OpenAlex & Semantic Scholar
+    try:
+        await asyncio.wait_for(
+            auto_sync_faculty_publications(
+                faculty_id=faculty_id,
+                name=canonical_name,
+                orcid_id=orcid_id,
+                s2_id=s2_id,
+                scholar_id=scholar_id
+            ),
+            timeout=4.5
+        )
+    except Exception as e:
+        # If timeout or error, continue gracefully
+        pass
 
     log_audit("CREATE_FACULTY", "faculty", faculty_id, "SUCCESS", user.get("sub"))
     return new_faculty

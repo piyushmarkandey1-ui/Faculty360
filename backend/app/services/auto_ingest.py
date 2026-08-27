@@ -1,33 +1,53 @@
 import asyncio
 import httpx
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.core.supabase import get_supabase_admin
 from app.services.normalization import normalize_title, normalize_doi
 
 logger = logging.getLogger(__name__)
 
-async def auto_sync_faculty_publications(faculty_id: str, name: str, orcid_id: str = None, s2_id: str = None, scholar_id: str = None):
+async def auto_sync_faculty_publications(
+    faculty_id: str,
+    name: str,
+    orcid_id: Optional[str] = None,
+    s2_id: Optional[str] = None,
+    scholar_id: Optional[str] = None
+):
     """
-    Automatically fetches and stores real publications for a newly imported faculty profile
-    from OpenAlex and Semantic Scholar.
+    Rapidly and concurrently fetches and stores real publications for a newly imported faculty profile
+    from OpenAlex and Semantic Scholar into Supabase.
     """
     supabase = get_supabase_admin()
     pubs_to_insert = []
     sources_to_insert = []
     seen_titles = set()
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        # 1. Fetch from OpenAlex by ORCID or Name
-        try:
-            if orcid_id:
-                oa_url = f"https://api.openalex.org/works?filter=author.orcid:{orcid_id}&per_page=15"
-            else:
-                oa_url = f"https://api.openalex.org/works?search={name}&per_page=15"
-            
-            resp = await client.get(oa_url, headers={"User-Agent": "mailto:admin@faculty360.edu"})
-            if resp.status_code == 200:
-                data = resp.json()
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        tasks = []
+
+        # OpenAlex task
+        if orcid_id:
+            oa_url = f"https://api.openalex.org/works?filter=author.orcid:{orcid_id}&per_page=20"
+        else:
+            oa_url = f"https://api.openalex.org/works?search={name}&per_page=20"
+        tasks.append(client.get(oa_url, headers={"User-Agent": "mailto:admin@faculty360.edu"}))
+
+        # Semantic Scholar task
+        if s2_id:
+            s2_url = f"https://api.semanticscholar.org/graph/v1/author/{s2_id}/papers?fields=title,year,venue,citationCount,externalIds&limit=15"
+            tasks.append(client.get(s2_url))
+
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for resp in responses:
+            if isinstance(resp, Exception) or resp.status_code != 200:
+                continue
+
+            data = resp.json()
+
+            # OpenAlex format
+            if "results" in data:
                 for work in data.get("results", []):
                     title = (work.get("title") or "").strip()
                     if not title or title.lower() in seen_titles:
@@ -41,59 +61,47 @@ async def auto_sync_faculty_publications(faculty_id: str, name: str, orcid_id: s
                     src = loc.get("source") or {}
                     venue = src.get("display_name") or "Journal / Conference"
 
-                    norm_t = normalize_title(title)
-                    norm_d = normalize_doi(doi)
-
                     pubs_to_insert.append({
                         "faculty_id": faculty_id,
                         "title": title,
-                        "normalized_title": norm_t,
+                        "normalized_title": normalize_title(title),
                         "year": year,
                         "venue": venue,
-                        "doi": norm_d,
+                        "doi": normalize_doi(doi),
                         "citation_count": cits,
                         "source_type": "openalex",
                         "is_verified": True,
                         "dedup_status": "unique",
                         "confidence": 98.0
                     })
-        except Exception as e:
-            logger.warning(f"Auto-sync OpenAlex failed for {name}: {e}")
 
-        # 2. If needed, supplement with Semantic Scholar author papers
-        if len(pubs_to_insert) < 5 and s2_id:
-            try:
-                s2_url = f"https://api.semanticscholar.org/graph/v1/author/{s2_id}/papers?fields=title,year,venue,citationCount,externalIds&limit=10"
-                s2_resp = await client.get(s2_url)
-                if s2_resp.status_code == 200:
-                    s2_data = s2_resp.json()
-                    for p in s2_data.get("data", []):
-                        title = (p.get("title") or "").strip()
-                        if not title or title.lower() in seen_titles:
-                            continue
-                        seen_titles.add(title.lower())
+            # Semantic Scholar format
+            elif "data" in data:
+                for p in data.get("data", []):
+                    title = (p.get("title") or "").strip()
+                    if not title or title.lower() in seen_titles:
+                        continue
+                    seen_titles.add(title.lower())
 
-                        year = p.get("year")
-                        cits = p.get("citationCount", 0) or 0
-                        venue = p.get("venue") or "Academic Proceedings"
-                        ext_ids = p.get("externalIds") or {}
-                        doi = ext_ids.get("DOI")
+                    year = p.get("year")
+                    cits = p.get("citationCount", 0) or 0
+                    venue = p.get("venue") or "Academic Proceedings"
+                    ext_ids = p.get("externalIds") or {}
+                    doi = ext_ids.get("DOI")
 
-                        pubs_to_insert.append({
-                            "faculty_id": faculty_id,
-                            "title": title,
-                            "normalized_title": normalize_title(title),
-                            "year": year,
-                            "venue": venue,
-                            "doi": normalize_doi(doi),
-                            "citation_count": cits,
-                            "source_type": "semantic_scholar",
-                            "is_verified": True,
-                            "dedup_status": "unique",
-                            "confidence": 95.0
-                        })
-            except Exception as e:
-                logger.warning(f"Auto-sync Semantic Scholar failed for {s2_id}: {e}")
+                    pubs_to_insert.append({
+                        "faculty_id": faculty_id,
+                        "title": title,
+                        "normalized_title": normalize_title(title),
+                        "year": year,
+                        "venue": venue,
+                        "doi": normalize_doi(doi),
+                        "citation_count": cits,
+                        "source_type": "semantic_scholar",
+                        "is_verified": True,
+                        "dedup_status": "unique",
+                        "confidence": 95.0
+                    })
 
     # Insert into Supabase
     if pubs_to_insert:

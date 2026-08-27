@@ -35,9 +35,29 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     dblp_url = payload.get("dblp_url") or ""
     researchgate_slug = payload.get("researchgateSlug") or payload.get("researchgate_slug") or ""
     
-    # Get institution_id from user or default to first institution
-    inst_res = supabase.table("institutions").select("id").limit(1).execute()
-    institution_id = inst_res.data[0]["id"] if inst_res.data else "00000000-0000-0000-0000-000000000001"
+    # Find or create institution by name so each professor gets the correct institution_id
+    institution_id = None
+    if institution_name and institution_name not in ("Academic Institution", ""):
+        inst_lookup = supabase.table("institutions").select("id").ilike("name", institution_name).limit(1).execute()
+        if inst_lookup.data:
+            institution_id = inst_lookup.data[0]["id"]
+        else:
+            # Create a new institution record for this institution
+            try:
+                new_inst = supabase.table("institutions").insert({
+                    "name": institution_name,
+                    "code": institution_name[:20].upper().replace(" ", "_"),
+                    "city": "",
+                    "state": ""
+                }).execute()
+                institution_id = new_inst.data[0]["id"] if new_inst.data else None
+            except Exception:
+                pass
+    
+    # Fallback: use the first institution in the DB if we still don't have one
+    if not institution_id:
+        inst_res = supabase.table("institutions").select("id").limit(1).execute()
+        institution_id = inst_res.data[0]["id"] if inst_res.data else "00000000-0000-0000-0000-000000000001"
 
     faculty_record = {
         "institution_id": institution_id,
@@ -260,7 +280,7 @@ async def resolve_duplicate_publication(
 async def get_all_faculty(user: dict = Depends(get_current_user)):
     from app.core.supabase import get_supabase_admin
     supabase = get_supabase_admin()
-    res = supabase.table("faculty").select("*, unified_profiles(source_coverage)").order("created_at", desc=True).execute()
+    res = supabase.table("faculty").select("*, unified_profiles(source_coverage), institutions(id, name)").order("created_at", desc=True).execute()
     
     items = []
     for f in (res.data or []):
@@ -269,6 +289,9 @@ async def get_all_faculty(user: dict = Depends(get_current_user)):
             up = up[0]
         sc = up.get("source_coverage") if isinstance(up, dict) else {}
         f["source_coverage"] = sc or {"google_scholar": False, "orcid": False, "researchgate": False, "institutional": False}
+        # Flatten institution name
+        inst = f.get("institutions") or {}
+        f["institution"] = inst.get("name") or ""
         items.append(f)
         
     return {"items": items}
@@ -300,9 +323,14 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
     from app.core.supabase import get_supabase_admin
     supabase = get_supabase_admin()
     
-    fac_res = supabase.table("faculty").select("*").eq("id", faculty_id).single().execute()
+    fac_res = supabase.table("faculty").select("*, institutions(id, name)").eq("id", faculty_id).single().execute()
     if not fac_res.data:
         raise HTTPException(status_code=404, detail="Faculty not found")
+    
+    entity = fac_res.data
+    # Flatten institution name into the entity for easy frontend consumption
+    inst = entity.get("institutions") or {}
+    entity["institution"] = inst.get("name") or ""
         
     profile_res = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
     unified_profile = profile_res.data[0] if profile_res.data else {
@@ -317,7 +345,7 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
     assess_res = supabase.table("assessments").select("id, total_score, completeness_score, confidence_score, status, assessed_at").eq("faculty_id", faculty_id).eq("status", "approved").order("created_at", desc=True).limit(1).execute()
     
     return {
-        "entity": fac_res.data,
+        "entity": entity,
         "unified_profile": unified_profile,
         "publications_count": pubs_count_res.count or 0,
         "latest_assessment": assess_res.data[0] if assess_res.data else None

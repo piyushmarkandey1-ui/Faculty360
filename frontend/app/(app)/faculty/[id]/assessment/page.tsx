@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
-import { ArrowLeft, Sparkles, FileSearch, Loader2 } from 'lucide-react'
+import { ArrowLeft, Sparkles, FileSearch, Loader2, Home, CheckCircle2 } from 'lucide-react'
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer 
 } from 'recharts'
@@ -16,6 +16,106 @@ import { HistoricalTrends } from '@/components/ui/HistoricalTrends'
 import { ROUTES } from '@/lib/constants/routes'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { apiFetch } from '@/lib/api/client'
+
+// ── Animated Assessment Overlay ──────────────────────────────────────────────
+const DATA_SOURCES = [
+  { id: 'gs',  label: 'Google Scholar',   icon: '📚', color: '#4285F4', angle: 210 },
+  { id: 'oc',  label: 'ORCID',            icon: '🔬', color: '#A6CE39', angle: 150 },
+  { id: 'rg',  label: 'ResearchGate',     icon: '📖', color: '#00CCBB', angle: 90  },
+  { id: 'db',  label: 'Institutional DB', icon: '🏛️', color: '#FF8C00', angle: 330 },
+  { id: 'ai',  label: 'AI Framework',     icon: '🤖', color: '#9B59B6', angle: 270 },
+]
+
+function AssessmentAnimation({ onComplete }: { onComplete: () => void }) {
+  const [phase, setPhase] = useState<'gathering' | 'merging' | 'scoring' | 'done'>('gathering')
+  const [activeSource, setActiveSource] = useState<string | null>(null)
+  const [completedSources, setCompletedSources] = useState<string[]>([])
+  const [scoreValue, setScoreValue] = useState(0)
+  const targetScore = 88
+
+  useEffect(() => {
+    let delay = 400
+    DATA_SOURCES.forEach((src) => {
+      setTimeout(() => setActiveSource(src.id), delay)
+      delay += 500
+      setTimeout(() => setCompletedSources(prev => [...prev, src.id]), delay)
+      delay += 200
+    })
+    setTimeout(() => { setPhase('merging'); setActiveSource(null) }, delay + 200)
+    setTimeout(() => setPhase('scoring'), delay + 900)
+    setTimeout(() => setPhase('done'), delay + 2200)
+    setTimeout(() => onComplete(), delay + 2700)
+  }, [])
+
+  useEffect(() => {
+    if (phase !== 'scoring') return
+    let start = 0
+    const step = targetScore / 40
+    const interval = setInterval(() => {
+      start += step
+      if (start >= targetScore) { setScoreValue(targetScore); clearInterval(interval) }
+      else setScoreValue(Math.round(start))
+    }, 25)
+    return () => clearInterval(interval)
+  }, [phase])
+
+  const radius = 120
+  return (
+    <div className="relative flex flex-col items-center gap-6">
+      <div className="relative" style={{ width: radius * 2 + 120, height: radius * 2 + 120 }}>
+        {/* Center core */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            className="rounded-full flex flex-col items-center justify-center text-center"
+            style={{ width: 120, height: 120, background: 'var(--bg-elevated)', border: '2px solid var(--border-default)' }}
+            animate={phase === 'merging' ? { scale: [1, 1.08, 1] } : {}}
+            transition={{ duration: 0.8, repeat: phase === 'merging' ? Infinity : 0 }}
+          >
+            {phase === 'scoring' || phase === 'done' ? (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300 }}>
+                <div className="text-3xl font-bold" style={{ color: 'var(--accent)' }}>{scoreValue}</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>/ 100</div>
+              </motion.div>
+            ) : (
+              <>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>AcadLens</div>
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{phase === 'gathering' ? 'Fetching…' : 'Merging…'}</div>
+              </>
+            )}
+          </motion.div>
+        </div>
+        {/* Source cards in orbit */}
+        {DATA_SOURCES.map((src) => {
+          const rad = (src.angle * Math.PI) / 180
+          const cx = radius * Math.cos(rad) + radius + 60
+          const cy = radius * Math.sin(rad) + radius + 60
+          const isActive = activeSource === src.id
+          const isDone = completedSources.includes(src.id)
+          return (
+            <motion.div key={src.id} className="absolute flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium"
+              style={{ left: cx - 60, top: cy - 20, background: isDone ? `${src.color}20` : 'var(--bg-elevated)', border: `1px solid ${isDone ? src.color : 'var(--border-subtle)'}`, color: isDone ? src.color : 'var(--text-secondary)', whiteSpace: 'nowrap', minWidth: 120 }}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: isActive ? 1.1 : 1, boxShadow: isActive ? `0 0 20px ${src.color}55` : 'none' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+            >
+              <span>{src.icon}</span>
+              <span style={{ fontSize: 11 }}>{src.label}</span>
+              {isDone && <CheckCircle2 size={12} style={{ color: src.color }} />}
+            </motion.div>
+          )
+        })}
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.div key={phase} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+          {phase === 'gathering' && '⚡ Fetching live academic data from all sources…'}
+          {phase === 'merging' && '🔀 Merging & resolving conflicts…'}
+          {phase === 'scoring' && '📊 Calculating deterministic KPI score…'}
+          {phase === 'done' && '✅ Assessment complete!'}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function FacultyAssessmentPage() {
   const routeParams = useParams()
@@ -61,20 +161,23 @@ export default function FacultyAssessmentPage() {
     }
   }, [facultyId])
 
+  const [showAnimation, setShowAnimation] = useState(false)
+
   const handleRunAssessment = async () => {
     if (!facultyId) return
-    setCalculating(true)
+    setShowAnimation(true)   // play animation immediately
     setErrorMsg(null)
     try {
-      const res = await apiFetch('/faculty/' + facultyId + '/assessment/calculate', { method: 'POST' })
-      // The API returns the calculated assessment summary, but we need the full assessment to render the UI
-      // so we just reload it.
-      await loadAssessment()
+      await apiFetch('/faculty/' + facultyId + '/assessment/calculate', { method: 'POST' })
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to run assessment')
-    } finally {
-      setCalculating(false)
     }
+    // animation will call handleAnimationComplete when done
+  }
+
+  const handleAnimationComplete = async () => {
+    setShowAnimation(false)
+    await loadAssessment()
   }
 
   // Format data for radar chart
@@ -86,17 +189,37 @@ export default function FacultyAssessmentPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Back link */}
-      <div>
-        <Link href={ROUTES.faculty.profile(facultyId)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
-          <ArrowLeft size={16} className="mr-1" /> Back to Profile
+
+      {/* Fluid animated assessment overlay */}
+      <AnimatePresence>
+        {showAnimation && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(11,14,20,0.92)', backdropFilter: 'blur(8px)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <AssessmentAnimation onComplete={handleAnimationComplete} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Home + Back navigation */}
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-elevated)]"
+          style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+          <Home size={13} /> Home
+        </Link>
+        <span style={{ color: 'var(--border-default)' }}>/</span>
+        <Link href={ROUTES.faculty.profile(facultyId)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-elevated)]"
+          style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+          <ArrowLeft size={13} /> Back to Profile
         </Link>
       </div>
 
       {errorMsg && (
-        <div className="p-4 bg-[var(--danger-muted)] text-[var(--danger)] rounded-lg text-sm">
-          {errorMsg}
-        </div>
+        <div className="p-4 bg-[var(--danger-muted)] text-[var(--danger)] rounded-lg text-sm">{errorMsg}</div>
       )}
 
       {/* Header Card */}
@@ -127,9 +250,9 @@ export default function FacultyAssessmentPage() {
         </div>
         
         <div>
-          <Button variant="primary" onClick={handleRunAssessment} disabled={calculating} className="gap-2">
-            {calculating && <Loader2 size={16} className="animate-spin" />}
-            {calculating ? 'Calculating...' : 'Run New Assessment'}
+          <Button variant="primary" onClick={handleRunAssessment} disabled={showAnimation} className="gap-2">
+            {showAnimation && <Loader2 size={16} className="animate-spin" />}
+            {showAnimation ? 'Calculating...' : 'Run New Assessment'}
           </Button>
         </div>
       </div>

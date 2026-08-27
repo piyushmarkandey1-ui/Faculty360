@@ -28,18 +28,25 @@ export interface SourceState {
 export default function FacultyProfilePage({ params }: { params: { id: string } }) {
   useEffect(() => {
     import('@/lib/api/client').then(({ apiFetch }) => {
-      apiFetch(`/faculty/${params.id}`).then((data: any) => {
-        if(data && data.canonical_name) {
+      apiFetch<any>(`/faculty/${params.id}`).then((data: any) => {
+        if (data && data.entity) {
           setProfile((prev: any) => ({
-             ...prev, 
-             entity: data,
-             unified_profile: data
+            ...prev,
+            entity: data.entity,
+            unified_profile: {
+              ...data.unified_profile,
+              // Fallback display_name to canonical_name if unified_profile is sparse
+              display_name: data.unified_profile?.display_name || data.entity?.canonical_name || prev?.unified_profile?.display_name,
+              source_coverage: data.unified_profile?.source_coverage || prev?.unified_profile?.source_coverage
+            },
+            publications_count: data.publications_count ?? prev?.publications_count,
+            latest_assessment: data.latest_assessment ?? prev?.latest_assessment
           }))
         }
       }).catch(console.error)
       
-      apiFetch(`/faculty/${params.id}/publications`).then((data: any) => {
-        if(data && data.items && data.items.length > 0) {
+      apiFetch<any>(`/faculty/${params.id}/publications`).then((data: any) => {
+        if (data && data.items && data.items.length > 0) {
           setPublications(data.items)
         }
       }).catch(console.error)

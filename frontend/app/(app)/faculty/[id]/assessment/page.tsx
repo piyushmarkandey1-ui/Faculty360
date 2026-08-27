@@ -72,7 +72,7 @@ export default function FacultyAssessmentPage({ params }: { params: { id: string
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Back link */}
       <div>
-        <Link href={ROUTES.faculty.profile(profile.entity.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
+        <Link href={ROUTES.faculty.profile(params.id)} className="inline-flex items-center text-sm font-medium hover:underline mb-4" style={{ color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} className="mr-1" /> Back to Profile
         </Link>
       </div>

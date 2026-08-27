@@ -67,12 +67,14 @@ export default function NewFacultyPage() {
   const [createdFacultyId, setCreatedFacultyId] = useState<string | null>(null)
   const [createdFacultyName, setCreatedFacultyName] = useState<string>('')
   const [discoveredProfiles, setDiscoveredProfiles] = useState<DiscoveredProfile[]>([])
-  
+  // Map of canonical_name -> faculty id for already-added profiles
+  const [existingFacultyMap, setExistingFacultyMap] = useState<Record<string, string>>({})  
+
   const [formData, setFormData] = useState({
-    name: 'Nitin Jain',
+    name: '',
     email: '',
-    department: 'Computer Science',
-    designation: 'Assistant Professor',
+    department: '',
+    designation: '',
     institution: '',
     institutionUrl: '',
     empId: '',
@@ -86,16 +88,6 @@ export default function NewFacultyPage() {
     h_index: 0,
     avatar_url: ''
   })
-
-  // Quick Preset chips matching Google Scholar profile benchmarks
-  const PRESET_NAMES = [
-    { label: "Nitin Jain (DTU Denmark)", name: "Nitin Jain", inst: "Technical University of Denmark" },
-    { label: "Nitin Patwa (SP Jain)", name: "Nitin Patwa", inst: "SP Jain School of Global Management" },
-    { label: "Nitin Jain (Qorvo / 5G)", name: "Nitin Jain", inst: "Fellow, Qorvo" },
-    { label: "Nitin Jain (Gurgaon)", name: "Nitin Jain", inst: "Gurgaon" },
-    { label: "Dr. Rajesh Sharma (NITW)", name: "Rajesh Sharma", inst: "NIT Warangal" },
-    { label: "Prof. Yann LeCun (NYU)", name: "Yann LeCun", inst: "New York University" }
-  ]
 
   // Query live academic discovery backend
   const handleLiveDiscover = async (queryText: string, instFilter: string = '') => {
@@ -119,11 +111,22 @@ export default function NewFacultyPage() {
     }
   }
 
-  // Initial trigger for Nitin Jain + Debounced search on name change
+  // Load existing faculty names on mount to detect already-added profiles
   useEffect(() => {
-    handleLiveDiscover(formData.name, formData.institution)
+    apiFetch<{ items: Array<{ id: string; canonical_name: string }> }>('/faculty?limit=200')
+      .then(res => {
+        const map: Record<string, string> = {}
+        if (res?.items) {
+          res.items.forEach(f => {
+            if (f.canonical_name) map[f.canonical_name.toLowerCase().trim()] = f.id
+          })
+        }
+        setExistingFacultyMap(map)
+      })
+      .catch(() => {})
   }, [])
 
+  // Debounced search on name change
   useEffect(() => {
     const timer = setTimeout(() => {
       if (formData.name.trim().length >= 2) {
@@ -175,6 +178,11 @@ export default function NewFacultyPage() {
       if (res && res.id) {
         setCreatedFacultyId(res.id)
         setStep(4) // Move straight to completed view
+        // Mark profile as already-added so the button switches to "View Profile"
+        setExistingFacultyMap(prev => ({
+          ...prev,
+          [p.name.toLowerCase().trim()]: res.id
+        }))
       } else {
         throw new Error('Failed to create faculty profile record.')
       }
@@ -274,28 +282,6 @@ export default function NewFacultyPage() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Preset Chips */}
-              <div className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] space-y-2">
-                <div className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-blue-600" />
-                  Quick Academic Presets:
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_NAMES.map((preset, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        updateForm('name', preset.name)
-                        updateForm('institution', preset.inst)
-                        handleLiveDiscover(preset.name, preset.inst)
-                      }}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium border bg-[var(--bg-surface)] border-[var(--border-default)] hover:border-blue-500 hover:text-blue-600 transition-all text-[var(--text-primary)] shadow-2xs"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Search Bar */}
               <div className="space-y-2">
@@ -313,8 +299,9 @@ export default function NewFacultyPage() {
                     type="text" 
                     value={formData.name} 
                     onChange={e => updateForm('name', e.target.value)}
+                    autoFocus
                     className="w-full pl-11 pr-4 py-3 rounded-xl border bg-[var(--bg-base)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-blue-600 text-base shadow-xs"
-                    placeholder="e.g. Nitin Jain, Nitin Patwa, Rajesh Sharma, Yann LeCun"
+                    placeholder="e.g., Dilip Singh Sisodia, Shrish Verma, Yann LeCun..."
                   />
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 </div>
@@ -351,6 +338,7 @@ export default function NewFacultyPage() {
                   {discoveredProfiles.map((p, idx) => {
                     const profileKey = `${p.name}_${p.affiliation || p.institution || ''}`
                     const isAdding = addingProfileKey === profileKey
+                    const existingId = existingFacultyMap[p.name.toLowerCase().trim()]
 
                     return (
                       <motion.div
@@ -478,32 +466,47 @@ export default function NewFacultyPage() {
 
                         {/* Action Buttons on the Right */}
                         <div className="flex items-center sm:flex-col gap-2 shrink-0 self-end sm:self-center">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            disabled={isAdding || Boolean(addingProfileKey)}
-                            onClick={() => handleQuickAdd(p)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-sm gap-1.5 min-w-[110px]"
-                          >
-                            {isAdding ? (
-                              <>
-                                <Loader2 size={13} className="animate-spin" />
-                                Ingesting...
-                              </>
-                            ) : (
-                              <>
-                                <Plus size={15} />
-                                Add
-                              </>
-                            )}
-                          </Button>
-
-                          <button
-                            onClick={() => selectForCustomReview(p)}
-                            className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline transition-colors"
-                          >
-                            Edit details
-                          </button>
+                          {existingId ? (
+                            // Already in DB → show View Profile button
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => router.push(ROUTES.faculty.detail(existingId))}
+                              className="font-semibold text-xs px-4 py-2 rounded-xl shadow-sm gap-1.5 min-w-[120px] border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 dark:text-emerald-400"
+                            >
+                              <CheckCircle2 size={14} className="text-emerald-500" />
+                              View Profile
+                            </Button>
+                          ) : (
+                            // Not yet in DB → show Add button
+                            <>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={isAdding || Boolean(addingProfileKey)}
+                                onClick={() => handleQuickAdd(p)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-sm gap-1.5 min-w-[110px]"
+                              >
+                                {isAdding ? (
+                                  <>
+                                    <Loader2 size={13} className="animate-spin" />
+                                    Ingesting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus size={15} />
+                                    Add
+                                  </>
+                                )}
+                              </Button>
+                              <button
+                                onClick={() => selectForCustomReview(p)}
+                                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline transition-colors"
+                              >
+                                Edit details
+                              </button>
+                            </>
+                          )}
                         </div>
                       </motion.div>
                     )

@@ -243,6 +243,7 @@ def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
         "framework_id": framework["id"],
         "total_score": round(total_score, 2),
         "confidence_score": round(confidence, 2),
+        "completeness_score": round(completeness, 2),
         "status": "approved",
         "evidence_count": evidence_count,
         "missing_evidence_count": missing_evidence_count,

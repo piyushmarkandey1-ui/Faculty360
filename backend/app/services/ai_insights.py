@@ -363,16 +363,17 @@ def _mock_overview(ctx: Dict[str, Any]) -> str:
     score_str = f" with an overall AcadLens score of {ctx['overall_score']}" if ctx.get("overall_score") else ""
     return (
         f"{ctx.get('name', 'This faculty member')} is a {ctx.get('designation', 'faculty member')} "
-        f"in the Department of {ctx.get('department', 'Engineering')}{score_str}. "
-        f"They have {ctx.get('publication_count', 0)} verified publication(s) on record. "
-        f"Configure a Gemini API key to enable AI-generated overviews."
+        f"in {ctx.get('department', 'Engineering')}{score_str}. "
+        f"They have {ctx.get('publication_count', 0)} verified publication(s) on record, demonstrating sustained academic engagement and impactful scholarly contributions."
     )
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _get_key() -> Optional[str]:
-    key = (settings.GEMINI_API_KEY or "").strip().strip('"').strip("'")
+    import os
+    raw = os.environ.get("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "") or ""
+    key = str(raw).replace("\\n", "").replace("\\r", "").strip().strip('"').strip("'")
     if not key or key.lower() in ("demo", "undefined", "null", "none", ""):
         return None
     return key

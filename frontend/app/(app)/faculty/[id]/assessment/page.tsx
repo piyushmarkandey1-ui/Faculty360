@@ -547,19 +547,21 @@ export default function FacultyAssessmentPage() {
                   </div>
                   <ParameterBar 
                     label={kpi.rule_name || (
-                      {
-                        'res_publications': 'Publications',
-                        'res_citations': 'Citation Impact',
-                        'res_hindex': 'H-Index',
-                        'teach_load': 'Teaching Load',
-                        'teach_feedback': 'Student Feedback',
-                        'ment_phd': 'PhD Students',
-                        'ment_pg': 'PG Students',
-                        'inst_committee': 'Committee Work',
-                        'inst_admin': 'Administrative Roles',
-                        'innov_patents': 'Patents',
-                        'innov_startups': 'Startups & Tech Transfer',
-                      }[kpi.rule_id] || kpi.rule_id
+                      (
+                        {
+                          'res_publications': 'Publications',
+                          'res_citations': 'Citation Impact',
+                          'res_hindex': 'H-Index',
+                          'teach_load': 'Teaching Load',
+                          'teach_feedback': 'Student Feedback',
+                          'ment_phd': 'PhD Students',
+                          'ment_pg': 'PG Students',
+                          'inst_committee': 'Committee Work',
+                          'inst_admin': 'Administrative Roles',
+                          'innov_patents': 'Patents',
+                          'innov_startups': 'Startups & Tech Transfer',
+                        } as Record<string, string>
+                      )[String(kpi.rule_id)] || kpi.rule_id
                     )} 
                     score={kpi.status === 'SOURCE_UNAVAILABLE' ? 0 : kpi.computed_score} 
                     maxScore={kpi.max_score} 

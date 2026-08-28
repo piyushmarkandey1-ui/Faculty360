@@ -29,7 +29,7 @@ REQUIRED_KEYS = {
     "dataQualityObservations", "recommendedActions",
 }
 
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_ENDPOINT = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent"
@@ -167,7 +167,7 @@ async def _build_context(faculty_id: str, assessment: Dict[str, Any], supabase) 
 
     ident_res = (
         supabase.table("academic_identities")
-        .select("source, h_index, citation_count")
+        .select("*")
         .eq("faculty_id", faculty_id)
         .execute()
     )
@@ -207,10 +207,9 @@ async def _build_context(faculty_id: str, assessment: Dict[str, Any], supabase) 
         },
         "academic_identities": [
             {
-                "source": i.get("source"),
-                "h_index": i.get("h_index"),
-                "citations": i.get("citation_count"),
-                "evidence_status": "VERIFIED",
+                "source": i.get("source_type") or i.get("source"),
+                "profile_url": i.get("profile_url"),
+                "evidence_status": "VERIFIED" if i.get("is_verified") else "UNVERIFIED",
             }
             for i in identities
         ],
@@ -411,7 +410,7 @@ async def generate_framework_suggestions(config: dict) -> list:
     try:
         async with httpx.AsyncClient(timeout=25.0) as client:
             resp = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.GEMINI_API_KEY}",
+                f"{GEMINI_ENDPOINT}?key={settings.GEMINI_API_KEY}",
                 headers={"Content-Type": "application/json"},
                 json={
                     "contents": [{"parts": [{"text": prompt}]}],

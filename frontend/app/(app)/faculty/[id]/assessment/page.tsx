@@ -134,7 +134,39 @@ export default function FacultyAssessmentPage() {
   const [loading, setLoading] = useState(true)
   const [calculating, setCalculating] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  
+
+  // ── AI Insights state ──────────────────────────────────────────────────────
+  const [aiInsights, setAiInsights] = useState<any>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+
+  const loadCachedInsights = async () => {
+    if (!facultyId || facultyId === 'undefined') return
+    try {
+      const cached = await apiFetch<any>(`/faculty/${facultyId}/insights`)
+      if (cached && Object.keys(cached).length > 0) {
+        setAiInsights(cached)
+      }
+    } catch {
+      // silently ignore — insights are optional
+    }
+  }
+
+  const generateInsights = async (force = false) => {
+    if (!facultyId) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const insights = await apiFetch<any>(`/faculty/${facultyId}/insights`, { method: 'POST' })
+      setAiInsights(insights)
+      setAssessment((prev: any) => prev ? { ...prev, ai_insights: insights } : prev)
+    } catch {
+      setAiError('AI insights temporarily unavailable. Deterministic scores are unaffected.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   const loadAssessment = async () => {
     if (!facultyId || facultyId === 'undefined') {
       setLoading(false)
@@ -143,8 +175,10 @@ export default function FacultyAssessmentPage() {
     setLoading(true)
     setErrorMsg(null)
     try {
-      const res = await apiFetch('/faculty/' + facultyId + '/assessment')
+      const res = await apiFetch<any>('/faculty/' + facultyId + '/assessment')
       setAssessment(res)
+      // Merge cached ai_insights from assessment row (may already be populated)
+      if (res?.ai_insights) setAiInsights(res.ai_insights)
     } catch (err: any) {
       if (err.status !== 404) {
         setErrorMsg('Failed to load assessment')
@@ -158,6 +192,7 @@ export default function FacultyAssessmentPage() {
     setIsClient(true)
     if (facultyId) {
       loadAssessment()
+      loadCachedInsights()
     }
   }, [facultyId])
 
@@ -180,14 +215,28 @@ export default function FacultyAssessmentPage() {
     await loadAssessment()
   }
 
-  // Format data for radar chart (only categories with connected data sources)
-  const radarData = assessment?.kpi_scores
-    ?.filter((kpi: any) => kpi.status !== 'SOURCE_UNAVAILABLE')
-    ?.map((kpi: any) => ({
-      subject: kpi.category,
-      A: kpi.computed_score,
-      fullMark: kpi.max_score,
-    })) || []
+  const radarData = (() => {
+    if (!assessment?.kpi_scores) return [];
+    
+    // Include all categories so the radar chart has a full shape (at least 3-4 axes)
+    const aggregated = assessment.kpi_scores.reduce((acc: any, kpi: any) => {
+      if (!acc[kpi.category]) {
+        acc[kpi.category] = { subject: kpi.category, A: 0, fullMark: 0 };
+      }
+      if (kpi.status !== 'SOURCE_UNAVAILABLE') {
+        acc[kpi.category].A += kpi.computed_score;
+        acc[kpi.category].fullMark += kpi.max_score;
+      }
+      return acc;
+    }, {});
+    
+    // Scale scores to 100 for the radar chart representation
+    return Object.values(aggregated).map((item: any) => ({
+      subject: item.subject,
+      A: item.fullMark > 0 ? (item.A / item.fullMark) * 100 : 0,
+      fullMark: 100,
+    }));
+  })();
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -259,84 +308,129 @@ export default function FacultyAssessmentPage() {
         </div>
       </div>
 
-      {/* AI Insights Banner */}
-      {assessment && !assessment.ai_insights && (
-        <div className="flex justify-end">
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={async () => {
-              try {
-                // @ts-ignore (we'll import this above)
-                const { apiFetch } = await import('@/lib/api/client');
-                const insights = await apiFetch('/faculty/' + facultyId + '/insights', { method: 'POST' });
-                setAssessment({ ...assessment, ai_insights: insights });
-              } catch (e) {
-                console.error(e);
-                setErrorMsg('AI Service currently unavailable.');
-              }
-            }}
-            className="gap-2"
-          >
-            <Sparkles size={14} style={{ color: 'var(--warning)' }} />
-            Generate AI Insights
-          </Button>
+      {/* ── Gemini AI Insights ─────────────────────────────────────────── */}
+      {assessment && (
+        <div>
+          {/* Generate / Refresh button row */}
+          {!aiInsights && !aiLoading && (
+            <div className="flex justify-end">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => generateInsights()}
+                className="gap-2"
+              >
+                <Sparkles size={14} style={{ color: 'var(--warning)' }} />
+                Generate Gemini AI Insight
+              </Button>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {aiLoading && (
+            <div className="flex items-center gap-3 px-5 py-4 rounded-xl border text-sm"
+              style={{ background: 'rgba(217,146,58,0.04)', borderColor: 'rgba(217,146,58,0.2)', color: 'var(--text-secondary)' }}>
+              <Loader2 size={16} className="animate-spin shrink-0" style={{ color: 'var(--warning)' }} />
+              Gemini is analysing verified assessment data…
+            </div>
+          )}
+
+          {/* Error state — never breaks the page */}
+          {aiError && !aiLoading && (
+            <div className="flex items-center justify-between px-5 py-3 rounded-xl border text-sm"
+              style={{ background: 'var(--danger-muted)', borderColor: 'var(--danger)', color: 'var(--danger)' }}>
+              <span>{aiError}</span>
+              <button onClick={() => setAiError(null)} className="ml-4 underline text-xs opacity-70">Dismiss</button>
+            </div>
+          )}
+
+          {/* Insights card */}
+          {aiInsights && !aiLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border overflow-hidden"
+              style={{ background: 'rgba(217,146,58,0.04)', borderColor: 'rgba(217,146,58,0.2)' }}
+            >
+              {/* Card header */}
+              <div className="px-5 py-4 border-b flex items-center justify-between"
+                style={{ borderColor: 'rgba(217,146,58,0.2)' }}>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="shrink-0" style={{ color: 'var(--warning)' }} size={18} />
+                  <span className="font-semibold text-sm" style={{ color: 'var(--warning)' }}>
+                    Gemini AI Insight
+                  </span>
+                  <Badge variant="warning" className="text-[10px] uppercase">Advisory Only</Badge>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => generateInsights(true)}
+                  className="gap-1.5 text-xs"
+                >
+                  <Loader2 size={12} />
+                  Refresh
+                </Button>
+              </div>
+
+              <div className="p-5 flex flex-col gap-5">
+                {/* Summary */}
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                  {aiInsights.summary}
+                </p>
+
+                {/* Key Insights + Recommended Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-[var(--text-secondary)]">Key Insights</h4>
+                    <ul className="text-sm space-y-1.5 list-disc pl-4 text-[var(--text-primary)]">
+                      {(aiInsights.keyInsights || []).map((ki: string, i: number) => <li key={i}>{ki}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-[var(--text-secondary)]">Recommended Actions</h4>
+                    <ul className="text-sm space-y-1.5 list-disc pl-4 text-[var(--text-primary)]">
+                      {(aiInsights.recommendedActions || []).map((ra: string, i: number) => <li key={i}>{ra}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Strengths / Improvements / Trend / Data Quality */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                  <div>
+                    <span className="text-xs font-bold uppercase block mb-1.5 text-[var(--success)]">Strengths</span>
+                    <ul className="text-xs space-y-1 text-[var(--text-secondary)] list-disc pl-3">
+                      {(aiInsights.strengths || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase block mb-1.5 text-[var(--warning)]">Improvement Areas</span>
+                    <ul className="text-xs space-y-1 text-[var(--text-secondary)] list-disc pl-3">
+                      {(aiInsights.improvementAreas || []).map((a: string, i: number) => <li key={i}>{a}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase block mb-1.5 text-[var(--accent)]">Trend</span>
+                    <p className="text-xs text-[var(--text-secondary)]">{aiInsights.trendSummary}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase block mb-1.5 text-[var(--text-muted)]">Data Quality</span>
+                    <ul className="text-xs space-y-1 text-[var(--text-secondary)] list-disc pl-3">
+                      {(aiInsights.dataQualityObservations || []).map((o: string, i: number) => <li key={i}>{o}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  Official scores are strictly computed by the deterministic AcadLens engine. Gemini AI is used only for interpretive summaries and cannot modify verified evaluation results.
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
       )}
 
-      {assessment?.ai_insights && (
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-xl border flex flex-col gap-4" 
-          style={{ background: 'rgba(217, 146, 58, 0.05)', borderColor: 'rgba(217, 146, 58, 0.2)' }}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="shrink-0" style={{ color: 'var(--warning)' }} size={20} />
-            <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--warning)' }}>
-              AI Interpretation
-              <Badge variant="warning" className="text-[10px] uppercase">Advisory Only</Badge>
-            </h3>
-          </div>
-          <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--text-primary)' }}>
-            {assessment.ai_insights.summary}
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-[var(--text-secondary)]">Key Insights</h4>
-              <ul className="text-sm space-y-2 list-disc pl-4 text-[var(--text-primary)]">
-                {assessment.ai_insights.keyInsights.map((ki: string, i: number) => <li key={i}>{ki}</li>)}
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-[var(--text-secondary)]">Recommended Actions</h4>
-              <ul className="text-sm space-y-2 list-disc pl-4 text-[var(--text-primary)]">
-                {assessment.ai_insights.recommendedActions.map((ra: string, i: number) => <li key={i}>{ra}</li>)}
-              </ul>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2 p-4 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-             <div>
-               <span className="text-xs font-semibold uppercase block mb-1 text-[var(--success)]">Strengths</span>
-               <p className="text-xs text-[var(--text-secondary)]">{assessment.ai_insights.strengthNarrative}</p>
-             </div>
-             <div>
-               <span className="text-xs font-semibold uppercase block mb-1 text-[var(--warning)]">Improvements</span>
-               <p className="text-xs text-[var(--text-secondary)]">{assessment.ai_insights.improvementNarrative}</p>
-             </div>
-             <div>
-               <span className="text-xs font-semibold uppercase block mb-1 text-[var(--accent)]">Trend</span>
-               <p className="text-xs text-[var(--text-secondary)]">{assessment.ai_insights.trendNarrative}</p>
-             </div>
-          </div>
-          
-          <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
-            Scores are strictly computed by rules. AI is used only for interpretive summaries and cannot modify verified evaluation results.
-          </p>
-        </motion.div>
-      )}
 
       {/* Analytics Insights */}
       {assessment?.analytics && (
@@ -416,7 +510,7 @@ export default function FacultyAssessmentPage() {
                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                     <PolarGrid stroke="var(--border-default)" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
-                    <Radar name="Score" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.3} />
+                    <Radar name="Score" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.3} dot={{ r: 4, fill: "var(--accent)" }} />
                   </RadarChart>
                 </ResponsiveContainer>
               )}
@@ -432,7 +526,7 @@ export default function FacultyAssessmentPage() {
                 <div key={kpi.id}>
                   <div className="flex justify-between items-center mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{kpi.rule_name}</span>
+                      <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--text-secondary)' }}>{kpi.category}</span>
                       {kpi.status === 'SOURCE_UNAVAILABLE' ? (
                         <Badge variant="neutral" className="text-[10px]">SOURCE NOT CONNECTED</Badge>
                       ) : kpi.status === 'INSUFFICIENT_EVIDENCE' ? (
@@ -452,7 +546,21 @@ export default function FacultyAssessmentPage() {
                     )}
                   </div>
                   <ParameterBar 
-                    label={kpi.category} 
+                    label={kpi.rule_name || (
+                      {
+                        'res_publications': 'Publications',
+                        'res_citations': 'Citation Impact',
+                        'res_hindex': 'H-Index',
+                        'teach_load': 'Teaching Load',
+                        'teach_feedback': 'Student Feedback',
+                        'ment_phd': 'PhD Students',
+                        'ment_pg': 'PG Students',
+                        'inst_committee': 'Committee Work',
+                        'inst_admin': 'Administrative Roles',
+                        'innov_patents': 'Patents',
+                        'innov_startups': 'Startups & Tech Transfer',
+                      }[kpi.rule_id] || kpi.rule_id
+                    )} 
                     score={kpi.status === 'SOURCE_UNAVAILABLE' ? 0 : kpi.computed_score} 
                     maxScore={kpi.max_score} 
                   />

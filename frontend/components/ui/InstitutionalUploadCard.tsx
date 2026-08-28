@@ -19,13 +19,13 @@ interface ImportSummary {
 
 const CATEGORIES = [
   { value: 'teaching', label: 'Teaching' },
+  { value: 'career', label: 'Career History' },
   { value: 'mentoring', label: 'Mentoring' },
   { value: 'service', label: 'Institutional Service' },
-  { value: 'innovation', label: 'Innovation' },
-  { value: 'outreach', label: 'Outreach' },
-  { value: 'leadership', label: 'Academic Leadership' },
   { value: 'awards', label: 'Awards' },
-  { value: 'projects', label: 'Projects' }
+  { value: 'projects', label: 'Projects' },
+  { value: 'innovation', label: 'Innovation' },
+  { value: 'outreach', label: 'Outreach' }
 ]
 
 export function InstitutionalUploadCard() {

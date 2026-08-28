@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, RequireRole
 from app.services import faculty_service
 
 router = APIRouter(prefix="/api/institutional", tags=["institutional"])
@@ -11,6 +11,8 @@ async def upload_institutional_data(
     dry_run: bool = Form(False),
     user: dict = Depends(get_current_user)
 ):
+    RequireRole(["ADMIN", "DEAN", "REVIEWER"])(user)
+    
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
         

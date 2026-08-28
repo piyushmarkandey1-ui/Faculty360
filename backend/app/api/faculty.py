@@ -398,6 +398,15 @@ async def get_faculty_publications(faculty_id: str, user: dict = Depends(get_cur
     res = supabase.table("publications").select("*, publication_sources(source_type, source_url)").eq("faculty_id", faculty_id).order("year", desc=True).execute()
     return {"items": res.data if res.data else []}
 
+@router.get("/{faculty_id}/institutional_records")
+async def get_faculty_institutional_records(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
+    verify_faculty_access(faculty_id, user)
+    from app.core.supabase import get_supabase_admin
+    supabase = get_supabase_admin()
+    res = supabase.table("institutional_records").select("*").eq("faculty_id", faculty_id).order("year", desc=True).execute()
+    return {"items": res.data if res.data else []}
+
 @router.delete("/{faculty_id}")
 async def delete_faculty(faculty_id: str, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)

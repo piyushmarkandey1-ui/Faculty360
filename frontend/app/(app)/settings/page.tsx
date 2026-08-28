@@ -82,7 +82,7 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              defaultValue="National Institute of Technology, Warangal"
+              defaultValue="National Institute of Technology, Raipur"
               className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
           </div>
@@ -93,7 +93,7 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              defaultValue="NITW-HEI-2026-IN"
+              defaultValue="NITR-HEI-2026-IN"
               className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] font-mono"
             />
           </div>

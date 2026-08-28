@@ -1,7 +1,10 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import get_current_user, verify_faculty_access, log_audit
 from app.services.assessment_engine import calculate_assessment, get_active_framework
 from app.core.supabase import get_supabase_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["assessment"])
 
@@ -11,6 +14,23 @@ async def get_framework(user: dict = Depends(get_current_user)):
         return get_active_framework()
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/api/assessment/frameworks")
+async def list_active_frameworks(user: dict = Depends(get_current_user)):
+    supabase = get_supabase_admin()
+    res = supabase.table("assessment_frameworks").select("*").eq("status", "active").order("created_at", desc=True).execute()
+    return {"items": res.data if res.data else []}
+
+@router.post("/api/assessment/framework/suggest")
+async def suggest_framework_improvements(payload: dict, user: dict = Depends(get_current_user)):
+    from app.core.auth import RequireRole
+    from app.services.ai_insights import generate_framework_suggestions
+    RequireRole(["ADMIN", "DEAN", "REVIEWER"])(user)
+    try:
+        suggestions = await generate_framework_suggestions(payload)
+        return {"suggestions": suggestions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/assessment/framework")
 async def publish_framework(payload: dict, user: dict = Depends(get_current_user)):
@@ -70,7 +90,7 @@ async def get_assessment_history(faculty_id: str, user: dict = Depends(get_curre
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     supabase = get_supabase_admin()
-    res = supabase.table("assessments").select("*, kpi_scores(*)").eq("faculty_id", faculty_id).in_("status", ["approved", "archived"]).order("created_at", desc=True).limit(10).execute()
+    res = supabase.table("assessments").select("*, kpi_scores(*), assessment_frameworks(name, version)").eq("faculty_id", faculty_id).in_("status", ["approved", "archived"]).order("created_at", desc=True).limit(10).execute()
     
     if not res.data or len(res.data) < 2:
         # Provide demo data if insufficient historical data exists
@@ -100,11 +120,12 @@ async def get_assessment_history(faculty_id: str, user: dict = Depends(get_curre
     return {"items": res.data, "is_demo": False}
 
 @router.post("/api/faculty/{faculty_id}/assessment/calculate")
-async def calculate_faculty_assessment(faculty_id: str, user: dict = Depends(get_current_user)):
+async def calculate_faculty_assessment(faculty_id: str, payload: dict = None, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
     try:
-        result = calculate_assessment(faculty_id)
+        framework_id = payload.get("framework_id") if payload else None
+        result = calculate_assessment(faculty_id, framework_id)
         log_audit("CALCULATE_ASSESSMENT", "faculty", faculty_id, "SUCCESS", user.get("sub"))
         return result
     except Exception as e:
@@ -122,13 +143,47 @@ async def generate_insights(faculty_id: str, user: dict = Depends(get_current_us
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail="AI insights temporarily unavailable.")
+
+@router.get("/api/faculty/{faculty_id}/insights")
+async def get_cached_insights(faculty_id: str, user: dict = Depends(get_current_user)):
+    """Return cached AI insights from the latest approved assessment. Returns {} if not yet generated."""
+    validate_faculty_id(faculty_id)
+    verify_faculty_access(faculty_id, user)
+    supabase = get_supabase_admin()
+    res = (
+        supabase.table("assessments")
+        .select("ai_insights")
+        .eq("faculty_id", faculty_id)
+        .eq("status", "approved")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not res.data:
+        return {}
+    return res.data[0].get("ai_insights") or {}
+
+@router.post("/api/faculty/{faculty_id}/overview")
+async def generate_overview(faculty_id: str, user: dict = Depends(get_current_user)):
+    """Generate a short Gemini overview for the Faculty Profile page."""
+    validate_faculty_id(faculty_id)
+    verify_faculty_access(faculty_id, user)
+    from app.services.ai_insights import generate_faculty_overview
+    try:
+        result = await generate_faculty_overview(faculty_id)
+        log_audit("GENERATE_OVERVIEW", "faculty", faculty_id, "SUCCESS", user.get("sub"))
+        return result
+    except Exception as e:
+        logger.error(f"Overview generation failed: {e}")
+        raise HTTPException(status_code=503, detail="AI overview temporarily unavailable.")
+
 @router.get("/api/assessments")
 async def list_assessments(user: dict = Depends(get_current_user)):
     from app.core.auth import RequireRole
     RequireRole(["ADMIN", "REVIEWER"])(user)
     supabase = get_supabase_admin()
     
-    # We want a summary of assessments combined with faculty info
-    res = supabase.table("assessments").select("*, faculty(id, canonical_name, department, designation, completeness_score)").order("created_at", desc=True).execute()
+    # We want a summary of assessments combined with faculty info and framework info
+    res = supabase.table("assessments").select("*, faculty(id, canonical_name, department, designation, completeness_score), assessment_frameworks(name, version)").order("created_at", desc=True).execute()
     return {"items": res.data if res.data else []}

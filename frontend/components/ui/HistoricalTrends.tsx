@@ -40,9 +40,19 @@ export function HistoricalTrends({ facultyId }: { facultyId: string }) {
     
     let cats: any = {}
     if (item.kpi_scores) {
-      item.kpi_scores.forEach((k: any) => {
-        cats[k.category] = k.computed_score
-      })
+      const aggregated = item.kpi_scores.reduce((acc: any, k: any) => {
+        if (k.status === 'SOURCE_UNAVAILABLE') return acc;
+        if (!acc[k.category]) {
+          acc[k.category] = { score: 0, max: 0 };
+        }
+        acc[k.category].score += k.computed_score;
+        acc[k.category].max += k.max_score;
+        return acc;
+      }, {});
+
+      Object.entries(aggregated).forEach(([cat, val]: [string, any]) => {
+        cats[cat] = val.max > 0 ? (val.score / val.max) * 100 : 0;
+      });
     }
     
     return {
@@ -56,7 +66,9 @@ export function HistoricalTrends({ facultyId }: { facultyId: string }) {
   const categories = new Set<string>()
   data.items.forEach((item: any) => {
     if (item.kpi_scores) {
-      item.kpi_scores.forEach((k: any) => categories.add(k.category))
+      item.kpi_scores.forEach((k: any) => {
+        if (k.status !== 'SOURCE_UNAVAILABLE') categories.add(k.category)
+      })
     }
   })
   
@@ -94,9 +106,9 @@ export function HistoricalTrends({ facultyId }: { facultyId: string }) {
               labelStyle={{ color: 'var(--text-secondary)', marginBottom: '8px' }}
             />
             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-            <Line type="monotone" dataKey="total" name="Overall Score" stroke="#e4e8f0" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey="total" name="Overall Score" stroke="#e4e8f0" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls={true} />
             {Array.from(categories).map((cat, i) => (
-              <Line key={cat} type="monotone" dataKey={cat} name={cat} stroke={colors[i % colors.length]} strokeWidth={2} dot={{ r: 3 }} opacity={0.8} />
+              <Line key={cat} type="monotone" dataKey={cat} name={cat} stroke={colors[i % colors.length]} strokeWidth={2} dot={{ r: 3 }} opacity={0.8} connectNulls={true} />
             ))}
           </LineChart>
         </ResponsiveContainer>

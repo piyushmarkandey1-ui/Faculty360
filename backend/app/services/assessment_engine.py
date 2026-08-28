@@ -163,9 +163,17 @@ def generate_analytics(faculty_id: str, parameter_scores: List[Dict[str, Any]], 
         "whyThisScore": why_this_score
     }
 
-def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
+def calculate_assessment(faculty_id: str, framework_id: str = None) -> Dict[str, Any]:
     supabase = get_supabase_admin()
-    framework = get_active_framework()
+    
+    if framework_id:
+        fw_res = supabase.table("assessment_frameworks").select("*").eq("id", framework_id).execute()
+        if not fw_res.data:
+            raise ValueError(f"Framework {framework_id} not found")
+        framework = fw_res.data[0]
+    else:
+        framework = get_active_framework()
+        
     config = framework["config"]
     
     pubs_res = supabase.table("publications").select("id, citation_count").eq("faculty_id", faculty_id).execute()
@@ -310,6 +318,7 @@ def calculate_assessment(faculty_id: str) -> Dict[str, Any]:
         kpi_inserts.append({
             "assessment_id": assessment_id,
             "rule_id": p["rule_id"],
+            "rule_name": p.get("rule_name", p["rule_id"]),
             "category": p["category"],
             "computed_score": round(p["computed_score"], 2),
             "max_score": p["max_score"],

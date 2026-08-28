@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
-import { FileText, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Search, Building2, UserX, Trash2, ExternalLink } from 'lucide-react'
+import { FileText, RefreshCw, AlertTriangle, CheckCircle2, Loader2, Search, Building2, UserX, Trash2, ExternalLink, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ScoreRing } from '@/components/ui/ScoreRing'
 import { Badge } from '@/components/ui/Badge'
@@ -40,11 +40,32 @@ export default function FacultyProfilePage() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<any>(null)
   const [publications, setPublications] = useState<any[]>([])
-  const [activeTab, setActiveTab] = useState<'overview' | 'research' | 'sources' | 'conflicts'>('overview')
+  const [institutionalRecords, setInstitutionalRecords] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<'overview' | 'institutional' | 'research' | 'sources' | 'conflicts'>('overview')
   const [conflicts, setConflicts] = useState<ProfileConflict[]>([])
   const [loadingConflicts, setLoadingConflicts] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // ── Gemini Faculty Overview state ─────────────────────────────────────────
+  const [aiOverview, setAiOverview] = useState<string | null>(null)
+  const [aiOverviewLoading, setAiOverviewLoading] = useState(false)
+  const [aiOverviewError, setAiOverviewError] = useState<string | null>(null)
+
+  const generateOverview = async () => {
+    if (!facultyId) return
+    setAiOverviewLoading(true)
+    setAiOverviewError(null)
+    try {
+      const res = await apiFetch<{ overview: string }>(`/faculty/${facultyId}/overview`, { method: 'POST' })
+      setAiOverview(res.overview)
+    } catch {
+      setAiOverviewError('AI overview temporarily unavailable. Profile data is unaffected.')
+    } finally {
+      setAiOverviewLoading(false)
+    }
+  }
+
 
   async function handleDeleteProfile() {
     if (!facultyId) return
@@ -76,9 +97,10 @@ export default function FacultyProfilePage() {
     async function loadData() {
       setLoading(true)
       try {
-        const [profileRes, pubsRes] = await Promise.all([
+        const [profileRes, pubsRes, instRes] = await Promise.all([
           apiFetch<any>(`/faculty/${facultyId}`).catch(() => null),
-          apiFetch<any>(`/faculty/${facultyId}/publications`).catch(() => ({ items: [] }))
+          apiFetch<any>(`/faculty/${facultyId}/publications`).catch(() => ({ items: [] })),
+          apiFetch<any>(`/faculty/${facultyId}/institutional_records`).catch(() => ({ items: [] }))
         ])
 
         if (!isMounted) return
@@ -88,6 +110,9 @@ export default function FacultyProfilePage() {
         }
         if (pubsRes && pubsRes.items) {
           setPublications(pubsRes.items)
+        }
+        if (instRes && instRes.items) {
+          setInstitutionalRecords(instRes.items)
         }
       } catch (err) {
         console.error('Failed to load profile data:', err)
@@ -223,6 +248,7 @@ export default function FacultyProfilePage() {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
+    { id: 'institutional', label: 'Institutional' },
     { id: 'research', label: `Research (${publicationsCount})` },
     { id: 'sources', label: 'Sources' },
     { id: 'conflicts', label: `Conflicts (${conflicts.filter(c => c.resolution === 'unresolved').length})` }
@@ -344,6 +370,133 @@ export default function FacultyProfilePage() {
                   </div>
                 </>
               )}
+            </div>
+
+            {/* ── Gemini Faculty Overview ──────────────────────────────── */}
+            <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+              <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} style={{ color: 'var(--warning)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Gemini AI Overview</span>
+                  <Badge variant="warning" className="text-[10px] uppercase">Advisory Only</Badge>
+                </div>
+                {aiOverview && !aiOverviewLoading && (
+                  <button
+                    onClick={generateOverview}
+                    className="text-xs underline opacity-60 hover:opacity-100 transition-opacity"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Refresh
+                  </button>
+                )}
+              </div>
+
+              <div className="p-5">
+                {/* Not yet generated */}
+                {!aiOverview && !aiOverviewLoading && !aiOverviewError && (
+                  <div className="flex flex-col items-center gap-3 py-6 text-center">
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      Generate an AI-powered overview of this faculty member's profile and research standing.
+                    </p>
+                    <Button variant="secondary" size="sm" onClick={generateOverview} className="gap-2">
+                      <Sparkles size={13} style={{ color: 'var(--warning)' }} />
+                      Generate Overview
+                    </Button>
+                  </div>
+                )}
+
+                {/* Loading */}
+                {aiOverviewLoading && (
+                  <div className="flex items-center gap-3 text-sm py-4" style={{ color: 'var(--text-secondary)' }}>
+                    <Loader2 size={15} className="animate-spin shrink-0" style={{ color: 'var(--warning)' }} />
+                    Gemini is generating an overview using verified profile data…
+                  </div>
+                )}
+
+                {/* Error */}
+                {aiOverviewError && !aiOverviewLoading && (
+                  <div className="text-sm py-3 px-4 rounded-lg flex items-center justify-between"
+                    style={{ background: 'var(--danger-muted)', color: 'var(--danger)' }}>
+                    <span>{aiOverviewError}</span>
+                    <button onClick={() => setAiOverviewError(null)} className="ml-4 underline text-xs opacity-70">Dismiss</button>
+                  </div>
+                )}
+
+                {/* Overview text */}
+                {aiOverview && !aiOverviewLoading && (
+                  <div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                      {aiOverview}
+                    </p>
+                    <p className="text-[10px] mt-3" style={{ color: 'var(--text-muted)' }}>
+                      AI-generated based on verified AcadLens data only. Does not constitute an official evaluation.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'institutional' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">Verified Institutional Data</h3>
+              <span className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                <CheckCircle2 size={12} className="text-[var(--success)]" /> Official University Records
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Teaching History */}
+              <InstitutionalSection 
+                title="Teaching History" 
+                records={institutionalRecords.filter(r => r.category === 'teaching')}
+                emptyTitle="Awaiting institutional data"
+                emptyDesc="Teaching records will appear when uploaded by an authorized administrator."
+              />
+              {/* Career History */}
+              <InstitutionalSection 
+                title="Career History" 
+                records={institutionalRecords.filter(r => r.category === 'career')}
+                emptyTitle="No verified career history available"
+              />
+              {/* Mentoring */}
+              <InstitutionalSection 
+                title="Mentoring" 
+                records={institutionalRecords.filter(r => r.category === 'mentoring')}
+                emptyTitle="Awaiting institutional records"
+              />
+              {/* Institutional Service */}
+              <InstitutionalSection 
+                title="Institutional Service" 
+                records={institutionalRecords.filter(r => r.category === 'service')}
+                emptyTitle="No verified service records available"
+              />
+              {/* Awards / Recognition */}
+              <InstitutionalSection 
+                title="Awards / Recognition" 
+                records={institutionalRecords.filter(r => r.category === 'awards')}
+                emptyTitle="No verified awards available"
+              />
+              {/* Projects */}
+              <InstitutionalSection 
+                title="Projects" 
+                records={institutionalRecords.filter(r => r.category === 'projects')}
+                emptyTitle="Awaiting institutional project data"
+              />
+              {/* Innovation */}
+              <InstitutionalSection 
+                title="Innovation" 
+                records={institutionalRecords.filter(r => r.category === 'innovation')}
+                emptyTitle="No verified innovation records"
+              />
+              {/* Outreach */}
+              <InstitutionalSection 
+                title="Outreach" 
+                records={institutionalRecords.filter(r => r.category === 'outreach')}
+                emptyTitle="No verified outreach records"
+              />
             </div>
           </motion.div>
         )}
@@ -662,6 +815,44 @@ export default function FacultyProfilePage() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function InstitutionalSection({ title, records, emptyTitle, emptyDesc }: { title: string, records: any[], emptyTitle: string, emptyDesc?: string }) {
+  return (
+    <div className="p-5 rounded-xl border bg-[var(--bg-surface)] border-[var(--border-subtle)] flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-medium text-sm text-[var(--text-primary)]">{title}</h4>
+        <Badge variant={records.length > 0 ? "success" : "neutral"} className="text-[10px]">
+          {records.length} records
+        </Badge>
+      </div>
+      
+      {records.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-[var(--text-muted)]">
+          <Building2 size={24} className="mb-2 opacity-20" />
+          <p className="text-sm font-medium">{emptyTitle}</p>
+          {emptyDesc && <p className="text-xs mt-1 max-w-[200px] opacity-70">{emptyDesc}</p>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {records.map((r, i) => (
+            <div key={i} className="pb-3 border-b border-[var(--border-subtle)] last:border-0 last:pb-0">
+              <div className="flex justify-between items-start gap-2">
+                <div className="font-medium text-sm text-[var(--text-primary)]">{r.title}</div>
+                {r.year ? <div className="text-xs text-[var(--text-secondary)] whitespace-nowrap">{r.year}</div> : null}
+              </div>
+              {r.description && <div className="text-xs text-[var(--text-secondary)] mt-1">{r.description}</div>}
+              {r.is_verified && (
+                <div className="flex items-center gap-1 mt-1.5 text-[10px] text-[var(--success)]">
+                  <CheckCircle2 size={10} /> Verified Institutional Data
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

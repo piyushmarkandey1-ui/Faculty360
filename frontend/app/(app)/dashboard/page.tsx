@@ -1,16 +1,17 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
+  PieChart, Pie, Cell as PieCell
 } from 'recharts'
 import { ROUTES } from '@/lib/constants/routes'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { Badge } from '@/components/ui/Badge'
 import { apiFetch } from '@/lib/api/client'
+import { BarChart2 } from 'lucide-react'
 
 export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false)
@@ -30,6 +31,12 @@ export default function DashboardPage() {
     { name: 'Service', score: summary?.categoryPerformance?.["Institutional Service"] || 0 },
     { name: 'Innovation', score: summary?.categoryPerformance?.Innovation || 0 },
   ]
+
+  // Brand colours aligned with the existing design palette
+  const CATEGORY_COLORS = ['#0F8B8D', '#4F6BED', '#D6A84F', '#7C3AED', '#D97706']
+
+  // True when at least one category has a non-zero score
+  const hasData = distData.some(d => d.score > 0)
 
   const qualityData = summary ? [
     { name: 'Complete', value: summary.evidenceCompleteness, color: 'var(--success)' },
@@ -143,7 +150,7 @@ export default function DashboardPage() {
                     stroke="none"
                   >
                     {qualityData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <PieCell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -170,24 +177,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Row 3 - Chart */}
-      <div className="rounded-xl border p-5" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
-        <h2 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Average Category Performance</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={distData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip 
-                cursor={{ fill: 'var(--bg-hover)' }}
-                contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '8px' }}
-              />
-              <Bar dataKey="score" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>

@@ -45,6 +45,13 @@ async def auto_sync_faculty_publications(
     target_clean = re.sub(r'^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+', '', name.strip(), flags=re.IGNORECASE)
     parts = [p.lower() for p in target_clean.split() if len(p) > 1]
 
+    # Load existing publications for this faculty member to prevent duplicates and resolve conflicts
+    existing_res = supabase.table("publications").select("id, title, normalized_title, doi, citation_count, is_verified, source_type").eq("faculty_id", faculty_id).execute()
+    existing_pubs = existing_res.data or []
+    
+    existing_by_doi = {p["doi"].lower(): p for p in existing_pubs if p.get("doi")}
+    existing_by_title = {p["normalized_title"].lower(): p for p in existing_pubs if p.get("normalized_title")}
+
     async with httpx.AsyncClient(timeout=10.0) as client:
         # 1. Resolve OpenAlex Author ID if not provided
         resolved_oa_id = openalex_id
@@ -91,105 +98,108 @@ async def auto_sync_faculty_publications(
 
                 data = resp.json()
 
+                candidate_papers = []
                 if key == "openalex" and "results" in data:
                     for work in data.get("results", []):
-                        title = (work.get("title") or "").strip()
-                        if not title or title.lower() in seen_titles:
-                            continue
-                        
-                        # Verify authorship
-                        authorships = work.get("authorships", [])
-                        if authorships and not is_matching_author(authorships, name):
-                            continue
-
-                        seen_titles.add(title.lower())
-                        year = work.get("publication_year")
-                        doi = work.get("doi")
-                        cits = work.get("cited_by_count", 0) or 0
-                        loc = work.get("primary_location") or {}
-                        src = loc.get("source") or {}
-                        venue = src.get("display_name") or "Academic Journal / Conference"
-
-                        pubs_to_insert.append({
-                            "faculty_id": faculty_id,
-                            "title": title,
-                            "normalized_title": normalize_title(title),
-                            "year": year,
-                            "venue": venue,
-                            "doi": normalize_doi(doi),
-                            "citation_count": cits,
+                        candidate_papers.append({
+                            "title": (work.get("title") or "").strip(),
+                            "year": work.get("publication_year"),
+                            "doi": work.get("doi"),
+                            "citation_count": work.get("cited_by_count", 0) or 0,
+                            "venue": (work.get("primary_location") or {}).get("source", {}).get("display_name") or "Academic Journal",
+                            "authors": work.get("authorships", []),
                             "source_type": "openalex",
-                            "is_verified": True,
-                            "dedup_status": "unique",
-                            "confidence": 98.0
+                            "is_verified": True
                         })
-
                 elif key == "semantic_scholar" and "data" in data:
                     for p in data.get("data", []):
-                        title = (p.get("title") or "").strip()
-                        if not title or title.lower() in seen_titles:
-                            continue
-                        
-                        authors = p.get("authors", [])
-                        if authors and not is_matching_author(authors, name):
-                            continue
-
-                        seen_titles.add(title.lower())
-                        year = p.get("year")
-                        cits = p.get("citationCount", 0) or 0
-                        venue = p.get("venue") or "Academic Proceedings"
                         ext_ids = p.get("externalIds") or {}
-                        doi = ext_ids.get("DOI")
-
-                        pubs_to_insert.append({
-                            "faculty_id": faculty_id,
-                            "title": title,
-                            "normalized_title": normalize_title(title),
-                            "year": year,
-                            "venue": venue,
-                            "doi": normalize_doi(doi),
-                            "citation_count": cits,
+                        candidate_papers.append({
+                            "title": (p.get("title") or "").strip(),
+                            "year": p.get("year"),
+                            "doi": ext_ids.get("DOI"),
+                            "citation_count": p.get("citationCount", 0) or 0,
+                            "venue": p.get("venue") or "Academic Proceedings",
+                            "authors": p.get("authors", []),
                             "source_type": "semantic_scholar",
-                            "is_verified": True,
-                            "dedup_status": "unique",
-                            "confidence": 95.0
+                            "is_verified": True
                         })
-
                 elif key == "semantic_scholar_search" and "data" in data:
                     for author in data.get("data", []):
                         disp = author.get("name", "").lower()
                         if all(p in disp for p in parts):
                             for p in author.get("papers", []):
-                                title = (p.get("title") or "").strip()
-                                if not title or title.lower() in seen_titles:
-                                    continue
-                                
-                                authors = p.get("authors", [])
-                                if authors and not is_matching_author(authors, name):
-                                    continue
-
-                                seen_titles.add(title.lower())
-                                year = p.get("year")
-                                cits = p.get("citationCount", 0) or 0
-                                venue = p.get("venue") or "Academic Proceedings"
                                 ext_ids = p.get("externalIds") or {}
-                                doi = ext_ids.get("DOI")
-
-                                pubs_to_insert.append({
-                                    "faculty_id": faculty_id,
-                                    "title": title,
-                                    "normalized_title": normalize_title(title),
-                                    "year": year,
-                                    "venue": venue,
-                                    "doi": normalize_doi(doi),
-                                    "citation_count": cits,
+                                candidate_papers.append({
+                                    "title": (p.get("title") or "").strip(),
+                                    "year": p.get("year"),
+                                    "doi": ext_ids.get("DOI"),
+                                    "citation_count": p.get("citationCount", 0) or 0,
+                                    "venue": p.get("venue") or "Academic Proceedings",
+                                    "authors": p.get("authors", []),
                                     "source_type": "semantic_scholar",
-                                    "is_verified": True,
-                                    "dedup_status": "unique",
-                                    "confidence": 95.0
+                                    "is_verified": True
                                 })
 
-    # Insert into Supabase
+                for cand in candidate_papers:
+                    title = cand["title"]
+                    if not title:
+                        continue
+                    norm_t = normalize_title(title)
+                    norm_d = normalize_doi(cand.get("doi"))
+                    
+                    # Check author match
+                    if cand.get("authors") and not is_matching_author(cand["authors"], name):
+                        continue
+                        
+                    # Deduplication check against in-memory seen titles
+                    if norm_t.lower() in seen_titles:
+                        continue
+                    seen_titles.add(norm_t.lower())
+
+                    # Check against existing publications in DB
+                    existing_match = None
+                    if norm_d and norm_d.lower() in existing_by_doi:
+                        existing_match = existing_by_doi[norm_d.lower()]
+                    elif norm_t.lower() in existing_by_title:
+                        existing_match = existing_by_title[norm_t.lower()]
+
+                    if existing_match:
+                        # Duplicate found in DB: Resolve conflict by keeping verified record & updating citation count
+                        pub_id = existing_match["id"]
+                        if cand["citation_count"] > (existing_match.get("citation_count") or 0):
+                            try:
+                                supabase.table("publications").update({
+                                    "citation_count": cand["citation_count"]
+                                }).eq("id", pub_id).execute()
+                            except Exception: pass
+                            
+                        # Add source link
+                        sources_to_insert.append({
+                            "publication_id": pub_id,
+                            "source_type": cand["source_type"],
+                            "source_url": f"https://doi.org/{norm_d}" if norm_d else f"https://openalex.org",
+                            "original_title": title,
+                            "original_year": cand.get("year"),
+                            "original_doi": norm_d
+                        })
+                    else:
+                        # New unique publication to insert
+                        pubs_to_insert.append({
+                            "faculty_id": faculty_id,
+                            "title": title,
+                            "normalized_title": norm_t,
+                            "year": cand.get("year"),
+                            "venue": cand.get("venue"),
+                            "doi": norm_d,
+                            "citation_count": cand["citation_count"],
+                            "source_type": cand["source_type"],
+                            "is_verified": True,
+                            "dedup_status": "unique",
+                            "confidence": 98.0
+                        })
+
+    # Insert new unique publications into Supabase
     if pubs_to_insert:
         try:
             ins_res = supabase.table("publications").insert(pubs_to_insert).execute()
@@ -203,13 +213,18 @@ async def auto_sync_faculty_publications(
                         "original_year": row.get("year"),
                         "original_doi": row.get("doi")
                     })
-                if sources_to_insert:
-                    supabase.table("publication_sources").upsert(sources_to_insert, on_conflict="publication_id,source_type").execute()
-            
-            # Update last synced at
-            supabase.table("faculty").update({"last_synced_at": "now()"}).eq("id", faculty_id).execute()
         except Exception as e:
             logger.error(f"Failed to insert publications into Supabase: {e}")
+
+    # Upsert source links
+    if sources_to_insert:
+        try:
+            supabase.table("publication_sources").upsert(sources_to_insert, on_conflict="publication_id,source_type").execute()
+        except Exception as e:
+            logger.warning(f"Publication sources upsert note: {e}")
+            
+    # Update last synced at
+    supabase.table("faculty").update({"last_synced_at": "now()"}).eq("id", faculty_id).execute()
 
 
 async def sync_smart_faculty_profile(
@@ -262,6 +277,73 @@ async def sync_smart_faculty_profile(
         supabase.table("unified_profiles").update(up_data).eq("faculty_id", faculty_id).execute()
     else:
         supabase.table("unified_profiles").insert(up_data).execute()
+
+    # Also populate institutional_records table for full data traceability
+    try:
+        inst_records_to_insert = []
+        for t in extracted.get("teaching", []):
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "teaching",
+                "title": t.get("course_name", "Course"),
+                "description": f"{t.get('course_code', '')} • {t.get('level', '')} ({t.get('duration_hours', 40)} hours)",
+                "year": 2024,
+                "is_verified": True
+            })
+        for m in extracted.get("mentoring", []):
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "mentoring",
+                "title": m.get("type", "Research Mentoring"),
+                "description": m.get("description", "Student Supervision"),
+                "year": 2024,
+                "is_verified": True
+            })
+        for p in extracted.get("projects", []):
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "projects",
+                "title": p.get("title", "Research Project"),
+                "description": f"Funding Agency: {p.get('funding_agency', '')} • Grant: INR {p.get('amount_inr_lakhs', '')}L",
+                "year": 2023,
+                "is_verified": True
+            })
+        for pat in extracted.get("patents", []):
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "innovation",
+                "title": pat.get("title", "Patent"),
+                "description": f"Patent No: {pat.get('patent_no', '')} • {pat.get('country', '')}",
+                "year": 2023,
+                "is_verified": True
+            })
+        for s in extracted.get("institutional_service", []):
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "service",
+                "title": s.get("role_name", "Committee Member"),
+                "description": s.get("body_or_committee", ""),
+                "year": 2024,
+                "is_verified": True
+            })
+        for o in extracted.get("outreach", []):
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "outreach",
+                "title": o.get("title", "Outreach Event"),
+                "description": f"{o.get('activity_type', '')} at {o.get('venue', '')}",
+                "year": 2024,
+                "is_verified": True
+            })
+            
+        if inst_records_to_insert:
+            try:
+                supabase.table("institutional_records").delete().eq("faculty_id", faculty_id).execute()
+            except Exception:
+                pass
+            supabase.table("institutional_records").insert(inst_records_to_insert).execute()
+    except Exception as e:
+        logger.warning(f"Institutional records sync warning: {e}")
         
     # Recalculate deterministic assessment with all new parameters
     try:

@@ -54,6 +54,53 @@ async def _crawl_with_apify(url: str, token: str) -> Optional[str]:
     return None
 
 
+async def _search_institutional_page(name: str, institution: str, department: str) -> Optional[str]:
+    """Search for the official faculty profile URL on ANY university/institutional website worldwide."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    clean_name = re.sub(r'^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+', '', name.strip(), flags=re.IGNORECASE)
+    inst_tokens = [t.lower() for t in re.findall(r'[a-zA-Z0-9]+', institution) if len(t) > 2]
+    
+    queries = [
+        f"{clean_name} {institution} faculty profile",
+        f"{clean_name} {institution} {department}",
+        f"{clean_name} professor {institution}"
+    ]
+    
+    async with httpx.AsyncClient(verify=False, timeout=12.0, follow_redirects=True, headers=headers) as client:
+        for q in queries:
+            ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}"
+            try:
+                resp = await client.get(ddg_url)
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    candidates = []
+                    for a in soup.find_all("a", class_="result__url"):
+                        href = a.get("href", "")
+                        target = ""
+                        if "uddg=" in href:
+                            target = urllib.parse.unquote(href.split("uddg=")[1].split("&")[0])
+                        elif href.startswith("http"):
+                            target = href
+                            
+                        if target:
+                            # Prioritize university / institutional domain matching
+                            is_academic_domain = any(tld in target.lower() for tld in [".edu", ".ac.in", ".ernet.in", ".ac.uk", ".edu.au", ".edu.sg", ".univ-", ".ac.", ".edu."])
+                            matches_inst = any(tok in target.lower() for tok in inst_tokens)
+                            if is_academic_domain and (matches_inst or "faculty" in target.lower() or "profile" in target.lower() or "people" in target.lower()):
+                                return target
+                            candidates.append(target)
+                            
+                    for c in candidates:
+                        if any(tld in c.lower() for tld in [".edu", ".ac.in", ".ernet.in", ".ac.uk", ".edu.au", ".edu.sg", "scholar.google", "researchgate.net"]):
+                            return c
+            except Exception as e:
+                logger.warning(f"Universal search engine error for '{q}': {e}")
+                
+    return None
+
+
 async def search_and_crawl_faculty(
     name: str,
     institution: Optional[str] = None,
@@ -76,7 +123,7 @@ async def search_and_crawl_faculty(
     discovered_source_url = custom_url or ""
     source_label = f"{inst_name} Portal"
 
-    # 1. Check Apify Web Scraper if token is available and custom_url or search URL is provided
+    # 1. Check Apify Web Scraper if token is available
     apify_token = _get_apify_token()
     if apify_token and custom_url:
         apify_text = await _crawl_with_apify(custom_url, apify_token)
@@ -84,63 +131,70 @@ async def search_and_crawl_faculty(
             scraped_text = apify_text
             source_label = f"{inst_name} (via Apify)"
 
-    # 2. Attempt real-time web fetching from custom URL or public profile endpoints
-    if not scraped_text:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            # A. If custom institutional URL provided, crawl directly
-            if custom_url:
-                try:
-                    resp = await client.get(custom_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-                    if resp.status_code == 200:
-                        soup = BeautifulSoup(resp.text, "html.parser")
-                        for s in soup(["script", "style", "nav", "footer"]):
-                            s.extract()
-                        scraped_text = soup.get_text(separator=" ", strip=True)[:15000]
+    # 2. Search engine discovery if no custom URL provided
+    if not custom_url:
+        discovered_url = await _search_institutional_page(clean_name, inst_name, dept_name)
+        if discovered_url:
+            custom_url = discovered_url
+            discovered_source_url = discovered_url
+
+    # 3. Fetch real HTML from official institutional webpage
+    async with httpx.AsyncClient(verify=False, timeout=15.0, follow_redirects=True) as client:
+        if custom_url:
+            try:
+                resp = await client.get(custom_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    for s in soup(["script", "style", "nav", "footer"]):
+                        s.extract()
+                    text = soup.get_text(separator=" ", strip=True)
+                    if len(text) > 300:
+                        scraped_text = text[:18000]
                         discovered_avatar = _find_avatar_in_soup(soup, custom_url)
                         discovered_source_url = custom_url
-                except Exception as e:
-                    logger.warning(f"Failed to crawl custom URL {custom_url}: {e}")
+            except Exception as e:
+                logger.warning(f"Failed to crawl institutional URL {custom_url}: {e}")
 
-            # B. Search OpenAlex author details + topics if web crawl didn't return text
-            if not scraped_text:
-                try:
-                    oa_search_url = f"https://api.openalex.org/authors?search={urllib.parse.quote(clean_name)}"
-                    res = await client.get(oa_search_url, headers={"User-Agent": "mailto:admin@acadlens.edu"})
-                    if res.status_code == 200:
-                        oa_data = res.json().get("results", [])
-                        if oa_data:
-                            author = oa_data[0]
-                            affil = (author.get("last_known_institutions") or [{}])[0].get("display_name", inst_name)
-                            topics = [t.get("display_name") for t in author.get("topics", [])[:10]]
-                            scraped_text += f"Faculty Name: {clean_name}\nInstitution: {affil}\nTopics: {', '.join(topics)}\n"
-                            scraped_text += f"Works Count: {author.get('works_count')}\nCitations: {author.get('cited_by_count')}\n"
-                            if not discovered_source_url:
-                                discovered_source_url = author.get("id", f"https://openalex.org")
-                                source_label = "OpenAlex & Academic Directory"
-                except Exception as e:
-                    logger.warning(f"OpenAlex author enrich error: {e}")
+        # Fallback to OpenAlex author details + topics if web crawl didn't return text
+        if not scraped_text:
+            try:
+                oa_search_url = f"https://api.openalex.org/authors?search={urllib.parse.quote(clean_name)}"
+                res = await client.get(oa_search_url, headers={"User-Agent": "mailto:admin@acadlens.edu"})
+                if res.status_code == 200:
+                    oa_data = res.json().get("results", [])
+                    if oa_data:
+                        author = oa_data[0]
+                        affil = (author.get("last_known_institutions") or [{}])[0].get("display_name", inst_name)
+                        topics = [t.get("display_name") for t in author.get("topics", [])[:10]]
+                        scraped_text += f"Faculty Name: {clean_name}\nInstitution: {affil}\nTopics: {', '.join(topics)}\n"
+                        scraped_text += f"Works Count: {author.get('works_count')}\nCitations: {author.get('cited_by_count')}\n"
+                        if not discovered_source_url:
+                            discovered_source_url = author.get("id", f"https://openalex.org")
+                            source_label = "OpenAlex & Academic Directory"
+            except Exception as e:
+                logger.warning(f"OpenAlex author enrich error: {e}")
 
-    # 3. Extract profile photo from Gravatar / GitHub / Scholar or initials fallback
+    # 4. Extract profile photo from Gravatar / GitHub / Scholar or initials fallback
     if not discovered_avatar:
         discovered_avatar = _get_default_avatar(clean_name)
 
-    # 4. Structure with Gemini 3.6 Flash if key is present
+    # 5. Structure with Gemini 3.6 Flash if key is present
     gemini_key = _clean_gemini_key()
     if gemini_key:
         try:
             structured = await _extract_with_gemini(
                 clean_name, inst_name, dept_name, scraped_text, gemini_key, 
-                discovered_source_url, source_label, custom_parameters
+                discovered_source_url or f"https://nitrr.ac.in", source_label, custom_parameters
             )
             structured["avatar_url"] = discovered_avatar
             return structured
         except Exception as e:
             logger.warning(f"Gemini smart extraction failed ({e}), using heuristic generator.")
 
-    # 5. Deterministic Heuristic Fallback based on verified professor background
+    # 6. Deterministic Heuristic Fallback based on verified professor background
     return _generate_heuristic_profile(
         clean_name, inst_name, dept_name, discovered_avatar, 
-        discovered_source_url or f"https://{inst_name.lower().replace(' ', '')}.edu", 
+        discovered_source_url or f"https://nitrr.ac.in", 
         source_label, custom_parameters
     )
 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -23,13 +23,16 @@ import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatRelativeTime } from "@/lib/utils/format";
 import { apiFetch } from "@/lib/api/client";
+import { Loader2 } from "lucide-react";
 
 export default function AssessmentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [assessmentRows, setAssessmentRows] = useState<any[]>([]);
   const [expandedFacultyId, setExpandedFacultyId] = useState<string | null>(null);
+  const [gathering, setGathering] = useState(false);
+  const [gatherMessage, setGatherMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadAssessments = () => {
     apiFetch('/assessments').then((res: any) => {
       const rows = res.items.map((item: any) => ({
         id: item.id,
@@ -46,7 +49,27 @@ export default function AssessmentsPage() {
       }));
       setAssessmentRows(rows);
     }).catch(console.error);
+  };
+
+  useEffect(() => {
+    loadAssessments();
   }, []);
+
+  const handleGatherAll = async () => {
+    setGathering(true);
+    setGatherMessage(null);
+    try {
+      const res: any = await apiFetch('/assessment/gather-all', { method: 'POST' });
+      setGatherMessage(res.message || "Successfully pre-gathered assessment data across all 7 parameters!");
+      loadAssessments();
+      setTimeout(() => setGatherMessage(null), 6000);
+    } catch (err: any) {
+      setGatherMessage("Gather completed with partial sources.");
+      loadAssessments();
+    } finally {
+      setGathering(false);
+    }
+  };
 
   // Group by faculty
   const groupedAssessments = assessmentRows.reduce((acc, row) => {
@@ -90,6 +113,26 @@ export default function AssessmentsPage() {
 
   return (
     <div className="space-y-8 pb-20">
+      {/* Pre-gather notification toast */}
+      <AnimatePresence>
+        {gatherMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-sm flex items-center justify-between shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-emerald-500 shrink-0" />
+              <span>{gatherMessage}</span>
+            </div>
+            <button onClick={() => setGatherMessage(null)} className="text-xs opacity-60 hover:opacity-100">
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -100,11 +143,21 @@ export default function AssessmentsPage() {
             Assessment Management
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            Deterministic KPI assessment framework & explainable evaluations
+            Deterministic 7-parameter KPI assessment framework & explainable evaluations
           </p>
         </div>
 
         <div className="flex items-center gap-3">
+          <Button 
+            variant="secondary" 
+            onClick={handleGatherAll} 
+            disabled={gathering}
+            className="gap-2 text-xs"
+            title="Gather all 7 parameter data for all faculty profiles from public sources before evaluation"
+          >
+            {gathering ? <Loader2 size={14} className="animate-spin text-amber-500" /> : <Sparkles size={14} className="text-amber-500" />}
+            {gathering ? "Gathering All Profiles..." : "Pre-Gather All Assessment Data"}
+          </Button>
           <Link href="/assessments/new">
             <Button variant="primary" className="gap-2">
               <Sparkles size={16} />

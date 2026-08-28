@@ -119,10 +119,70 @@ async def get_assessment_history(faculty_id: str, user: dict = Depends(get_curre
         
     return {"items": res.data, "is_demo": False}
 
+@router.post("/api/assessment/gather-all")
+async def gather_all_assessment_data_endpoint(user: dict = Depends(get_current_user)):
+    """
+    Pre-gather all 7 assessment parameter data across all profiles before evaluation,
+    including teaching, mentoring, service, innovation, outreach, leadership, and custom framework parameters.
+    """
+    from app.core.auth import RequireRole
+    from app.services.auto_ingest import sync_smart_faculty_profile
+    RequireRole(["ADMIN", "REVIEWER", "DEAN"])(user)
+    supabase = get_supabase_admin()
+    
+    fac_res = supabase.table("faculty").select("id, canonical_name, department, institutions(name)").execute()
+    synced_count = 0
+    results = []
+    
+    for fac in (fac_res.data or []):
+        fac_id = fac["id"]
+        name = fac.get("canonical_name", "Faculty Member")
+        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+        dept = fac.get("department", "Computer Science & Engineering")
+        try:
+            await sync_smart_faculty_profile(fac_id, name, inst_name, dept)
+            calculate_assessment(fac_id)
+            synced_count += 1
+            results.append({"id": fac_id, "name": name, "status": "synced"})
+        except Exception as e:
+            logger.warning(f"Batch sync error for {name}: {e}")
+            results.append({"id": fac_id, "name": name, "status": "failed", "error": str(e)})
+            
+    log_audit("GATHER_ALL_ASSESSMENT_DATA", "assessment", "all", f"Synced {synced_count} profiles", user.get("sub"))
+    return {
+        "success": True,
+        "message": f"Successfully pre-gathered assessment data across all 7 parameters for {synced_count} faculty profiles",
+        "synced_count": synced_count,
+        "items": results
+    }
+
 @router.post("/api/faculty/{faculty_id}/assessment/calculate")
 async def calculate_faculty_assessment(faculty_id: str, payload: dict = None, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
+    supabase = get_supabase_admin()
+    
+    # Ensure profile has gathered multi-source coverage before calculating
+    up_res = supabase.table("unified_profiles").select("source_coverage").eq("faculty_id", faculty_id).execute()
+    needs_sync = True
+    if up_res.data and up_res.data[0].get("source_coverage"):
+        sc = up_res.data[0]["source_coverage"]
+        if isinstance(sc, dict) and sc.get("teaching") and sc.get("experience"):
+            needs_sync = False
+            
+    if needs_sync:
+        try:
+            from app.services.auto_ingest import sync_smart_faculty_profile
+            fac_res = supabase.table("faculty").select("canonical_name, department, institutions(name)").eq("id", faculty_id).execute()
+            if fac_res.data:
+                fac = fac_res.data[0]
+                name = fac.get("canonical_name", "Faculty Member")
+                inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+                dept = fac.get("department", "Computer Science & Engineering")
+                await sync_smart_faculty_profile(faculty_id, name, inst_name, dept)
+        except Exception as e:
+            logger.warning(f"Pre-assessment gather warning for {faculty_id}: {e}")
+
     try:
         framework_id = payload.get("framework_id") if payload else None
         result = calculate_assessment(faculty_id, framework_id)

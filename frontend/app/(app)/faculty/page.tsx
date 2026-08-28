@@ -334,9 +334,20 @@ export default function FacultyDirectoryPage() {
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-[var(--accent-muted)] text-[var(--accent)] flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
-                          {(fac.canonical_name || fac.display_name || 'Dr').charAt(0)}
-                        </div>
+                        {fac.avatar_url || fac.source_coverage?.avatar_url ? (
+                          <img 
+                            src={fac.avatar_url || fac.source_coverage?.avatar_url} 
+                            alt={fac.canonical_name} 
+                            className="w-9 h-9 rounded-lg object-cover border border-[var(--border-subtle)] shrink-0 mt-0.5 shadow-sm"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fac.canonical_name || 'Dr')}&background=0D9488&color=ffffff&size=128&bold=true`
+                            }}
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-[var(--accent-muted)] text-[var(--accent)] flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                            {(fac.canonical_name || fac.display_name || 'Dr').charAt(0)}
+                          </div>
+                        )}
                         <div>
                           <div className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors flex items-center gap-1.5">
                             {fac.canonical_name || fac.display_name}

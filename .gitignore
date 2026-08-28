@@ -60,3 +60,4 @@ htmlcov/
 .turbo/
 *.tsbuildinfo
 .vercel
+.env*.local

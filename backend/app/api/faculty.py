@@ -162,6 +162,22 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
         # If timeout or error, continue gracefully
         pass
 
+    # Auto-sync rich institutional profile, teaching, experience, patents & projects via Gemini Smart Crawler
+    try:
+        from app.services.auto_ingest import sync_smart_faculty_profile
+        await asyncio.wait_for(
+            sync_smart_faculty_profile(
+                faculty_id=faculty_id,
+                name=canonical_name,
+                institution=institution_name,
+                department=department,
+                custom_url=payload.get("profile_url") or payload.get("institution_url")
+            ),
+            timeout=8.0
+        )
+    except Exception as e:
+        logger.warning(f"Smart profile sync warning: {e}")
+
     log_audit("CREATE_FACULTY", "faculty", faculty_id, "SUCCESS", user.get("sub"))
     return new_faculty
 
@@ -406,6 +422,142 @@ async def get_faculty_institutional_records(faculty_id: str, user: dict = Depend
     supabase = get_supabase_admin()
     res = supabase.table("institutional_records").select("*").eq("faculty_id", faculty_id).order("year", desc=True).execute()
     return {"items": res.data if res.data else []}
+
+@router.post("/{faculty_id}/sync-smart")
+async def sync_smart_faculty(faculty_id: str, payload: dict = None, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
+    verify_faculty_access(faculty_id, user)
+    from app.core.supabase import get_supabase_admin
+    from app.services.auto_ingest import sync_smart_faculty_profile, auto_sync_faculty_publications
+    supabase = get_supabase_admin()
+    
+    fac_res = supabase.table("faculty").select("*, institutions(name)").eq("id", faculty_id).execute()
+    if not fac_res.data:
+        raise HTTPException(status_code=404, detail="Faculty profile not found")
+    fac = fac_res.data[0]
+    name = fac.get("canonical_name", "")
+    inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+    dept = fac.get("department", "Computer Science & Engineering")
+    custom_url = (payload or {}).get("url") or (payload or {}).get("institution_url")
+    
+    # 1. Sync publications from public APIs
+    try:
+        ident_res = supabase.table("academic_identities").select("*").eq("faculty_id", faculty_id).execute()
+        idents = {i.get("source_type"): i.get("external_id") for i in (ident_res.data or [])}
+        await auto_sync_faculty_publications(
+            faculty_id=faculty_id,
+            name=name,
+            orcid_id=idents.get("orcid"),
+            s2_id=idents.get("semantic_scholar"),
+            scholar_id=idents.get("google_scholar"),
+            affiliation=inst_name
+        )
+    except Exception as e:
+        logger.warning(f"Publication sync warning: {e}")
+        
+    # 2. Run smart crawler and Gemini 3.6 Flash extraction
+    extracted = await sync_smart_faculty_profile(
+        faculty_id=faculty_id,
+        name=name,
+        institution=inst_name,
+        department=dept,
+        custom_url=custom_url
+    )
+    
+    log_audit("SMART_SYNC_FACULTY", "faculty", faculty_id, "SUCCESS", user.get("sub"))
+    return {
+        "success": True,
+        "message": f"Successfully synced multi-source public profile data for {name}",
+        "data": extracted
+    }
+
+
+@router.get("/{faculty_id}/profile-details")
+async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_user)):
+    validate_faculty_id(faculty_id)
+    verify_faculty_access(faculty_id, user)
+    from app.core.supabase import get_supabase_admin
+    supabase = get_supabase_admin()
+    
+    up_res = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
+    if up_res.data:
+        up = up_res.data[0]
+        sc = up.get("source_coverage") or {}
+        return {
+            "display_name": up.get("display_name"),
+            "bio": up.get("bio"),
+            "research_interests": up.get("research_interests") or [],
+            "avatar_url": sc.get("avatar_url"),
+            "source_url": sc.get("source_url"),
+            "source_name": sc.get("source_name") or "Institutional Portal",
+            "experience": sc.get("experience") or [],
+            "education": sc.get("education") or [],
+            "teaching": sc.get("teaching") or [],
+            "mentoring": sc.get("mentoring") or [],
+            "projects": sc.get("projects") or [],
+            "patents": sc.get("patents") or [],
+            "institutional_service": sc.get("institutional_service") or [],
+            "outreach": sc.get("outreach") or []
+        }
+    
+    # Fallback to smart crawler on-demand if no unified profile exists yet
+    from app.services.auto_ingest import sync_smart_faculty_profile
+    fac_res = supabase.table("faculty").select("*, institutions(name)").eq("id", faculty_id).execute()
+    if fac_res.data:
+        fac = fac_res.data[0]
+        name = fac.get("canonical_name", "")
+        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+        dept = fac.get("department", "Computer Science & Engineering")
+        extracted = await sync_smart_faculty_profile(faculty_id, name, inst_name, dept)
+        return extracted
+        
+    return {}
+
+
+@router.post("/{faculty_id}/manual-record")
+async def add_manual_record(faculty_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Allow adding manual records / backup override for any category."""
+    validate_faculty_id(faculty_id)
+    verify_faculty_access(faculty_id, user)
+    from app.core.supabase import get_supabase_admin
+    from app.services.assessment_engine import calculate_assessment
+    import uuid
+    supabase = get_supabase_admin()
+    
+    category = payload.get("category") # e.g. 'teaching', 'experience', 'projects', 'patents', 'education', 'institutional_service'
+    record_data = payload.get("record")
+    if not category or not record_data:
+        raise HTTPException(status_code=400, detail="Category and record data required")
+        
+    record_data["id"] = record_data.get("id") or f"man_{uuid.uuid4().hex[:8]}"
+    record_data["source_name"] = "Manual Verified Entry"
+    record_data["is_manual"] = True
+    
+    up_res = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
+    if up_res.data:
+        up = up_res.data[0]
+        sc = up.get("source_coverage") or {}
+        cat_list = sc.get(category) or []
+        cat_list.append(record_data)
+        sc[category] = cat_list
+        supabase.table("unified_profiles").update({"source_coverage": sc}).eq("faculty_id", faculty_id).execute()
+    else:
+        sc = {category: [record_data], "source_name": "Manual Verified Entry"}
+        supabase.table("unified_profiles").insert({
+            "faculty_id": faculty_id,
+            "display_name": "Faculty Member",
+            "source_coverage": sc
+        }).execute()
+        
+    # Recalculate assessment
+    try:
+        calculate_assessment(faculty_id)
+    except Exception as e:
+        logger.warning(f"Recalculate error: {e}")
+        
+    log_audit("ADD_MANUAL_RECORD", "faculty", faculty_id, f"Added {category} record", user.get("sub"))
+    return {"success": True, "record": record_data}
+
 
 @router.delete("/{faculty_id}")
 async def delete_faculty(faculty_id: str, user: dict = Depends(get_current_user)):

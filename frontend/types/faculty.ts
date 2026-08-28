@@ -21,10 +21,118 @@ export interface FacultyEntity {
 }
 
 export interface SourceCoverage {
-  google_scholar: boolean
-  researchgate: boolean
-  institutional: boolean
+  avatar_url?: string | null
+  source_url?: string | null
+  source_name?: string | null
+  google_scholar?: boolean
+  researchgate?: boolean
+  institutional?: boolean
   orcid?: boolean
+  openalex?: boolean
+  semantic_scholar?: boolean
+  experience?: WorkExperienceItem[]
+  education?: EducationItem[]
+  teaching?: TeachingCourseItem[]
+  mentoring?: MentoringItem[]
+  projects?: ProjectItem[]
+  patents?: PatentItem[]
+  institutional_service?: InstitutionalServiceItem[]
+  outreach?: OutreachItem[]
+}
+
+export interface WorkExperienceItem {
+  id?: string
+  role: string
+  organization: string
+  department?: string
+  start_year?: string | number
+  end_year?: string | number
+  duration?: string
+  is_current?: boolean
+  source_name?: string
+  source_url?: string
+  is_manual?: boolean
+}
+
+export interface EducationItem {
+  id?: string
+  degree: string
+  institution: string
+  field?: string
+  year?: string | number
+  source_name?: string
+  is_manual?: boolean
+}
+
+export interface TeachingCourseItem {
+  id?: string
+  course_name: string
+  course_code?: string
+  level?: string
+  term?: string
+  duration_hours?: number
+  student_feedback_score?: number
+  source_name?: string
+  is_manual?: boolean
+}
+
+export interface MentoringItem {
+  id?: string
+  type: string
+  count?: number
+  scholar_name?: string
+  thesis_title?: string
+  status?: string
+  description?: string
+  source_name?: string
+  is_manual?: boolean
+}
+
+export interface ProjectItem {
+  id?: string
+  title: string
+  funding_agency: string
+  amount_inr_lakhs?: number
+  role?: string
+  duration?: string
+  start_year?: string | number
+  end_year?: string | number
+  status?: string
+  source_name?: string
+  is_manual?: boolean
+}
+
+export interface PatentItem {
+  id?: string
+  title: string
+  patent_no?: string
+  filing_year?: string | number
+  grant_year?: string | number
+  status?: string
+  country?: string
+  source_name?: string
+  is_manual?: boolean
+}
+
+export interface InstitutionalServiceItem {
+  id?: string
+  role_name: string
+  body_or_committee?: string
+  duration?: string
+  start_year?: string | number
+  end_year?: string | number
+  source_name?: string
+  is_manual?: boolean
+}
+
+export interface OutreachItem {
+  id?: string
+  activity_type: string
+  title: string
+  venue?: string
+  year?: string | number
+  source_name?: string
+  is_manual?: boolean
 }
 
 export interface UnifiedProfile {

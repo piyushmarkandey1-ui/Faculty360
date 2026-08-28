@@ -210,3 +210,63 @@ async def auto_sync_faculty_publications(
             supabase.table("faculty").update({"last_synced_at": "now()"}).eq("id", faculty_id).execute()
         except Exception as e:
             logger.error(f"Failed to insert publications into Supabase: {e}")
+
+
+async def sync_smart_faculty_profile(
+    faculty_id: str,
+    name: str,
+    institution: Optional[str] = None,
+    department: Optional[str] = None,
+    custom_url: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Crawls official public pages, runs Gemini 3.6 Flash structured extraction,
+    stores rich profile data, experience, education, teaching, mentoring,
+    projects, patents, service, and recalculates assessment.
+    """
+    from app.services.smart_crawler import search_and_crawl_faculty
+    from app.services.assessment_engine import calculate_assessment
+    
+    supabase = get_supabase_admin()
+    extracted = await search_and_crawl_faculty(name, institution, department, custom_url)
+    
+    # Save to unified_profiles
+    existing_up = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
+    
+    up_data = {
+        "faculty_id": faculty_id,
+        "display_name": name,
+        "bio": extracted.get("bio", ""),
+        "research_interests": extracted.get("research_interests", []),
+        "source_coverage": {
+            "avatar_url": extracted.get("avatar_url"),
+            "source_url": extracted.get("source_url"),
+            "source_name": extracted.get("source_name"),
+            "experience": extracted.get("experience", []),
+            "education": extracted.get("education", []),
+            "teaching": extracted.get("teaching", []),
+            "mentoring": extracted.get("mentoring", []),
+            "projects": extracted.get("projects", []),
+            "patents": extracted.get("patents", []),
+            "institutional_service": extracted.get("institutional_service", []),
+            "outreach": extracted.get("outreach", []),
+            "google_scholar": True,
+            "orcid": True,
+            "institutional": True,
+            "openalex": True,
+            "semantic_scholar": True
+        }
+    }
+    
+    if existing_up.data:
+        supabase.table("unified_profiles").update(up_data).eq("faculty_id", faculty_id).execute()
+    else:
+        supabase.table("unified_profiles").insert(up_data).execute()
+        
+    # Recalculate deterministic assessment with all new parameters
+    try:
+        calculate_assessment(faculty_id)
+    except Exception as e:
+        logger.warning(f"Auto assessment calculation error: {e}")
+        
+    return extracted

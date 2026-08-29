@@ -303,7 +303,9 @@ export default function FacultyProfilePage() {
   const entity = profile.entity || profile
   const unified_profile = profile.unified_profile || {
     display_name: entity.canonical_name || 'Faculty Member',
-    bio: `Faculty member at ${entity.institution || 'Academic Institution'}.`,
+    bio: entity.institution && entity.institution !== 'Academic Institution' 
+      ? `Faculty member at ${entity.institution}.` 
+      : 'Faculty researcher and academic scholar.',
     research_interests: [],
     source_coverage: { google_scholar: false, orcid: false, researchgate: false, institutional: true }
   }
@@ -383,7 +385,10 @@ export default function FacultyProfilePage() {
               <ConfidenceBadge confidence={latest_assessment?.confidence_score ?? entity.completeness_score ?? 95} />
             </div>
             <p className="text-sm mb-3 text-[var(--text-secondary)]">
-              {entity.designation || 'Professor / Researcher'} • {entity.department || 'Computer Science & Engineering'} • {entity.institution || 'National Institute of Technology Raipur'}
+              {[entity.designation || 'Professor / Researcher', entity.department || 'Computer Science & Engineering', entity.institution]
+                .filter(Boolean)
+                .filter(s => s !== 'Academic Institution')
+                .join(' • ')}
             </p>
 
             <div className="flex flex-wrap gap-2">
@@ -479,7 +484,7 @@ export default function FacultyProfilePage() {
             <div className="p-6 rounded-2xl border bg-[var(--bg-surface)] border-[var(--border-subtle)]">
               <h3 className="font-semibold mb-3 text-[var(--text-primary)]">Biography</h3>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                {unified_profile.bio || `Professor and distinguished researcher in the ${entity.department || 'Department of Computer Science & Engineering'} at ${entity.institution || 'National Institute of Technology Raipur'}.`}
+                {unified_profile.bio || `Professor and distinguished researcher in the ${entity.department || 'Department of Computer Science & Engineering'}${entity.institution && entity.institution !== 'Academic Institution' ? ` at ${entity.institution}` : ''}.`}
               </p>
               
               {unified_profile.research_interests && unified_profile.research_interests.length > 0 && (

@@ -115,13 +115,13 @@ async def search_and_crawl_faculty(
     sponsored projects, patents, institutional service, and any custom parameters.
     """
     clean_name = re.sub(r'^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+', '', name.strip(), flags=re.IGNORECASE)
-    inst_name = institution or "National Institute of Technology Raipur"
-    dept_name = department or "Computer Science & Engineering"
+    inst_name = institution or ""
+    dept_name = department or "Engineering & Technology"
 
     scraped_text = ""
     discovered_avatar = None
     discovered_source_url = custom_url or ""
-    source_label = f"{inst_name} Portal"
+    source_label = f"{inst_name} Portal" if inst_name else "Institutional Portal"
 
     # 1. Check Apify Web Scraper if token is available
     apify_token = _get_apify_token()

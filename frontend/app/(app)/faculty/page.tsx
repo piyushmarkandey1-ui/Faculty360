@@ -354,11 +354,15 @@ export default function FacultyDirectoryPage() {
                           </div>
                           {/* Disambiguation: Workplace & Department */}
                           <div className="text-xs text-[var(--text-muted)] mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <span className="flex items-center gap-1 text-[var(--text-secondary)] font-medium">
-                              <Building2 size={12} className="text-[var(--text-muted)]" />
-                              {fac.institution || 'Academic Institution'}
-                            </span>
-                            <span>•</span>
+                            {fac.institution && fac.institution !== 'Academic Institution' && (
+                              <>
+                                <span className="flex items-center gap-1 text-[var(--text-secondary)] font-medium">
+                                  <Building2 size={12} className="text-[var(--text-muted)]" />
+                                  {fac.institution}
+                                </span>
+                                <span>•</span>
+                              </>
+                            )}
                             <span>{fac.department}</span>
                             {fac.employee_id && (
                               <>
@@ -542,7 +546,7 @@ export default function FacultyDirectoryPage() {
                     <span className="text-[var(--text-muted)] font-medium">Current Workplace</span>
                     <span className="font-semibold text-[var(--text-primary)] text-right flex items-center gap-1.5">
                       <Building2 size={14} className="text-[var(--accent)]" />
-                      {previewFaculty.institution || 'National Institute of Technology Raipur'}
+                      {previewFaculty.institution || 'Institutional Faculty'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

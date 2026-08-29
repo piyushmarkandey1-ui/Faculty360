@@ -148,10 +148,10 @@ export default function NewFacultyPage() {
 
     const payload = {
       name: p.name,
-      email: p.email || (p.verified_email ? `faculty@${p.email_domain || 'academic.edu'}` : ''),
+      email: p.email || (p.verified_email && p.email_domain ? `faculty@${p.email_domain}` : ''),
       department: p.department || 'Computer Science & Engineering',
       designation: p.designation || 'Professor / Researcher',
-      institution: p.affiliation || p.institution || 'Academic Institution',
+      institution: (p.affiliation !== 'Academic Institution' && p.institution !== 'Academic Institution') ? (p.affiliation || p.institution || '') : '',
       institutionUrl: p.institution_url || '',
       empId: `FAC-${Math.floor(1000 + Math.random() * 9000)}`,
       scholarId: p.scholar_id || '',
@@ -392,20 +392,26 @@ export default function NewFacultyPage() {
                             </div>
 
                             {/* Affiliation / Role */}
-                            <div className="text-sm font-medium text-[var(--text-primary)]">
-                              {p.affiliation || p.institution || 'Academic Institution'}
-                            </div>
+                            {((p.affiliation || p.institution) && p.affiliation !== 'Academic Institution' && p.institution !== 'Academic Institution') ? (
+                              <div className="text-sm font-medium text-[var(--text-primary)]">
+                                {p.affiliation || p.institution}
+                              </div>
+                            ) : null}
 
                             {/* Verified Email line */}
-                            <div className="text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
-                              {p.verified_email ? (
+                            {p.verified_email && p.verified_email !== 'Verified email at academic.edu' ? (
+                              <div className="text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
                                 <span>{p.verified_email}</span>
-                              ) : p.email ? (
+                              </div>
+                            ) : p.email && !p.email.endsWith('@academic.edu') ? (
+                              <div className="text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
                                 <span>Verified email at {p.email.split('@')[1]}</span>
-                              ) : p.location ? (
+                              </div>
+                            ) : p.location && p.location !== 'Global' ? (
+                              <div className="text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
                                 <span>{p.location}</span>
-                              ) : null}
-                            </div>
+                              </div>
+                            ) : null}
 
                             {/* Research Topics / Interests (Google Scholar blue links) */}
                             {p.topics && p.topics.length > 0 && (

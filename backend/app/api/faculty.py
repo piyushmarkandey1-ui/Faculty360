@@ -29,7 +29,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     designation = payload.get("designation") or "Professor / Researcher"
     email = payload.get("email") or payload.get("canonical_email") or f"{canonical_name.lower().replace(' ', '.')}@academic.edu"
     emp_id = payload.get("empId") or payload.get("employee_id") or f"FAC-{uuid.uuid4().hex[:6].upper()}"
-    institution_name = payload.get("institution") or payload.get("affiliation") or "Academic Institution"
+    institution_name = payload.get("institution") or payload.get("affiliation") or ""
     topics = payload.get("topics") or []
     
     # Platform identifiers
@@ -80,6 +80,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
         "institution_id": institution_id,
         "completeness_score": 85,
         "conflict_count": 0,
+        "onboarding_status": "active",
         "created_at": "now()"
     }
     
@@ -439,7 +440,7 @@ async def sync_smart_faculty(faculty_id: str, payload: dict = None, user: dict =
         raise HTTPException(status_code=404, detail="Faculty profile not found")
     fac = fac_res.data[0]
     name = fac.get("canonical_name", "")
-    inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+    inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
     dept = fac.get("department", "Computer Science & Engineering")
     custom_url = (payload or {}).get("url") or (payload or {}).get("institution_url")
     
@@ -509,7 +510,7 @@ async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_
     if fac_res.data:
         fac = fac_res.data[0]
         name = fac.get("canonical_name", "")
-        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
         dept = fac.get("department", "Computer Science & Engineering")
         extracted = await sync_smart_faculty_profile(faculty_id, name, inst_name, dept)
         return extracted

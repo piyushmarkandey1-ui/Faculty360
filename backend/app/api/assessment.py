@@ -137,7 +137,7 @@ async def gather_all_assessment_data_endpoint(user: dict = Depends(get_current_u
     for fac in (fac_res.data or []):
         fac_id = fac["id"]
         name = fac.get("canonical_name", "Faculty Member")
-        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
         dept = fac.get("department", "Computer Science & Engineering")
         try:
             await sync_smart_faculty_profile(fac_id, name, inst_name, dept)
@@ -177,7 +177,7 @@ async def calculate_faculty_assessment(faculty_id: str, payload: dict = None, us
             if fac_res.data:
                 fac = fac_res.data[0]
                 name = fac.get("canonical_name", "Faculty Member")
-                inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else "National Institute of Technology Raipur"
+                inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
                 dept = fac.get("department", "Computer Science & Engineering")
                 await sync_smart_faculty_profile(faculty_id, name, inst_name, dept)
         except Exception as e:

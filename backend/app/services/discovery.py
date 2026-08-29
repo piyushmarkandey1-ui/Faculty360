@@ -165,7 +165,7 @@ async def _fetch_openalex(client: httpx.AsyncClient, name: str, institution: Opt
         display_name = item.get("display_name") or name
         insts = item.get("last_known_institutions") or []
         first_inst = insts[0] if (insts and isinstance(insts[0], dict)) else {}
-        inst_name = first_inst.get("display_name") or "Academic Institution"
+        inst_name = first_inst.get("display_name") or ""
         inst_country = first_inst.get("country_code", "")
 
         if institution:
@@ -191,14 +191,14 @@ async def _fetch_openalex(client: httpx.AsyncClient, name: str, institution: Opt
 
         # Domain & verified email
         email_domain = extract_email_domain(inst_name)
-        verified_email = f"Verified email at {email_domain}"
+        verified_email = f"Verified email at {email_domain}" if email_domain != "academic.edu" else ""
         clean_name_parts = re.findall(r'[a-zA-Z]+', display_name.lower())
         email_user = f"{clean_name_parts[0]}.{clean_name_parts[-1]}" if len(clean_name_parts) >= 2 else (clean_name_parts[0] if clean_name_parts else "faculty")
-        email = f"{email_user}@{email_domain}"
+        email = f"{email_user}@{email_domain}" if email_domain != "academic.edu" else ""
 
         # Scholar search link
         scholar_search_url = f"https://scholar.google.com/citations?view_op=search_authors&mauthors={urllib.parse.quote(display_name)}"
-        if inst_name and inst_name != "Academic Institution":
+        if inst_name:
             scholar_search_url += f"+{urllib.parse.quote(inst_name.split()[0])}"
 
         inst_url = _guess_institution_url(inst_name, display_name)
@@ -252,7 +252,7 @@ async def _fetch_semantic_scholar(client: httpx.AsyncClient, name: str, institut
         s2_name = item.get("name") or name
         author_id = item.get("authorId")
         affiliations = item.get("affiliations") or []
-        affil_str = affiliations[0] if affiliations else "Academic Institution"
+        affil_str = affiliations[0] if affiliations else ""
 
         if institution and institution.lower() not in affil_str.lower():
             continue
@@ -265,7 +265,8 @@ async def _fetch_semantic_scholar(client: httpx.AsyncClient, name: str, institut
         email_domain = extract_email_domain(affil_str)
         clean_name_parts = re.findall(r'[a-zA-Z]+', s2_name.lower())
         email_user = f"{clean_name_parts[0]}.{clean_name_parts[-1]}" if len(clean_name_parts) >= 2 else (clean_name_parts[0] if clean_name_parts else "faculty")
-        email = f"{email_user}@{email_domain}"
+        email = f"{email_user}@{email_domain}" if email_domain != "academic.edu" else ""
+        verified_email = f"Verified email at {email_domain}" if email_domain != "academic.edu" else ""
 
         citations = item.get("citationCount", 0) or 0
         h_index = item.get("hIndex", 0) or 0
@@ -276,10 +277,10 @@ async def _fetch_semantic_scholar(client: httpx.AsyncClient, name: str, institut
         results.append({
             "name": s2_name,
             "affiliation": affil_str,
-            "verified_email": f"Verified email at {email_domain}",
-            "email_domain": email_domain,
+            "verified_email": verified_email,
+            "email_domain": email_domain if email_domain != "academic.edu" else "",
             "email": email,
-            "department": "Computer Science & Engineering",
+            "department": "Department of Computer Science & Engineering",
             "designation": "Professor / Researcher",
             "location": "Global",
             "topics": ["Computer Science", "Artificial Intelligence", "Information Systems"],
@@ -393,13 +394,13 @@ def _build_guided_draft(name: str, institution: Optional[str]) -> Dict[str, Any]
     domain = extract_email_domain(institution or "")
     clean_parts = re.findall(r'[a-zA-Z]+', name.lower())
     email_user = f"{clean_parts[0]}.{clean_parts[-1]}" if len(clean_parts) >= 2 else (clean_parts[0] if clean_parts else "faculty")
-    email = f"{email_user}@{domain}"
+    email = f"{email_user}@{domain}" if domain != "academic.edu" else ""
 
     return {
         "name": name,
-        "affiliation": institution or "Academic Institution",
-        "verified_email": f"Verified email at {domain}",
-        "email_domain": domain,
+        "affiliation": institution or "",
+        "verified_email": f"Verified email at {domain}" if domain != "academic.edu" else "",
+        "email_domain": domain if domain != "academic.edu" else "",
         "email": email,
         "department": "Engineering & Technology",
         "designation": "Professor / Researcher",

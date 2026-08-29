@@ -1,4 +1,4 @@
-﻿import re
+import re
 import urllib.parse
 from typing import Optional
 

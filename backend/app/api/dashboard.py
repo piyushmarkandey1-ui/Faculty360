@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends
 from app.core.auth import get_current_user, RequireRole
 from app.core.supabase import get_supabase_admin
 

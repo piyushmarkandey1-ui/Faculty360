@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from app.services.ai_insights import generate_mock_insights
 
 def test_generate_mock_insights():

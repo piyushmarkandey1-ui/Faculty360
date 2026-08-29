@@ -1,4 +1,4 @@
-﻿import difflib
+import difflib
 from typing import Dict, Any, List, Tuple, Optional
 
 def calculate_similarity(s1: str, s2: str) -> float:

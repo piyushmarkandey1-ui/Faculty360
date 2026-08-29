@@ -1,4 +1,4 @@
-﻿import json
+import json
 import asyncio
 from app.core.supabase import get_supabase_admin
 

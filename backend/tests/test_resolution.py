@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from app.services.normalization import normalize_title, normalize_doi
 from app.services.resolution import resolve_publication, detect_conflicts
 

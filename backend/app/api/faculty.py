@@ -1,8 +1,11 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional, Dict, Any
 from app.core.auth import get_current_user, verify_faculty_access, log_audit, RequireRole
 from app.schemas.faculty import SyncScholarRequest
 from app.services import faculty_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/faculty", tags=["faculty"])
 

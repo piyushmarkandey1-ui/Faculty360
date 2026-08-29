@@ -1,4 +1,4 @@
-﻿from .base import AcademicSourceConnector
+from .base import AcademicSourceConnector
 from .google_scholar import GoogleScholarConnector
 from .orcid import OrcidConnector
 from .researchgate import ResearchGateConnector

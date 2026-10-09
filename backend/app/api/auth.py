@@ -128,8 +128,8 @@ async def register(req: RegisterRequest, response: Response):
 @router.post("/demo")
 async def demo_login(response: Response):
     """
-    1-Click Instant Demo Login for Hackathon Judges & Evaluators.
-    Instantly logs them in as Institutional Admin without needing credentials!
+    1-Click Instant Demo Login.
+    Instantly logs in as Institutional Admin without needing credentials.
     """
     user = {
         "id": "00000000-0000-0000-0000-000000000000",

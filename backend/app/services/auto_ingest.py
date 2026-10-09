@@ -66,7 +66,7 @@ async def auto_sync_faculty_publications(
     existing_by_doi = {p["doi"].lower(): p for p in existing_pubs if p.get("doi")}
     existing_by_title = {p["normalized_title"].lower(): p for p in existing_pubs if p.get("normalized_title")}
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=6.0) as client:
         # 1. Resolve OpenAlex Author ID if not provided
         resolved_oa_id = openalex_id
         if not resolved_oa_id and not orcid_id:
@@ -239,10 +239,14 @@ async def auto_sync_faculty_publications(
         except Exception as e:
             logger.error(f"Failed to insert publications into database: {e}")
 
-    # Upsert source links
+    # Upsert source links (deduplicated by publication_id and source_type)
     if sources_to_insert:
         try:
-            supabase.table("publication_sources").upsert(sources_to_insert, on_conflict="publication_id,source_type").execute()
+            dedup_sources = {}
+            for s in sources_to_insert:
+                key = (s.get("publication_id"), s.get("source_type"))
+                dedup_sources[key] = s
+            supabase.table("publication_sources").upsert(list(dedup_sources.values()), on_conflict="publication_id,source_type").execute()
         except Exception as e:
             logger.warning(f"Publication sources upsert note: {e}")
             

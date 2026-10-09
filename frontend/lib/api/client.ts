@@ -26,19 +26,7 @@ export async function getAuthToken(): Promise<string | undefined> {
     if (match && match[1]) return match[1];
   }
 
-  // 3. Fallback to legacy Supabase session if available
-  try {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.access_token) return session.access_token;
-  } catch {
-    // Supabase unreachable or disabled
-  }
-
-  // 4. Default to demo token so evaluator requests never 401
+  // 3. Default to demo token so evaluator requests never 401
   return "demo-token";
 }
 

@@ -30,9 +30,9 @@ REQUIRED_KEYS = {
 }
 
 CANDIDATE_GEMINI_MODELS = [
-    "gemini-flash-latest",
-    "gemini-flash-lite-latest",
     "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-flash-lite-latest",
 ]
 GEMINI_MODEL = CANDIDATE_GEMINI_MODELS[0]
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"

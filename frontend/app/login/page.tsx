@@ -190,7 +190,7 @@ export default function LoginPage() {
             </span>
           </div>
 
-          {/* ⚡ PROMINENT 1-CLICK JUDGE / EVALUATOR DEMO CARD */}
+          {/* ⚡ PROMINENT 1-CLICK DEMO ACCESS CARD */}
           <div className="p-4 rounded-xl border border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent mb-6 shadow-sm">
             <div className="flex items-start justify-between gap-3 mb-2.5">
               <div className="flex items-center gap-2">
@@ -199,10 +199,10 @@ export default function LoginPage() {
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                    Hackathon Evaluator & Judge Mode
+                    Quick Access Demo Mode
                   </h3>
                   <p className="text-[11px] text-[var(--text-secondary)]">
-                    Bypass authentication hurdles with 1 click
+                    Explore the platform instantly with 1 click
                   </p>
                 </div>
               </div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-xs text-[var(--text-secondary)] mb-3 leading-relaxed">
-              Instantly logs in with institutional review privileges, 10 preloaded faculty profiles, and live TimescaleDB trajectory metrics.
+              Instantly logs in with institutional review privileges, preloaded faculty profiles, and live TimescaleDB trajectory metrics.
             </p>
 
             <Button
@@ -224,12 +224,12 @@ export default function LoginPage() {
               {isDemoLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Entering Judge Dashboard...</span>
+                  <span>Entering Dashboard...</span>
                 </>
               ) : (
                 <>
                   <Zap size={14} className="fill-current" />
-                  <span>1-Click Evaluator Demo Access</span>
+                  <span>1-Click Demo Access</span>
                   <ArrowRight size={14} />
                 </>
               )}

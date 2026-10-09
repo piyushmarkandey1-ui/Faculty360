@@ -11,7 +11,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_MODEL = "gemini-3.5-flash"
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 
@@ -184,7 +184,7 @@ async def search_and_crawl_faculty(
         try:
             structured = await _extract_with_gemini(
                 clean_name, inst_name, dept_name, scraped_text, gemini_key, 
-                discovered_source_url or f"https://nitrr.ac.in", source_label, custom_parameters
+                discovered_source_url or f"https://openalex.org", source_label, custom_parameters
             )
             structured["avatar_url"] = discovered_avatar
             return structured
@@ -194,7 +194,7 @@ async def search_and_crawl_faculty(
     # 6. Deterministic Heuristic Fallback based on verified professor background
     return _generate_heuristic_profile(
         clean_name, inst_name, dept_name, discovered_avatar, 
-        discovered_source_url or f"https://nitrr.ac.in", 
+        discovered_source_url or f"https://openalex.org", 
         source_label, custom_parameters
     )
 
@@ -324,10 +324,10 @@ Raw crawled details:
 {scraped_text[:6000]}
 """
 
-    models_to_try = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash"]
+    models_to_try = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-lite-latest"]
     last_err = None
 
-    async with httpx.AsyncClient(timeout=25.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         for model in models_to_try:
             endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
             try:
@@ -376,206 +376,27 @@ def _generate_heuristic_profile(
     source_label: str,
     custom_parameters: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
-    """Provide realistic, robust academic records for the faculty member."""
-    dept_short = department.replace("Department of ", "")
+    """Return a minimal profile skeleton when Gemini extraction is unavailable.
+    Only includes verifiable metadata — no fabricated records."""
     additional_data = {}
     if custom_parameters:
         for cp in custom_parameters:
             cid = cp.get("id") or "custom_param"
-            cname = cp.get("name") or cid
-            additional_data[cid] = [
-                {
-                    "title": f"Verified {cname} Record",
-                    "year": "2023",
-                    "details": f"Institutional verified evidence for {cname} in {dept_short} at {institution}."
-                }
-            ]
+            additional_data[cid] = []
     
     return {
-        "bio": f"Professor and distinguished researcher in the {department} at {institution}. Leading impactful academic programs, sponsored research initiatives, and advanced student mentoring across computer and computational sciences.",
+        "bio": f"Faculty member in the {department} at {institution}.",
         "avatar_url": avatar_url,
         "source_url": source_url,
         "source_name": source_label,
-        "research_interests": [
-            "Machine Learning & Deep Learning",
-            "Data Science & Analytics",
-            "Pattern Recognition",
-            "Recommender Systems",
-            "Biomedical Signal Processing"
-        ],
-        "experience": [
-            {
-                "role": "Professor",
-                "organization": institution,
-                "department": department,
-                "start_year": "2020",
-                "end_year": "Present",
-                "duration": "4+ years",
-                "is_current": True,
-                "source_name": source_label,
-                "source_url": source_url
-            },
-            {
-                "role": "Associate Professor",
-                "organization": institution,
-                "department": department,
-                "start_year": "2015",
-                "end_year": "2020",
-                "duration": "5 years",
-                "is_current": False,
-                "source_name": source_label,
-                "source_url": source_url
-            },
-            {
-                "role": "Assistant Professor",
-                "organization": institution,
-                "department": department,
-                "start_year": "2009",
-                "end_year": "2015",
-                "duration": "6 years",
-                "is_current": False,
-                "source_name": source_label,
-                "source_url": source_url
-            }
-        ],
-        "education": [
-            {
-                "degree": f"Ph.D. in {dept_short}",
-                "institution": institution,
-                "year": "2014",
-                "source_name": source_label
-            },
-            {
-                "degree": f"M.Tech in {dept_short}",
-                "institution": institution,
-                "year": "2008",
-                "source_name": source_label
-            },
-            {
-                "degree": f"B.Tech in {dept_short}",
-                "institution": institution,
-                "year": "2004",
-                "source_name": source_label
-            }
-        ],
-        "teaching": [
-            {
-                "course_name": "Machine Learning & Statistical Pattern Recognition",
-                "course_code": "CS-601",
-                "level": "PG / M.Tech",
-                "term": "Autumn Semester",
-                "duration_hours": 42,
-                "student_feedback_score": 4.85,
-                "source_name": source_label
-            },
-            {
-                "course_name": "Data Structures and Algorithm Design",
-                "course_code": "CS-201",
-                "level": "UG / B.Tech",
-                "term": "Spring Semester",
-                "duration_hours": 56,
-                "student_feedback_score": 4.70,
-                "source_name": source_label
-            },
-            {
-                "course_name": "Deep Learning Architectures & NLP",
-                "course_code": "CS-702",
-                "level": "PG / PhD",
-                "term": "Autumn Semester",
-                "duration_hours": 38,
-                "student_feedback_score": 4.90,
-                "source_name": source_label
-            }
-        ],
-        "mentoring": [
-            {
-                "type": "Ph.D. Supervision",
-                "count": 6,
-                "status": "4 Completed, 2 Ongoing",
-                "description": "Supervising doctoral research on Graph Neural Networks, Sentiment Analysis, and Brain-Computer Interfaces.",
-                "source_name": source_label
-            },
-            {
-                "type": "M.Tech Dissertations",
-                "count": 18,
-                "status": "Completed",
-                "description": "Mentored 18 postgraduate research theses with peer-reviewed conference publications.",
-                "source_name": source_label
-            }
-        ],
-        "projects": [
-            {
-                "title": "AI-Driven Real-Time Predictive Diagnostics for Healthcare Informatics",
-                "funding_agency": "Science and Engineering Research Board (SERB - CRG)",
-                "amount_inr_lakhs": 38.5,
-                "role": "Principal Investigator (PI)",
-                "duration": "2022 - 2025",
-                "status": "Ongoing",
-                "source_name": "SERB Portal & Institutional ERP"
-            },
-            {
-                "title": "Design of Robust Machine Learning Frameworks for Cyber-Physical Systems",
-                "funding_agency": "Ministry of Electronics and Information Technology (MeitY)",
-                "amount_inr_lakhs": 24.0,
-                "role": "Co-PI",
-                "duration": "2019 - 2022",
-                "status": "Completed",
-                "source_name": "MeitY Project Archive"
-            }
-        ],
-        "patents": [
-            {
-                "title": "Automated Non-Invasive Neurological Anomaly Detection System Using EEG Signal Transformers",
-                "patent_no": "IN202311048291A",
-                "filing_year": "2023",
-                "status": "Published",
-                "country": "India (Indian Patent Office)",
-                "source_name": "Indian Patent Database"
-            },
-            {
-                "title": "Smart Adaptive Content Recommendation Engine for Personalized Academic Learning Platforms",
-                "patent_no": "IN202221039844A",
-                "filing_year": "2022",
-                "status": "Granted",
-                "country": "India (Indian Patent Office)",
-                "source_name": "Indian Patent Database"
-            }
-        ],
-        "institutional_service": [
-            {
-                "role_name": "Head of Department / Coordinator",
-                "body_or_committee": "Departmental Academic & Curriculum Committee",
-                "duration": "2021 - Present",
-                "source_name": source_label
-            },
-            {
-                "role_name": "Member Secretary",
-                "body_or_committee": "Institute NBA & NAAC Accreditation Steering Committee",
-                "duration": "2020 - 2023",
-                "source_name": source_label
-            },
-            {
-                "role_name": "Faculty Coordinator",
-                "body_or_committee": "Training, Placement & Industry Relations Cell",
-                "duration": "2018 - 2021",
-                "source_name": source_label
-            }
-        ],
-        "outreach": [
-            {
-                "activity_type": "Keynote Speaker",
-                "title": "Keynote on Explainable AI at IEEE International Conference on Computing",
-                "venue": "IEEE CCIS 2024",
-                "year": "2024",
-                "source_name": "IEEE Xplore"
-            },
-            {
-                "activity_type": "Technical Reviewer",
-                "title": "Reviewer for IEEE Transactions on Neural Networks and Learning Systems",
-                "venue": "IEEE TNNLS",
-                "year": "2023 - Present",
-                "source_name": "ScholarOne"
-            }
-        ],
+        "research_interests": [],
+        "experience": [],
+        "education": [],
+        "teaching": [],
+        "mentoring": [],
+        "projects": [],
+        "patents": [],
+        "institutional_service": [],
+        "outreach": [],
         "additional_parameters": additional_data
     }

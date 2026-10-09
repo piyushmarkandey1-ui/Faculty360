@@ -243,46 +243,48 @@ class TigerTableQuery:
                     return QueryResult(data=data, count=total_count)
 
                 elif self._mode == "insert":
-                    inserted_rows = []
+                    if not self._insert_data:
+                        return QueryResult(data=[])
+                    all_cols = list(self._insert_data[0].keys())
+                    col_names = ", ".join([f'"{c}"' for c in all_cols])
+                    row_ph = "(" + ", ".join(["%s"] * len(all_cols)) + ")"
+                    val_placeholders = ", ".join([row_ph] * len(self._insert_data))
+                    flat_values = []
                     for row in self._insert_data:
-                        cols = list(row.keys())
-                        col_names = ", ".join([f'"{c}"' for c in cols])
-                        placeholders = ", ".join(["%s"] * len(cols))
-                        values = [_safe_json_value(v) for v in row.values()]
+                        for c in all_cols:
+                            flat_values.append(_safe_json_value(row.get(c)))
 
-                        q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES ({placeholders}) RETURNING *;'
-                        cur.execute(q, values)
-                        res = cur.fetchone()
-                        if res:
-                            inserted_rows.append(dict(res))
+                    q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES {val_placeholders} RETURNING *;'
+                    cur.execute(q, flat_values)
+                    inserted_rows = [dict(r) for r in cur.fetchall()]
                     conn.commit()
                     return QueryResult(data=inserted_rows)
 
                 elif self._mode == "upsert":
-                    upserted_rows = []
+                    if not self._insert_data:
+                        return QueryResult(data=[])
+                    all_cols = list(self._insert_data[0].keys())
+                    col_names = ", ".join([f'"{c}"' for c in all_cols])
+                    row_ph = "(" + ", ".join(["%s"] * len(all_cols)) + ")"
+                    val_placeholders = ", ".join([row_ph] * len(self._insert_data))
+                    flat_values = []
                     for row in self._insert_data:
-                        cols = list(row.keys())
-                        col_names = ", ".join([f'"{c}"' for c in cols])
-                        placeholders = ", ".join(["%s"] * len(cols))
-                        values = [_safe_json_value(v) for v in row.values()]
+                        for c in all_cols:
+                            flat_values.append(_safe_json_value(row.get(c)))
 
-                        if self._on_conflict:
-                            conflict_cols = ", ".join([f'"{c.strip()}"' for c in self._on_conflict.split(",")])
-                            non_conflict_cols = [c for c in cols if c not in [x.strip() for x in self._on_conflict.split(",")]]
-                            if non_conflict_cols:
-                                update_set = ", ".join([f'"{c}" = EXCLUDED."{c}"' for c in non_conflict_cols])
-                                q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES ({placeholders}) ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_set} RETURNING *;'
-                            else:
-                                q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES ({placeholders}) ON CONFLICT ({conflict_cols}) DO NOTHING RETURNING *;'
+                    if self._on_conflict:
+                        conflict_cols = ", ".join([f'"{c.strip()}"' for c in self._on_conflict.split(",")])
+                        non_conflict_cols = [c for c in all_cols if c not in [x.strip() for x in self._on_conflict.split(",")]]
+                        if non_conflict_cols:
+                            update_set = ", ".join([f'"{c}" = EXCLUDED."{c}"' for c in non_conflict_cols])
+                            q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES {val_placeholders} ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_set} RETURNING *;'
                         else:
-                            q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING RETURNING *;'
+                            q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES {val_placeholders} ON CONFLICT ({conflict_cols}) DO NOTHING RETURNING *;'
+                    else:
+                        q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES {val_placeholders} ON CONFLICT DO NOTHING RETURNING *;'
 
-                        cur.execute(q, values)
-                        res = cur.fetchone()
-                        if res:
-                            upserted_rows.append(dict(res))
-                        else:
-                            upserted_rows.append(row)
+                    cur.execute(q, flat_values)
+                    upserted_rows = [dict(r) for r in cur.fetchall()]
                     conn.commit()
                     return QueryResult(data=upserted_rows)
 

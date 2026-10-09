@@ -2,8 +2,9 @@ import asyncio
 import httpx
 import logging
 import re
+import urllib.parse
 from typing import Dict, Any, List, Optional
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin
 from app.services.normalization import normalize_title, normalize_doi
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,8 @@ async def auto_sync_faculty_publications(
     Rapidly and accurately fetches and stores real publications for a faculty profile
     from Google Scholar, OpenAlex, and Semantic Scholar with author disambiguation.
     """
-    supabase = get_supabase_admin()
+    tiger = get_tiger_admin()
+    supabase = tiger
     pubs_to_insert = []
     sources_to_insert = []
     seen_titles = set()
@@ -66,12 +68,12 @@ async def auto_sync_faculty_publications(
     existing_by_doi = {p["doi"].lower(): p for p in existing_pubs if p.get("doi")}
     existing_by_title = {p["normalized_title"].lower(): p for p in existing_pubs if p.get("normalized_title")}
 
-    async with httpx.AsyncClient(timeout=6.0) as client:
+    async with httpx.AsyncClient(timeout=12.0) as client:
         # 1. Resolve OpenAlex Author ID if not provided
         resolved_oa_id = openalex_id
         if not resolved_oa_id and not orcid_id:
             try:
-                oa_search_url = f"https://api.openalex.org/authors?search={name}"
+                oa_search_url = f"https://api.openalex.org/authors?search={urllib.parse.quote(target_clean)}"
                 res = await client.get(oa_search_url, headers={"User-Agent": "mailto:admin@faculty360.edu"})
                 if res.status_code == 200:
                     authors = res.json().get("results", [])
@@ -285,7 +287,8 @@ async def sync_smart_faculty_profile(
     from app.services.smart_crawler import search_and_crawl_faculty
     from app.services.assessment_engine import calculate_assessment
     
-    supabase = get_supabase_admin()
+    tiger = get_tiger_admin()
+    supabase = tiger
     extracted = await search_and_crawl_faculty(name, institution, department, custom_url)
     
     # Save to unified_profiles
@@ -324,6 +327,35 @@ async def sync_smart_faculty_profile(
     # Also populate institutional_records table for full data traceability
     try:
         inst_records_to_insert = []
+        for exp in extracted.get("experience", []):
+            role = exp.get("role") or exp.get("designation") or "Academic Position"
+            org = exp.get("organization") or ""
+            dept = exp.get("department") or ""
+            dur = exp.get("duration") or ""
+            desc = " • ".join([p for p in [org, dept, dur] if p])
+            year = exp.get("start_year") or exp.get("year")
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "experience",
+                "title": role,
+                "description": desc or None,
+                "year": int(year) if year and str(year).isdigit() else None,
+                "is_verified": True
+            })
+        for edu in extracted.get("education", []):
+            deg = edu.get("degree") or "Degree"
+            inst = edu.get("institution") or ""
+            fld = edu.get("field") or ""
+            desc = " • ".join([p for p in [inst, fld] if p])
+            year = edu.get("year")
+            inst_records_to_insert.append({
+                "faculty_id": faculty_id,
+                "category": "education",
+                "title": deg,
+                "description": desc or None,
+                "year": int(year) if year and str(year).isdigit() else None,
+                "is_verified": True
+            })
         for t in extracted.get("teaching", []):
             desc_parts = [p for p in [
                 t.get("course_code"),
@@ -405,10 +437,11 @@ async def sync_smart_faculty_profile(
             
         if inst_records_to_insert:
             try:
-                supabase.table("institutional_records").delete().eq("faculty_id", faculty_id).execute()
+                tiger = get_tiger_admin()
+                tiger.table("institutional_records").delete().eq("faculty_id", faculty_id).execute()
             except Exception:
                 pass
-            supabase.table("institutional_records").insert(inst_records_to_insert).execute()
+            get_tiger_admin().table("institutional_records").insert(inst_records_to_insert).execute()
     except Exception as e:
         logger.warning(f"Institutional records sync warning: {e}")
         

@@ -18,7 +18,7 @@ import re
 import httpx
 from typing import Dict, Any, Optional
 from app.core.config import settings
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin, get_supabase_admin
 
 logger = logging.getLogger(__name__)
 

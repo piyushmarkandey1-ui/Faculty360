@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import get_current_user, verify_faculty_access, log_audit
 from app.services.assessment_engine import calculate_assessment, get_active_framework
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin, get_supabase_admin
 
 logger = logging.getLogger(__name__)
 

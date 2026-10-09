@@ -313,13 +313,75 @@ class TigerTableQuery:
             db_pool.putconn(conn)
 
 class TigerClient:
-    """Unified client providing table access and raw query execution."""
+    """Unified client providing table access, TimescaleDB hypertable queries, and raw query execution."""
 
     def table(self, table_name: str) -> TigerTableQuery:
         return TigerTableQuery(table_name)
 
     def query(self, sql: str, params: tuple = None) -> List[Dict[str, Any]]:
         return execute_query(sql, params)
+
+    def get_annual_trajectory(self, faculty_id: str) -> List[Dict[str, Any]]:
+        """Fetch longitudinal performance data from TimescaleDB hypertable."""
+        return execute_query(
+            """
+            SELECT recorded_year as year, citations, publications_count as publications,
+                   teaching_hours, mentoring_count as mentoring, overall_score as score,
+                   recorded_at
+            FROM faculty_annual_metrics
+            WHERE faculty_id = %s
+            ORDER BY recorded_year ASC, recorded_at ASC;
+            """,
+            (faculty_id,)
+        )
+
+    def record_annual_metrics(
+        self,
+        faculty_id: str,
+        year: int,
+        citations: int,
+        publications_count: int,
+        teaching_hours: float = 40.0,
+        mentoring_count: int = 1,
+        overall_score: float = 70.0
+    ):
+        """Insert or update time-series data point in TimescaleDB hypertable."""
+        return execute_query(
+            """
+            INSERT INTO faculty_annual_metrics (
+                faculty_id, recorded_year, recorded_at, citations,
+                publications_count, teaching_hours, mentoring_count, overall_score
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (faculty_id, recorded_year, recorded_at)
+            DO UPDATE SET
+                citations = EXCLUDED.citations,
+                publications_count = EXCLUDED.publications_count,
+                teaching_hours = EXCLUDED.teaching_hours,
+                mentoring_count = EXCLUDED.mentoring_count,
+                overall_score = EXCLUDED.overall_score;
+            """,
+            (
+                faculty_id,
+                year,
+                f"{year}-12-31 23:59:59+00",
+                citations,
+                publications_count,
+                teaching_hours,
+                mentoring_count,
+                overall_score
+            )
+        )
+
+    def log_audit(self, action: str, entity_type: str, entity_id: str, result: str, user_id: str = None):
+        """Append immutable audit log to Tiger Data audit_logs table."""
+        return execute_query(
+            """
+            INSERT INTO audit_logs (user_id, action, entity_type, entity_id, result)
+            VALUES (%s, %s, %s, %s, %s);
+            """,
+            (user_id, action, entity_type, entity_id, result)
+        )
 
 _tiger_client_instance = None
 
@@ -328,3 +390,12 @@ def get_tiger_client() -> TigerClient:
     if _tiger_client_instance is None:
         _tiger_client_instance = TigerClient()
     return _tiger_client_instance
+
+def get_tiger_admin() -> TigerClient:
+    """Primary administrator data client for Tiger Cloud TimescaleDB / PostgreSQL."""
+    return get_tiger_client()
+
+def get_supabase_admin() -> TigerClient:
+    """Backward-compatibility alias pointing exclusively to Tiger Data."""
+    return get_tiger_client()
+

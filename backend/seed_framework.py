@@ -1,6 +1,6 @@
 import json
 import asyncio
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin, get_supabase_admin
 
 async def seed():
     supabase = get_supabase_admin()

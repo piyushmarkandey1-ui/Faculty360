@@ -1,10 +1,10 @@
-﻿import asyncio
+import asyncio
 import os
 import sys
 sys.path.append(os.path.join(os.getcwd(), 'backend'))
 
 from app.core.config import settings
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin, get_supabase_admin
 from app.api.assessment import get_framework, calculate_faculty_assessment
 
 async def run_e2e():

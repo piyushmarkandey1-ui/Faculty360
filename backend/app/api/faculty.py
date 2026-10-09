@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 from app.core.auth import get_current_user, verify_faculty_access, log_audit, RequireRole
 from app.schemas.faculty import SyncScholarRequest
 from app.services import faculty_service
+from app.core.tiger import get_tiger_admin, get_supabase_admin, execute_query
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +16,9 @@ def validate_faculty_id(faculty_id: str):
 
 @router.post("")
 async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
-    from app.core.supabase import get_supabase_admin
     from app.services.auto_ingest import auto_sync_faculty_publications
     import asyncio
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     canonical_name = payload.get("name") or payload.get("canonical_name")
     if not canonical_name:
@@ -243,8 +243,7 @@ async def sync_source(
 
 @router.get("/{faculty_id}/quality")
 async def get_faculty_quality_metrics(faculty_id: str, user: dict = Depends(get_current_user)):
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     conflicts_res = supabase.table("profile_conflicts").select("id", count="exact").eq("faculty_id", faculty_id).eq("status", "OPEN").execute()
     open_conflicts = conflicts_res.count or 0
@@ -267,8 +266,7 @@ async def get_faculty_quality_metrics(faculty_id: str, user: dict = Depends(get_
 
 @router.get("/{faculty_id}/conflicts")
 async def get_faculty_conflicts(faculty_id: str, user: dict = Depends(get_current_user)):
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     res = supabase.table("profile_conflicts").select("*").eq("faculty_id", faculty_id).order("detected_at", desc=True).execute()
     return {"items": res.data if res.data else []}
@@ -281,8 +279,7 @@ async def resolve_conflict(
     user: dict = Depends(get_current_user)
 ):
     RequireRole(["ADMIN", "REVIEWER"])(user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     resolution = payload.get("resolution", "source_a")
     update_data = {
@@ -309,8 +306,7 @@ async def resolve_duplicate_publication(
     user: dict = Depends(get_current_user)
 ):
     RequireRole(["ADMIN", "REVIEWER"])(user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     pub_id = payload.get("publication_id")
     action = payload.get("action", "merge")  # "merge" or "separate"
@@ -382,8 +378,7 @@ async def discover_faculty_get(q: str = "", institution: str = None):
 async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     fac_res = supabase.table("faculty").select("*, institutions(id, name)").eq("id", faculty_id).single().execute()
     if not fac_res.data:
@@ -452,8 +447,7 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
 async def get_faculty_publications(faculty_id: str, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     res = supabase.table("publications").select("*, publication_sources(source_type, source_url)").eq("faculty_id", faculty_id).order("year", desc=True).execute()
     return {"items": res.data if res.data else []}
 
@@ -461,8 +455,7 @@ async def get_faculty_publications(faculty_id: str, user: dict = Depends(get_cur
 async def get_faculty_institutional_records(faculty_id: str, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     res = supabase.table("institutional_records").select("*").eq("faculty_id", faculty_id).order("year", desc=True).execute()
     return {"items": res.data if res.data else []}
 
@@ -470,9 +463,8 @@ async def get_faculty_institutional_records(faculty_id: str, user: dict = Depend
 async def sync_smart_faculty(faculty_id: str, payload: dict = None, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
-    from app.core.supabase import get_supabase_admin
     from app.services.auto_ingest import sync_smart_faculty_profile, auto_sync_faculty_publications
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     fac_res = supabase.table("faculty").select("*, institutions(name)").eq("id", faculty_id).execute()
     if not fac_res.data:
@@ -519,8 +511,7 @@ async def sync_smart_faculty(faculty_id: str, payload: dict = None, user: dict =
 async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     up_res = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
     if up_res.data:
@@ -562,10 +553,9 @@ async def add_manual_record(faculty_id: str, payload: dict, user: dict = Depends
     """Allow adding manual records / backup override for any category."""
     validate_faculty_id(faculty_id)
     verify_faculty_access(faculty_id, user)
-    from app.core.supabase import get_supabase_admin
     from app.services.assessment_engine import calculate_assessment
     import uuid
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     category = payload.get("category") # e.g. 'teaching', 'experience', 'projects', 'patents', 'education', 'institutional_service'
     record_data = payload.get("record")
@@ -606,8 +596,7 @@ async def add_manual_record(faculty_id: str, payload: dict, user: dict = Depends
 async def delete_faculty(faculty_id: str, user: dict = Depends(get_current_user)):
     validate_faculty_id(faculty_id)
     RequireRole(["ADMIN", "REVIEWER"])(user)
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     
     # 1. Fetch faculty name for audit
     fac_res = supabase.table("faculty").select("id, canonical_name").eq("id", faculty_id).execute()

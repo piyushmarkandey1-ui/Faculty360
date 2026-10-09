@@ -90,6 +90,14 @@ async def login(req: LoginRequest, response: Response):
     token = create_jwt_token(user["id"], user["email"], user["role"], user["full_name"])
     set_auth_cookie(response, token)
 
+    try:
+        execute_query(
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, result) VALUES (%s, %s, %s, %s, %s);",
+            (user["id"], "USER_LOGIN", "users", user["id"], "SUCCESS")
+        )
+    except Exception as e:
+        logger.warning(f"Audit log warning: {e}")
+
     return {
         "success": True,
         "user": user,
@@ -119,6 +127,14 @@ async def register(req: RegisterRequest, response: Response):
     token = create_jwt_token(user["id"], user["email"], user["role"], user["full_name"])
     set_auth_cookie(response, token)
 
+    try:
+        execute_query(
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, result) VALUES (%s, %s, %s, %s, %s);",
+            (user["id"], "USER_REGISTER", "users", user["id"], "SUCCESS")
+        )
+    except Exception as e:
+        logger.warning(f"Audit log warning: {e}")
+
     return {
         "success": True,
         "user": user,
@@ -130,15 +146,42 @@ async def demo_login(response: Response):
     """
     1-Click Instant Demo Login.
     Instantly logs in as Institutional Admin without needing credentials.
+    Ensures demo admin is registered in Tiger Data.
     """
+    demo_id = "00000000-0000-0000-0000-000000000000"
+    demo_email = "admin@acadlens.ac.in"
+    demo_name = "Institutional Admin (Demo)"
+    demo_role = "ADMIN"
+
+    # Upsert demo admin in Tiger Data users table
+    try:
+        execute_query(
+            """
+            INSERT INTO users (id, email, password_hash, full_name, role)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role;
+            """,
+            (demo_id, demo_email, hash_pw("admin123"), demo_name, demo_role)
+        )
+    except Exception as e:
+        logger.warning(f"Demo user upsert note: {e}")
+
     user = {
-        "id": "00000000-0000-0000-0000-000000000000",
-        "email": "admin@acadlens.ac.in",
-        "full_name": "Institutional Admin (Demo)",
-        "role": "ADMIN"
+        "id": demo_id,
+        "email": demo_email,
+        "full_name": demo_name,
+        "role": demo_role
     }
     token = create_jwt_token(user["id"], user["email"], user["role"], user["full_name"])
     set_auth_cookie(response, token)
+
+    try:
+        execute_query(
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, result) VALUES (%s, %s, %s, %s, %s);",
+            (demo_id, "USER_DEMO_LOGIN", "users", demo_id, "SUCCESS")
+        )
+    except Exception as e:
+        logger.warning(f"Audit log warning: {e}")
 
     return {
         "success": True,
@@ -149,16 +192,35 @@ async def demo_login(response: Response):
 
 @router.get("/me")
 async def get_me(user: dict = Depends(get_current_user)):
+    user_id = user.get("sub")
+    # Verify user exists in Tiger Data users table
+    db_user = None
+    if user_id:
+        rows = execute_query("SELECT id, email, full_name, role FROM users WHERE id = %s LIMIT 1;", (user_id,))
+        if rows:
+            db_user = rows[0]
+
     return {
         "user": {
-            "id": user.get("sub"),
-            "email": user.get("email"),
-            "role": user.get("role", "ADMIN"),
-            "name": user.get("name") or "Administrator"
+            "id": db_user["id"] if db_user else user.get("sub"),
+            "email": db_user["email"] if db_user else user.get("email"),
+            "role": db_user["role"] if db_user else user.get("role", "ADMIN"),
+            "name": db_user["full_name"] if db_user else (user.get("name") or "Administrator")
         }
     }
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(response: Response, user: dict = Depends(get_current_user)):
+    user_id = user.get("sub")
+    if user_id:
+        try:
+            execute_query(
+                "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, result) VALUES (%s, %s, %s, %s, %s);",
+                (user_id, "USER_LOGOUT", "users", user_id, "SUCCESS")
+            )
+        except Exception as e:
+            logger.warning(f"Logout audit log warning: {e}")
+
     response.delete_cookie(key="acadlens_token", path="/")
     return {"success": True}
+

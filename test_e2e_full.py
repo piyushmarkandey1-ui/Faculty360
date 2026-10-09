@@ -1,18 +1,18 @@
-﻿import asyncio
+import asyncio
 import os
 import sys
 import traceback
 sys.path.append(os.path.join(os.getcwd(), 'backend'))
 
 from app.core.config import settings
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin, get_supabase_admin
 from app.services.faculty_service import process_institutional_batch
 from app.services.assessment_engine import calculate_assessment
 from app.api.assessment import get_assessment_history
 
 async def run_e2e_full():
-    print("--- LIVE SUPABASE E2E FULL VALIDATION ---")
-    supabase = get_supabase_admin()
+    print("--- LIVE TIGER DATA E2E FULL VALIDATION ---")
+    supabase = get_tiger_admin()
     
     res = supabase.table("faculty").select("*").limit(1).execute()
     if not res.data:
@@ -45,7 +45,7 @@ async def run_e2e_full():
         
     print("\n[TEST] Historical Trends API")
     try:
-        hist_res = await get_assessment_history(faculty_id, user={'sub': 'admin', 'role': 'ADMIN'})
+        hist_res = await get_assessment_history(faculty_id, user={'sub': '00000000-0000-0000-0000-000000000000', 'email': 'admin@acadlens.ac.in', 'role': 'ADMIN'})
         print("  Historical Records Returned:", len(hist_res["items"]))
         print("  Is Demo Data:", hist_res["is_demo"])
     except Exception as e:

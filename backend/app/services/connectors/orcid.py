@@ -16,27 +16,7 @@ class OrcidConnector(AcademicSourceConnector):
         raise ValueError("Invalid ORCID format. Expected XXXX-XXXX-XXXX-XXXX")
 
     def fetch_and_normalize(self, identity: str) -> Dict[str, Any]:
-        try:
-            return self._do_fetch(identity)
-        except Exception as e:
-            # Fallback to demo mode if network fails
-            return {
-                "status": "completed",
-                "author": {
-                    "name": "Demo Faculty",
-                    "external_id": identity,
-                    "profile_url": f"https://orcid.org/{identity}",
-                },
-                "publications": [
-                    {
-                        "title": "Machine Learning for Geospatial Data Analysis",
-                        "year": 2022,
-                        "venue": "IEEE Transactions on Geoscience",
-                        "doi": "10.1109/TGRS.2022.12345",
-                        "citation_count": 0
-                    }
-                ]
-            }
+        return self._do_fetch(identity)
             
     def _do_fetch(self, identity: str) -> Dict[str, Any]:
         base_url = f"https://pub.orcid.org/v3.0/{identity}"

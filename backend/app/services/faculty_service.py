@@ -3,7 +3,7 @@ Faculty service: handles DB operations and orchestrates syncs across connectors.
 """
 import logging
 from typing import Dict, Any, List
-from app.core.supabase import get_supabase_admin
+from app.core.tiger import get_tiger_admin
 from app.services.connectors import get_connector
 from app.services.normalization import normalize_title, normalize_doi
 from app.services.resolution import resolve_publication, detect_conflicts
@@ -11,7 +11,7 @@ from app.services.resolution import resolve_publication, detect_conflicts
 logger = logging.getLogger(__name__)
 
 def sync_source(faculty_id: str, source_type: str, url_or_id: str) -> Dict[str, Any]:
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     connector = get_connector(source_type)
     
     try:
@@ -160,7 +160,7 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
     """
     Process an institutional data CSV upload batch.
     """
-    supabase = get_supabase_admin()
+    supabase = get_tiger_admin()
     connector = get_connector("institutional")
     
     try:

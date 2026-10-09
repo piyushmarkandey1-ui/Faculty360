@@ -11,7 +11,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_MODEL = "gemini-flash-latest"
 GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 
@@ -65,18 +65,18 @@ async def _search_institutional_page(name: str, institution: str, department: st
     queries = [
         f"{clean_name} {institution} faculty profile",
         f"{clean_name} {institution} {department}",
-        f"{clean_name} professor {institution}"
+        f"{clean_name} {institution}"
     ]
     
     async with httpx.AsyncClient(verify=False, timeout=12.0, follow_redirects=True, headers=headers) as client:
         for q in queries:
-            ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}"
             try:
-                resp = await client.get(ddg_url)
+                # Use DuckDuckGo Lite POST search for maximal reliability
+                resp = await client.post("https://lite.duckduckgo.com/lite/", data={"q": q})
                 if resp.status_code == 200:
                     soup = BeautifulSoup(resp.text, "html.parser")
                     candidates = []
-                    for a in soup.find_all("a", class_="result__url"):
+                    for a in soup.find_all("a"):
                         href = a.get("href", "")
                         target = ""
                         if "uddg=" in href:
@@ -88,12 +88,12 @@ async def _search_institutional_page(name: str, institution: str, department: st
                             # Prioritize university / institutional domain matching
                             is_academic_domain = any(tld in target.lower() for tld in [".edu", ".ac.in", ".ernet.in", ".ac.uk", ".edu.au", ".edu.sg", ".univ-", ".ac.", ".edu."])
                             matches_inst = any(tok in target.lower() for tok in inst_tokens)
-                            if is_academic_domain and (matches_inst or "faculty" in target.lower() or "profile" in target.lower() or "people" in target.lower()):
+                            if is_academic_domain and (matches_inst or "faculty" in target.lower() or "viewdetails" in target.lower() or "profile" in target.lower() or "people" in target.lower()):
                                 return target
                             candidates.append(target)
                             
                     for c in candidates:
-                        if any(tld in c.lower() for tld in [".edu", ".ac.in", ".ernet.in", ".ac.uk", ".edu.au", ".edu.sg", "scholar.google", "researchgate.net"]):
+                        if any(tld in c.lower() for tld in [".edu", ".ac.in", ".ernet.in", ".ac.uk", ".edu.au", ".edu.sg"]):
                             return c
             except Exception as e:
                 logger.warning(f"Universal search engine error for '{q}': {e}")
@@ -324,26 +324,47 @@ Raw crawled details:
 {scraped_text[:6000]}
 """
 
+    models_to_try = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash"]
+    last_err = None
+
     async with httpx.AsyncClient(timeout=25.0) as client:
-        resp = await client.post(
-            f"{GEMINI_ENDPOINT}?key={api_key}",
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.15,
-                    "responseMimeType": "application/json"
-                }
-            }
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        parsed = json.loads(raw_text)
-        
-        # Inject verified provenance tags
-        parsed["source_url"] = source_url
-        parsed["source_name"] = source_label
-        return parsed
+        for model in models_to_try:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            try:
+                resp = await client.post(
+                    f"{endpoint}?key={api_key}",
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "temperature": 0.15,
+                            "responseMimeType": "application/json"
+                        }
+                    }
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    clean_text = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.IGNORECASE)
+                    clean_text = re.sub(r"\s*```$", "", clean_text).strip()
+                    start_idx = clean_text.find("{")
+                    end_idx = clean_text.rfind("}")
+                    if start_idx != -1 and end_idx != -1:
+                        clean_text = clean_text[start_idx:end_idx + 1]
+                    parsed = json.loads(clean_text)
+                    
+                    # Inject verified provenance tags
+                    parsed["source_url"] = source_url
+                    parsed["source_name"] = source_label
+                    logger.info(f"Successfully extracted academic profile using Gemini model '{model}'")
+                    return parsed
+                else:
+                    last_err = f"Model {model} returned HTTP {resp.status_code}: {resp.text[:120]}"
+                    logger.warning(f"Gemini fallback warning: {last_err}")
+            except Exception as e:
+                last_err = str(e)
+                logger.warning(f"Gemini model {model} attempt error: {e}")
+
+    raise RuntimeError(f"All Gemini models exhausted: {last_err}")
 
 
 def _generate_heuristic_profile(

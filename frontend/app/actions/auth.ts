@@ -16,14 +16,6 @@ export async function signOut() {
     // ignore
   }
 
-  try {
-    const { createClient } = await import('@/lib/supabase/server')
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-  } catch {
-    // ignore
-  }
-
   redirect(ROUTES.login)
 }
 

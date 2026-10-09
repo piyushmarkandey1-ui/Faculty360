@@ -29,11 +29,13 @@ REQUIRED_KEYS = {
     "dataQualityObservations", "recommendedActions",
 }
 
-GEMINI_MODEL = "gemini-3.6-flash"
-GEMINI_ENDPOINT = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent"
-)
+CANDIDATE_GEMINI_MODELS = [
+    "gemini-flash-latest",
+    "gemini-flash-lite-latest",
+    "gemini-3.5-flash",
+]
+GEMINI_MODEL = CANDIDATE_GEMINI_MODELS[0]
+GEMINI_ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 TIMEOUT_SECONDS = 25.0
 
 
@@ -224,6 +226,36 @@ async def _build_context(faculty_id: str, assessment: Dict[str, Any], supabase) 
 
 # ── Gemini callers ───────────────────────────────────────────────────────────
 
+async def _execute_gemini_request(prompt: str, api_key: str, is_json: bool = True, temperature: float = 0.15) -> str:
+    last_err = None
+    gen_config = {"temperature": temperature}
+    if is_json:
+        gen_config["responseMimeType"] = "application/json"
+
+    async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
+        for model in CANDIDATE_GEMINI_MODELS:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            try:
+                response = await client.post(
+                    f"{endpoint}?key={api_key}",
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": gen_config,
+                    },
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                else:
+                    last_err = f"Model {model} returned HTTP {response.status_code}: {response.text[:120]}"
+                    logger.warning(f"Gemini fallback warning: {last_err}")
+            except Exception as e:
+                last_err = str(e)
+                logger.warning(f"Gemini model {model} attempt error: {e}")
+
+    raise RuntimeError(f"All Gemini models exhausted: {last_err}")
+
+
 async def _call_gemini_insights(context: Dict[str, Any], api_key: str) -> Dict[str, Any]:
     prompt = f"""You are the AcadLens AI evaluator. Your role is to explain and summarise
 verified academic performance data. You MUST NOT modify scores, invent evidence,
@@ -249,21 +281,14 @@ Return a single raw JSON object matching this EXACT schema (no markdown fences):
 DATA (do not modify):
 {json.dumps(context, indent=2)}
 """
-    async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-        response = await client.post(
-            f"{GEMINI_ENDPOINT}?key={api_key}",
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.15,
-                    "responseMimeType": "application/json",
-                },
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        raw = data["candidates"][0]["content"]["parts"][0]["text"]
-        return json.loads(raw)
+    raw = await _execute_gemini_request(prompt, api_key, is_json=True, temperature=0.15)
+    clean = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+    clean = re.sub(r"\s*```$", "", clean).strip()
+    start_idx = clean.find("{")
+    end_idx = clean.rfind("}")
+    if start_idx != -1 and end_idx != -1:
+        clean = clean[start_idx:end_idx + 1]
+    return json.loads(clean)
 
 
 async def _call_gemini_overview(profile_ctx: Dict[str, Any], api_key: str) -> str:
@@ -275,17 +300,10 @@ overview — no JSON, no markdown.
 DATA:
 {json.dumps(profile_ctx, indent=2)}
 """
-    async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-        response = await client.post(
-            f"{GEMINI_ENDPOINT}?key={api_key}",
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.1},
-            },
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    raw = await _execute_gemini_request(prompt, api_key, is_json=False, temperature=0.1)
+    clean = re.sub(r"^```(?:markdown|text)?\s*", "", raw, flags=re.IGNORECASE)
+    clean = re.sub(r"\s*```$", "", clean).strip()
+    return clean
 
 
 # ── Validation ───────────────────────────────────────────────────────────────
@@ -387,7 +405,8 @@ async def generate_framework_suggestions(config: dict) -> list:
     import httpx, json, logging
     logger = logging.getLogger(__name__)
 
-    if not settings.GEMINI_API_KEY:
+    key = _get_key()
+    if not key:
         return [{"id": "gemini-missing", "type": "warning", "message": "Gemini API key is not configured.", "impact": "low"}]
         
     prompt = f"""
@@ -409,33 +428,14 @@ async def generate_framework_suggestions(config: dict) -> list:
     """
     
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(
-                f"{GEMINI_ENDPOINT}?key={settings.GEMINI_API_KEY}",
-                headers={"Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.3}
-                }
-            )
-            
-        if resp.status_code != 200:
-            logger.error(f"Gemini API error: {resp.text}")
-            return [{"id": "api-error", "type": "warning", "message": "Gemini AI is temporarily unavailable.", "impact": "low"}]
-            
-        result_data = resp.json()
-        raw_text = result_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        
-        # Clean markdown code block formatting if present
-        if raw_text.startswith("```json"):
-            raw_text = raw_text[7:]
-        elif raw_text.startswith("```"):
-            raw_text = raw_text[3:]
-        if raw_text.endswith("```"):
-            raw_text = raw_text[:-3]
-            
-        suggestions = json.loads(raw_text.strip())
-        return suggestions
+        raw_text = await _execute_gemini_request(prompt, key, is_json=True, temperature=0.3)
+        clean_text = re.sub(r"^```(?:json)?\s*", "", raw_text, flags=re.IGNORECASE)
+        clean_text = re.sub(r"\s*```$", "", clean_text).strip()
+        start_idx = clean_text.find("[")
+        end_idx = clean_text.rfind("]")
+        if start_idx != -1 and end_idx != -1:
+            clean_text = clean_text[start_idx:end_idx + 1]
+        return json.loads(clean_text)
         
     except Exception as e:
         logger.error(f"Failed to generate framework suggestions: {e}")

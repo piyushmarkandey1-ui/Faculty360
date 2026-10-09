@@ -39,7 +39,7 @@ class Settings(BaseSettings):
         return val
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[".env", ".env.local", "../.env.local", "../.env"],
         env_file_encoding="utf-8",
         extra="ignore"
     )

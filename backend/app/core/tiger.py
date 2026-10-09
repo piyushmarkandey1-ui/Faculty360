@@ -66,6 +66,11 @@ class QueryResult:
         self.data = data
         self.count = count if count is not None else len(data)
 
+def _safe_json_value(v: Any) -> Any:
+    if isinstance(v, (dict, list)):
+        return Json(v, dumps=lambda obj: json.dumps(obj, default=str))
+    return v
+
 class TigerTableQuery:
     """Supabase-compatible query builder backed by Tiger Data PostgreSQL."""
 
@@ -205,7 +210,7 @@ class TigerTableQuery:
                         cols = list(row.keys())
                         col_names = ", ".join([f'"{c}"' for c in cols])
                         placeholders = ", ".join(["%s"] * len(cols))
-                        values = [Json(v) if isinstance(v, (dict, list)) else v for v in row.values()]
+                        values = [_safe_json_value(v) for v in row.values()]
 
                         q = f'INSERT INTO "{self.table_name}" ({col_names}) VALUES ({placeholders}) RETURNING *;'
                         cur.execute(q, values)
@@ -221,7 +226,7 @@ class TigerTableQuery:
                         cols = list(row.keys())
                         col_names = ", ".join([f'"{c}"' for c in cols])
                         placeholders = ", ".join(["%s"] * len(cols))
-                        values = [Json(v) if isinstance(v, (dict, list)) else v for v in row.values()]
+                        values = [_safe_json_value(v) for v in row.values()]
 
                         if self._on_conflict:
                             conflict_cols = ", ".join([f'"{c.strip()}"' for c in self._on_conflict.split(",")])
@@ -248,7 +253,7 @@ class TigerTableQuery:
                     values = []
                     for k, v in self._update_data.items():
                         set_parts.append(f'"{k}" = %s')
-                        values.append(Json(v) if isinstance(v, (dict, list)) else v)
+                        values.append(_safe_json_value(v))
 
                     values.extend(self._params)
                     q = f'UPDATE "{self.table_name}" SET {", ".join(set_parts)}{where_clause} RETURNING *;'

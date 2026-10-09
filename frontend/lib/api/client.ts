@@ -13,8 +13,6 @@ import type {
 } from "@/types/faculty";
 import type { Assessment, AssessmentSummary } from "@/types/assessment";
 
-import { createClient } from "@/lib/supabase/client";
-
 // --- Helpers & Auth ---
 
 export async function getAuthToken(): Promise<string | undefined> {

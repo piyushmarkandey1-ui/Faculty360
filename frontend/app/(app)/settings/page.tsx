@@ -189,6 +189,20 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           {[
             {
+              source: "institutional" as const,
+              name: "Tiger Data Cloud Database",
+              status: "Connected (TimescaleDB 2.30.2)",
+              badgeVariant: "success" as const,
+              description: "PostgreSQL 18.6 hypertable continuous aggregates & auth.",
+            },
+            {
+              source: "institutional" as const,
+              name: "Institutional Smart Crawler",
+              status: "Active (Gemini AI)",
+              badgeVariant: "success" as const,
+              description: "Universal university web crawler with Gemini 3.8 / Flash extraction.",
+            },
+            {
               source: "google_scholar" as const,
               name: "Google Scholar (Apify)",
               status: "Connected",
@@ -203,18 +217,11 @@ export default function SettingsPage() {
               description: "Publication & co-author graph extraction.",
             },
             {
-              source: "institutional" as const,
-              name: "Institutional ERP / DB",
+              source: "orcid" as const,
+              name: "ORCID & OpenAlex API",
               status: "Connected",
               badgeVariant: "success" as const,
-              description: "Authorized internal database synchronization.",
-            },
-            {
-              source: "orcid" as const,
-              name: "ORCID Public API",
-              status: "Available",
-              badgeVariant: "info" as const,
-              description: "OAuth 2.0 public record connector.",
+              description: "Verified 250M+ global academic registry & DOI cross-matching.",
             },
           ].map((item) => (
             <div

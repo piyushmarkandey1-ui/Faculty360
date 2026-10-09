@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 def is_matching_author(authorships: list, target_name: str) -> bool:
     """Check if the paper's authors list contains the target professor's full name."""
+    if not authorships:
+        return True
     target_clean = re.sub(r'^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+', '', target_name.strip(), flags=re.IGNORECASE)
     parts = [p.lower() for p in target_clean.split() if len(p) > 1]
     if not parts:
@@ -17,7 +19,11 @@ def is_matching_author(authorships: list, target_name: str) -> bool:
     for auth in authorships:
         author_name = ""
         if isinstance(auth, dict):
-            author_name = (auth.get("author", {}).get("display_name") or auth.get("raw_author_name") or auth.get("name") or "").lower()
+            auth_inner = auth.get("author")
+            author_name = ((auth_inner.get("display_name") if isinstance(auth_inner, dict) else None) 
+                           or auth.get("raw_author_name") 
+                           or auth.get("name") 
+                           or "").lower()
         elif isinstance(auth, str):
             author_name = auth.lower()
         if all(part in author_name for part in parts):
@@ -35,7 +41,7 @@ async def auto_sync_faculty_publications(
 ):
     """
     Rapidly and accurately fetches and stores real publications for a faculty profile
-    from OpenAlex and Semantic Scholar into Supabase with author disambiguation.
+    from Google Scholar, OpenAlex, and Semantic Scholar with author disambiguation.
     """
     supabase = get_supabase_admin()
     pubs_to_insert = []
@@ -44,6 +50,14 @@ async def auto_sync_faculty_publications(
     
     target_clean = re.sub(r'^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+', '', name.strip(), flags=re.IGNORECASE)
     parts = [p.lower() for p in target_clean.split() if len(p) > 1]
+
+    # 0. If scholar_id is provided, prioritize Google Scholar connector
+    if scholar_id:
+        try:
+            from app.services.faculty_service import sync_source
+            sync_source(faculty_id, "google_scholar", scholar_id)
+        except Exception as e:
+            logger.warning(f"Google Scholar connector sync note: {e}")
 
     # Load existing publications for this faculty member to prevent duplicates and resolve conflicts
     existing_res = supabase.table("publications").select("id, title, normalized_title, doi, citation_count, is_verified, source_type").eq("faculty_id", faculty_id).execute()
@@ -62,9 +76,9 @@ async def auto_sync_faculty_publications(
                 if res.status_code == 200:
                     authors = res.json().get("results", [])
                     for a in authors:
-                        disp = a.get("display_name", "").lower()
+                        disp = (a.get("display_name") or "").lower()
                         if all(p in disp for p in parts):
-                            resolved_oa_id = a.get("id", "").replace("https://openalex.org/", "")
+                            resolved_oa_id = (a.get("id") or "").replace("https://openalex.org/", "")
                             break
             except Exception as e:
                 logger.warning(f"OpenAlex author search error: {e}")
@@ -101,12 +115,19 @@ async def auto_sync_faculty_publications(
                 candidate_papers = []
                 if key == "openalex" and "results" in data:
                     for work in data.get("results", []):
+                        venue = "Academic Journal"
+                        prim_loc = work.get("primary_location")
+                        if isinstance(prim_loc, dict):
+                            src = prim_loc.get("source")
+                            if isinstance(src, dict) and src.get("display_name"):
+                                venue = src.get("display_name")
+
                         candidate_papers.append({
                             "title": (work.get("title") or "").strip(),
                             "year": work.get("publication_year"),
                             "doi": work.get("doi"),
                             "citation_count": work.get("cited_by_count", 0) or 0,
-                            "venue": (work.get("primary_location") or {}).get("source", {}).get("display_name") or "Academic Journal",
+                            "venue": venue,
                             "authors": work.get("authorships", []),
                             "source_type": "openalex",
                             "is_verified": True
@@ -126,7 +147,7 @@ async def auto_sync_faculty_publications(
                         })
                 elif key == "semantic_scholar_search" and "data" in data:
                     for author in data.get("data", []):
-                        disp = author.get("name", "").lower()
+                        disp = (author.get("name") or "").lower()
                         if all(p in disp for p in parts):
                             for p in author.get("papers", []):
                                 ext_ids = p.get("externalIds") or {}
@@ -199,7 +220,9 @@ async def auto_sync_faculty_publications(
                             "confidence": 98.0
                         })
 
-    # Insert new unique publications into Supabase
+
+
+    # Insert new unique publications into database
     if pubs_to_insert:
         try:
             ins_res = supabase.table("publications").insert(pubs_to_insert).execute()
@@ -214,7 +237,7 @@ async def auto_sync_faculty_publications(
                         "original_doi": row.get("doi")
                     })
         except Exception as e:
-            logger.error(f"Failed to insert publications into Supabase: {e}")
+            logger.error(f"Failed to insert publications into database: {e}")
 
     # Upsert source links
     if sources_to_insert:
@@ -223,6 +246,22 @@ async def auto_sync_faculty_publications(
         except Exception as e:
             logger.warning(f"Publication sources upsert note: {e}")
             
+    # Update total publications, citations, and h-index in unified_profiles
+    try:
+        all_pubs = supabase.table("publications").select("citation_count").eq("faculty_id", faculty_id).execute().data or []
+        tot_pubs = len(all_pubs)
+        tot_cites = sum(p.get("citation_count") or 0 for p in all_pubs)
+        sorted_cites = sorted([p.get("citation_count") or 0 for p in all_pubs], reverse=True)
+        h_idx = sum(1 for idx, c in enumerate(sorted_cites) if c >= idx + 1)
+        
+        supabase.table("unified_profiles").update({
+            "total_publications": tot_pubs,
+            "total_citations": tot_cites,
+            "h_index": h_idx
+        }).eq("faculty_id", faculty_id).execute()
+    except Exception as e:
+        logger.warning(f"Failed to update unified profile metrics: {e}")
+
     # Update last synced at
     supabase.table("faculty").update({"last_synced_at": "now()"}).eq("id", faculty_id).execute()
 

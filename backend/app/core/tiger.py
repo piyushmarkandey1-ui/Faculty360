@@ -41,31 +41,60 @@ def get_db_pool() -> pool.SimpleConnectionPool:
         url = get_tiger_conn_url()
         _connection_pool = pool.SimpleConnectionPool(
             minconn=1,
-            maxconn=10,
+            maxconn=15,
             dsn=url
         )
     return _connection_pool
 
-def execute_query(query: str, params: tuple = None) -> List[Dict[str, Any]]:
-    """Execute a raw SQL query on Tiger Data and return results as dicts."""
-    db_pool = get_db_pool()
-    conn = db_pool.getconn()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query, params or ())
-            rows = []
-            if cur.description:
-                rows = [dict(r) for r in cur.fetchall()]
-            conn.commit()
-            return rows
-    except Exception:
+def reset_db_pool():
+    global _connection_pool
+    if _connection_pool is not None and not _connection_pool.closed:
         try:
-            conn.rollback()
+            _connection_pool.closeall()
         except Exception:
             pass
-        raise
-    finally:
-        db_pool.putconn(conn)
+    _connection_pool = None
+
+def execute_query(query: str, params: tuple = None) -> List[Dict[str, Any]]:
+    """Execute a raw SQL query on Tiger Data with auto-reconnect."""
+    for attempt in range(2):
+        try:
+            db_pool = get_db_pool()
+            conn = db_pool.getconn()
+            try:
+                if conn.closed != 0:
+                    db_pool.putconn(conn, close=True)
+                    conn = db_pool.getconn()
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(query, params or ())
+                    rows = []
+                    if cur.description:
+                        rows = [dict(r) for r in cur.fetchall()]
+                    conn.commit()
+                    return rows
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                db_pool.putconn(conn, close=True)
+                reset_db_pool()
+                if attempt == 1:
+                    raise e
+                continue
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                raise
+            finally:
+                if not conn.closed:
+                    db_pool.putconn(conn)
+        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+            reset_db_pool()
+            if attempt == 1:
+                raise e
 
 class QueryResult:
     def __init__(self, data: List[Dict[str, Any]], count: Optional[int] = None):
@@ -163,6 +192,9 @@ class TigerTableQuery:
         db_pool = get_db_pool()
         conn = db_pool.getconn()
         try:
+            if conn.closed != 0:
+                db_pool.putconn(conn, close=True)
+                conn = db_pool.getconn()
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 where_clause = ""
                 if self._filters:

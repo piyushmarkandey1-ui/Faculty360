@@ -159,8 +159,8 @@ export default function LoginPage() {
         </motion.div>
 
         <div className="relative z-10 flex items-center justify-between text-xs font-medium border-t border-[var(--border-subtle)] pt-6" style={{ color: 'var(--text-muted)' }}>
-          <span>Smart India Hackathon 2026 • PS64</span>
-          <span>HackBIOS 3.0 MLH Event</span>
+          <span>Faculty360 Enterprise</span>
+          <span>Institutional Intelligence System</span>
         </div>
       </div>
 

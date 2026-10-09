@@ -93,8 +93,11 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     supabase.table("unified_profiles").insert({
         "faculty_id": faculty_id,
         "display_name": canonical_name,
-        "bio": f"Faculty member at {institution_name}, specialized in {', '.join(topics[:3]) if topics else department}.",
+        "bio": f"Faculty member at {institution_name or 'Academic Institution'}, specialized in {', '.join(topics[:3]) if topics else department}.",
         "research_interests": topics,
+        "total_citations": payload.get("citations") or 0,
+        "h_index": payload.get("h_index") or 0,
+        "total_publications": payload.get("paper_count") or 0,
         "source_coverage": {
             "google_scholar": bool(scholar_id or scholar_url),
             "orcid": bool(orcid_id or orcid_url),
@@ -131,7 +134,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
             "faculty_id": faculty_id,
             "source_type": "institutional",
             "external_id": emp_id,
-            "profile_url": f"https://{institution_name.lower().replace(' ', '')}.edu/faculty/{emp_id}"
+            "profile_url": f"https://{(institution_name or 'university').lower().replace(' ', '')}.edu/faculty/{emp_id}"
         })
         
     if identities_to_insert:
@@ -169,8 +172,9 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
     except Exception as e:
         logger.warning(f"Baseline trajectory insert warning: {e}")
 
-    # Auto-sync publications from OpenAlex & Semantic Scholar with full author verification
+    # Fetch real live publications from OpenAlex / Semantic Scholar / Scholar
     try:
+        from app.services.auto_ingest import auto_sync_faculty_publications
         await asyncio.wait_for(
             auto_sync_faculty_publications(
                 faculty_id=faculty_id,
@@ -181,27 +185,26 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
                 openalex_id=openalex_id,
                 affiliation=institution_name
             ),
-            timeout=8.0
+            timeout=10.0
         )
-    except Exception as e:
-        # If timeout or error, continue gracefully
-        pass
+    except Exception as err:
+        logger.warning(f"Live publication sync notice: {err}")
 
-    # Auto-sync rich institutional profile, teaching, experience, patents & projects via Gemini Smart Crawler
-    try:
-        from app.services.auto_ingest import sync_smart_faculty_profile
-        await asyncio.wait_for(
-            sync_smart_faculty_profile(
+    # Launch background crawler for rich institutional records (teaching, experience, projects)
+    async def _background_crawler():
+        try:
+            from app.services.auto_ingest import sync_smart_faculty_profile
+            await sync_smart_faculty_profile(
                 faculty_id=faculty_id,
                 name=canonical_name,
                 institution=institution_name,
                 department=department,
                 custom_url=payload.get("profile_url") or payload.get("institution_url")
-            ),
-            timeout=8.0
-        )
-    except Exception as e:
-        logger.warning(f"Smart profile sync warning: {e}")
+            )
+        except Exception as err:
+            logger.warning(f"Background crawler notice for {canonical_name}: {err}")
+
+    asyncio.create_task(_background_crawler())
 
     log_audit("CREATE_FACULTY", "faculty", faculty_id, "SUCCESS", user.get("sub"))
     return new_faculty
@@ -425,8 +428,15 @@ async def get_faculty_profile(faculty_id: str, user: dict = Depends(get_current_
     # Institutional records (projects, mentoring/students)
     inst_records_res = supabase.table("institutional_records").select("id, category").eq("faculty_id", faculty_id).execute()
     inst_records = inst_records_res.data or []
-    projects_count = sum(1 for r in inst_records if r.get("category") in ("Projects", "Innovation"))
-    students_count = sum(1 for r in inst_records if r.get("category") == "Mentoring")
+    projects_count = sum(1 for r in inst_records if (r.get("category") or "").lower() in ("projects", "project", "innovation"))
+    students_count = sum(1 for r in inst_records if (r.get("category") or "").lower() in ("mentoring", "students", "student"))
+    
+    # Also check unified profile source_coverage for projects and mentoring counts
+    sc_cov = unified_profile.get("source_coverage") or {}
+    if projects_count == 0 and isinstance(sc_cov.get("projects"), list):
+        projects_count = len(sc_cov["projects"])
+    if students_count == 0 and isinstance(sc_cov.get("mentoring"), list):
+        students_count = len(sc_cov["mentoring"])
     
     # Academic identities
     identities_res = supabase.table("academic_identities").select("*").eq("faculty_id", faculty_id).execute()

@@ -59,7 +59,7 @@ export default function Image() {
             AI-Enabled Academic Profile Analytics
           </div>
           <div style={{ fontSize: 24, color: '#0F8B8D', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Smart India Hackathon 2026
+            Institutional Evaluation Suite
           </div>
         </div>
       </div>

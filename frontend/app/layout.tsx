@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   description:
     "AcadLens unifies fragmented academic data into evidence-based, explainable faculty profiles and assessments.",
-  keywords: ["academic", "faculty", "analytics", "assessment", "SIH 2026"],
+  keywords: ["academic", "faculty", "analytics", "assessment", "higher education"],
   openGraph: {
     title: "AcadLens | AI-Enabled Academic Profile Analytics",
     description:

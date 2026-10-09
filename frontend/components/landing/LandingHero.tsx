@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -303,7 +303,7 @@ export function LandingHero() {
               transition={{ duration: 0.5, delay: 0.0, ease: "easeOut" }}
               className="flex items-center gap-2 mb-6">
               <span className="inline-block w-6 h-px" style={{ backgroundColor: TEAL, opacity: 0.8 }} />
-              <span className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: TEAL }}>Smart India Hackathon 2026 · PS64</span>
+              <span className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: TEAL }}>Faculty360 · Academic Intelligence Platform</span>
             </motion.div>
             <div className="pl-5 border-l-4" style={{ borderColor: TEAL }}>
               <motion.div

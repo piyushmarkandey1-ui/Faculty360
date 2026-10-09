@@ -89,7 +89,7 @@ export function HistoricalTrends({ facultyId }: { facultyId: string }) {
         {data.is_demo && (
           <div className="flex items-center gap-1 text-xs px-2 py-1 bg-[var(--warning-muted)] text-[var(--warning)] rounded border border-[var(--warning)] border-opacity-20">
             <AlertTriangle size={12} />
-            <span>Simulated SIH Demo Data</span>
+            <span>Simulated Benchmark Data</span>
           </div>
         )}
       </div>

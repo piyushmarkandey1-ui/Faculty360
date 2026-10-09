@@ -150,7 +150,7 @@ export function Sidebar({ className }: { className?: string }) {
                 className="text-[11px] truncate"
                 style={{ color: "var(--text-muted)" }}
               >
-                SIH Demo
+                Reviewer
               </p>
             </div>
           </div>

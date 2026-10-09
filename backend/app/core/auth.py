@@ -7,7 +7,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from app.core.config import settings
-from app.core.supabase import get_supabase_admin
 
 security = HTTPBearer(auto_error=False)
 
@@ -100,17 +99,14 @@ def verify_faculty_access(faculty_id: str, user: dict):
     raise HTTPException(status_code=403, detail="Not authorized to access this faculty record")
 
 def log_audit(action: str, entity_type: str, entity_id: str, result: str, user_id: str = None):
-    """Log an event to the audit_logs table."""
+    """Log an event to the audit_logs table in Tiger Data."""
     try:
-        supabase = get_supabase_admin()
-        supabase.table("audit_logs").insert({
-            "user_id": user_id,
-            "action": action,
-            "entity_type": entity_type,
-            "entity_id": entity_id,
-            "result": result
-        }).execute()
+        from app.core.tiger import execute_query
+        execute_query(
+            "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, result) VALUES (%s, %s, %s, %s, %s);",
+            (user_id, action, entity_type, entity_id, result)
+        )
     except Exception as e:
         import logging
-        logging.getLogger(__name__).error(f"Audit log failed: {e}")
+        logging.getLogger(__name__).warning(f"Audit log notice: {e}")
 

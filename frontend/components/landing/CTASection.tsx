@@ -149,7 +149,7 @@ export function CTASection() {
         <div className="container-page max-w-3xl relative z-10">
           <SectionReveal>
             <div className="text-[10px] font-bold uppercase tracking-widest mb-6" style={{ color: "#0F8B8D" }}>
-              AcadLens · Smart India Hackathon 2026
+              Faculty360 · Next-Gen Academic Analytics
             </div>
             
             <div className="space-y-1 mb-8">

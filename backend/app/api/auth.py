@@ -56,7 +56,8 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    full_name: str
+    full_name: Optional[str] = None
+    fullName: Optional[str] = None
     role: Optional[str] = "REVIEWER"
 
 @router.post("/login")
@@ -108,10 +109,11 @@ async def register(req: RegisterRequest, response: Response):
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email already exists")
 
+    name = (req.full_name or req.fullName or email.split("@")[0]).strip()
     hashed = hash_pw(req.password)
     res = execute_query(
         "INSERT INTO users (email, password_hash, full_name, role) VALUES (%s, %s, %s, %s) RETURNING id, email, full_name, role;",
-        (email, hashed, req.full_name.strip(), req.role or "REVIEWER")
+        (email, hashed, name, req.role or "REVIEWER")
     )
     user = res[0]
     token = create_jwt_token(user["id"], user["email"], user["role"], user["full_name"])

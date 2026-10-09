@@ -169,13 +169,22 @@ export default function FacultyProfilePage() {
       ])
 
       if (profileRes && (profileRes.entity || profileRes.canonical_name)) {
-        if (detailsRes && profileRes.unified_profile) {
+        if (!profileRes.unified_profile) {
+          profileRes.unified_profile = {
+            display_name: (profileRes.entity || profileRes).canonical_name || 'Faculty Member',
+            bio: '',
+            research_interests: [],
+            source_coverage: {}
+          }
+        }
+        if (detailsRes) {
           profileRes.unified_profile.source_coverage = {
             ...(profileRes.unified_profile.source_coverage || {}),
             ...detailsRes
           }
           if (detailsRes.bio) profileRes.unified_profile.bio = detailsRes.bio
           if (detailsRes.research_interests) profileRes.unified_profile.research_interests = detailsRes.research_interests
+          if (detailsRes.display_name) profileRes.unified_profile.display_name = detailsRes.display_name
         }
         setProfile(profileRes)
       }

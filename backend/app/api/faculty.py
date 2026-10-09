@@ -513,39 +513,142 @@ async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_
     verify_faculty_access(faculty_id, user)
     supabase = get_tiger_admin()
     
+    # 1. Fetch unified profile
     up_res = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
-    if up_res.data:
-        up = up_res.data[0]
-        sc = up.get("source_coverage") or {}
-        return {
-            "display_name": up.get("display_name"),
-            "bio": up.get("bio"),
-            "research_interests": up.get("research_interests") or [],
-            "avatar_url": sc.get("avatar_url"),
-            "source_url": sc.get("source_url"),
-            "source_name": sc.get("source_name") or "Institutional Portal",
-            "experience": sc.get("experience") or [],
-            "education": sc.get("education") or [],
-            "teaching": sc.get("teaching") or [],
-            "mentoring": sc.get("mentoring") or [],
-            "projects": sc.get("projects") or [],
-            "patents": sc.get("patents") or [],
-            "institutional_service": sc.get("institutional_service") or [],
-            "outreach": sc.get("outreach") or []
-        }
+    up = up_res.data[0] if up_res.data else {}
+    sc = up.get("source_coverage") if isinstance(up.get("source_coverage"), dict) else {}
     
-    # Fallback to smart crawler on-demand if no unified profile exists yet
-    from app.services.auto_ingest import sync_smart_faculty_profile
-    fac_res = supabase.table("faculty").select("*, institutions(name)").eq("id", faculty_id).execute()
-    if fac_res.data:
-        fac = fac_res.data[0]
-        name = fac.get("canonical_name", "")
-        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
-        dept = fac.get("department", "Computer Science & Engineering")
-        extracted = await sync_smart_faculty_profile(faculty_id, name, inst_name, dept)
-        return extracted
+    # 2. Check institutional_records table in Tiger Data
+    inst_res = supabase.table("institutional_records").select("*").eq("faculty_id", faculty_id).execute()
+    inst_records = inst_res.data or []
+    
+    # 3. If no experience or education anywhere, trigger smart crawler on-demand
+    has_exp = bool(sc.get("experience")) or any(r.get("category") == "experience" for r in inst_records)
+    has_edu = bool(sc.get("education")) or any(r.get("category") == "education" for r in inst_records)
+    
+    if not has_exp and not has_edu:
+        try:
+            from app.services.auto_ingest import sync_smart_faculty_profile
+            fac_res = supabase.table("faculty").select("*, institutions(name)").eq("id", faculty_id).execute()
+            if fac_res.data:
+                fac = fac_res.data[0]
+                name = fac.get("canonical_name", "")
+                inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
+                dept = fac.get("department", "Computer Science & Engineering")
+                sc = await sync_smart_faculty_profile(faculty_id, name, inst_name, dept)
+                up_res2 = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
+                if up_res2.data:
+                    up = up_res2.data[0]
+                    sc = up.get("source_coverage") if isinstance(up.get("source_coverage"), dict) else sc
+                inst_res2 = supabase.table("institutional_records").select("*").eq("faculty_id", faculty_id).execute()
+                inst_records = inst_res2.data or inst_records
+        except Exception as e:
+            logger.warning(f"On-demand profile crawler note: {e}")
+            
+    # 4. Merge institutional_records into categories
+    experience_list = list(sc.get("experience") or [])
+    education_list = list(sc.get("education") or [])
+    teaching_list = list(sc.get("teaching") or [])
+    mentoring_list = list(sc.get("mentoring") or [])
+    projects_list = list(sc.get("projects") or [])
+    patents_list = list(sc.get("patents") or [])
+    service_list = list(sc.get("institutional_service") or [])
+    outreach_list = list(sc.get("outreach") or [])
+    
+    for r in inst_records:
+        cat = (r.get("category") or "").lower()
+        title = r.get("title") or ""
+        desc = r.get("description") or ""
+        year = r.get("year")
         
-    return {}
+        if cat == "experience" and not any(e.get("role") == title and e.get("organization") == desc for e in experience_list):
+            experience_list.append({
+                "role": title,
+                "organization": desc,
+                "start_year": year,
+                "is_current": False,
+                "description": desc,
+                "source_name": r.get("source_type") or "Tiger Institutional DB",
+                "is_verified": r.get("is_verified", True)
+            })
+        elif cat == "education" and not any(e.get("degree") == title for e in education_list):
+            education_list.append({
+                "degree": title,
+                "institution": desc,
+                "year": year,
+                "description": desc,
+                "source_name": r.get("source_type") or "Tiger Institutional DB",
+                "is_verified": r.get("is_verified", True)
+            })
+        elif cat in ("teaching", "teach") and not any(t.get("course_name") == title for t in teaching_list):
+            teaching_list.append({
+                "course_name": title,
+                "code": desc or "UG/PG Course",
+                "year": year or 2024,
+                "source_name": "Institutional Portal",
+                "is_verified": True
+            })
+        elif cat in ("mentoring", "mentor") and not any(m.get("scholar_name") == title for m in mentoring_list):
+            mentoring_list.append({
+                "scholar_name": title,
+                "program": "Doctoral / Postgraduate",
+                "topic": desc,
+                "year": year or 2024,
+                "source_name": "Institutional Portal",
+                "is_verified": True
+            })
+        elif cat in ("projects", "project") and not any(p.get("title") == title for p in projects_list):
+            projects_list.append({
+                "title": title,
+                "funding_agency": desc or "Research Agency",
+                "year": year or 2023,
+                "status": "Completed" if year and year < 2024 else "Ongoing",
+                "source_name": "Institutional Portal",
+                "is_verified": True
+            })
+        elif cat in ("patents", "patent", "innovation") and not any(p.get("title") == title for p in patents_list):
+            patents_list.append({
+                "title": title,
+                "patent_number": desc,
+                "country": "India",
+                "status": "Granted",
+                "year": year or 2023,
+                "source_name": "Official Patent Registry",
+                "is_verified": True
+            })
+        elif cat in ("service", "institutional_service") and not any(s.get("role_name") == title for s in service_list):
+            service_list.append({
+                "role_name": title,
+                "body_or_committee": desc,
+                "year": year or 2024,
+                "source_name": "Institutional Portal",
+                "is_verified": True
+            })
+        elif cat in ("outreach", "outreach_events") and not any(o.get("title") == title for o in outreach_list):
+            outreach_list.append({
+                "title": title,
+                "activity_type": desc or "Public Keynote / Session",
+                "year": year or 2024,
+                "source_name": "Institutional Portal",
+                "is_verified": True
+            })
+
+    return {
+        "display_name": up.get("display_name"),
+        "bio": up.get("bio") or sc.get("bio"),
+        "research_interests": up.get("research_interests") or sc.get("research_interests") or [],
+        "avatar_url": sc.get("avatar_url"),
+        "source_url": sc.get("source_url"),
+        "source_name": sc.get("source_name") or "Institutional Portal",
+        "experience": experience_list,
+        "education": education_list,
+        "teaching": teaching_list,
+        "mentoring": mentoring_list,
+        "projects": projects_list,
+        "patents": patents_list,
+        "institutional_service": service_list,
+        "outreach": outreach_list
+    }
 
 
 @router.post("/{faculty_id}/manual-record")
@@ -566,6 +669,7 @@ async def add_manual_record(faculty_id: str, payload: dict, user: dict = Depends
     record_data["source_name"] = "Manual Verified Entry"
     record_data["is_manual"] = True
     
+    # 1. Update unified_profiles.source_coverage
     up_res = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
     if up_res.data:
         up = up_res.data[0]
@@ -582,7 +686,24 @@ async def add_manual_record(faculty_id: str, payload: dict, user: dict = Depends
             "source_coverage": sc
         }).execute()
         
-    # Recalculate assessment
+    # 2. Also insert directly into Tiger institutional_records table
+    try:
+        title = record_data.get("role") or record_data.get("course_name") or record_data.get("title") or record_data.get("degree") or record_data.get("scholar_name") or record_data.get("role_name") or "Record"
+        desc = record_data.get("organization") or record_data.get("institution") or record_data.get("topic") or record_data.get("description") or record_data.get("code") or ""
+        year_raw = record_data.get("year") or record_data.get("start_year") or 2024
+        supabase.table("institutional_records").insert({
+            "faculty_id": faculty_id,
+            "category": category,
+            "title": str(title),
+            "description": str(desc),
+            "year": int(year_raw) if str(year_raw).isdigit() else 2024,
+            "source_type": "manual",
+            "is_verified": True
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Institutional records table insert warning: {e}")
+        
+    # 3. Recalculate assessment
     try:
         calculate_assessment(faculty_id)
     except Exception as e:

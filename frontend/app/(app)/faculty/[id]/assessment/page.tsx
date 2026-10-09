@@ -216,16 +216,17 @@ export default function FacultyAssessmentPage() {
   }
 
   const radarData = (() => {
-    if (!assessment?.kpi_scores) return [];
+    if (!assessment?.kpi_scores || !Array.isArray(assessment.kpi_scores) || assessment.kpi_scores.length === 0) return [];
     
     // Include all categories so the radar chart has a full shape (at least 3-4 axes)
     const aggregated = assessment.kpi_scores.reduce((acc: any, kpi: any) => {
-      if (!acc[kpi.category]) {
-        acc[kpi.category] = { subject: kpi.category, A: 0, fullMark: 0 };
+      const cat = kpi.category || 'General';
+      if (!acc[cat]) {
+        acc[cat] = { subject: cat, A: 0, fullMark: 0 };
       }
       if (kpi.status !== 'SOURCE_UNAVAILABLE') {
-        acc[kpi.category].A += kpi.computed_score;
-        acc[kpi.category].fullMark += kpi.max_score;
+        acc[cat].A += Number(kpi.computed_score || 0);
+        acc[cat].fullMark += Number(kpi.max_score || 100);
       }
       return acc;
     }, {});
@@ -233,7 +234,7 @@ export default function FacultyAssessmentPage() {
     // Scale scores to 100 for the radar chart representation
     return Object.values(aggregated).map((item: any) => ({
       subject: item.subject,
-      A: item.fullMark > 0 ? (item.A / item.fullMark) * 100 : 0,
+      A: item.fullMark > 0 ? Math.round((item.A / item.fullMark) * 100) : 0,
       fullMark: 100,
     }));
   })();
@@ -504,8 +505,8 @@ export default function FacultyAssessmentPage() {
           {/* Radar Chart */}
           <div className="p-6 rounded-xl border flex flex-col" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
             <h3 className="font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Category Distribution</h3>
-            <div className="flex-1 min-h-[300px]">
-              {isClient && radarData.length > 0 && (
+            <div className="w-full h-[340px] min-h-[300px] flex items-center justify-center">
+              {isClient && radarData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                     <PolarGrid stroke="var(--border-default)" />
@@ -513,6 +514,10 @@ export default function FacultyAssessmentPage() {
                     <Radar name="Score" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.3} dot={{ r: 4, fill: "var(--accent)" }} />
                   </RadarChart>
                 </ResponsiveContainer>
+              ) : (
+                <div className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                  Calculating category distribution...
+                </div>
               )}
             </div>
           </div>
@@ -522,8 +527,8 @@ export default function FacultyAssessmentPage() {
             <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Parameter Breakdown</h3>
             
             <div className="space-y-5">
-              {assessment.kpi_scores?.map((kpi: any) => (
-                <div key={kpi.id}>
+              {assessment.kpi_scores?.map((kpi: any, idx: number) => (
+                <div key={kpi.id || kpi.rule_id || idx}>
                   <div className="flex justify-between items-center mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--text-secondary)' }}>{kpi.category}</span>
@@ -549,9 +554,15 @@ export default function FacultyAssessmentPage() {
                     label={kpi.rule_name || (
                       (
                         {
-                          'res_publications': 'Publications',
+                          'res_publications': 'Publication Volume',
                           'res_citations': 'Citation Impact',
                           'res_hindex': 'H-Index',
+                          'teach_courses': 'Courses Taught',
+                          'mentor_students': 'Students Mentored',
+                          'service_committees': 'Committee Memberships',
+                          'innov_projects': 'Patents & Projects',
+                          'outreach_events': 'Public Outreach',
+                          'lead_roles': 'Leadership Roles',
                           'teach_load': 'Teaching Load',
                           'teach_feedback': 'Student Feedback',
                           'ment_phd': 'PhD Students',
@@ -563,8 +574,8 @@ export default function FacultyAssessmentPage() {
                         } as Record<string, string>
                       )[String(kpi.rule_id)] || kpi.rule_id
                     )} 
-                    score={kpi.status === 'SOURCE_UNAVAILABLE' ? 0 : kpi.computed_score} 
-                    maxScore={kpi.max_score} 
+                    score={kpi.status === 'SOURCE_UNAVAILABLE' ? 0 : Number(kpi.computed_score || 0)} 
+                    maxScore={Number(kpi.max_score || 100)} 
                   />
                 </div>
               ))}

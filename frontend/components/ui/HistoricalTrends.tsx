@@ -39,25 +39,26 @@ export function HistoricalTrends({ facultyId }: { facultyId: string }) {
     const label = `${d.toLocaleString('default', { month: 'short' })} ${year}`
     
     let cats: any = {}
-    if (item.kpi_scores) {
+    if (item.kpi_scores && Array.isArray(item.kpi_scores)) {
       const aggregated = item.kpi_scores.reduce((acc: any, k: any) => {
         if (k.status === 'SOURCE_UNAVAILABLE') return acc;
-        if (!acc[k.category]) {
-          acc[k.category] = { score: 0, max: 0 };
+        const cat = k.category || 'General';
+        if (!acc[cat]) {
+          acc[cat] = { score: 0, max: 0 };
         }
-        acc[k.category].score += k.computed_score;
-        acc[k.category].max += k.max_score;
+        acc[cat].score += Number(k.computed_score || 0);
+        acc[cat].max += Number(k.max_score || 0);
         return acc;
       }, {});
 
       Object.entries(aggregated).forEach(([cat, val]: [string, any]) => {
-        cats[cat] = val.max > 0 ? (val.score / val.max) * 100 : 0;
+        cats[cat] = val.max > 0 ? Math.round((val.score / val.max) * 100) : 0;
       });
     }
     
     return {
       name: label,
-      total: item.total_score,
+      total: Number(item.total_score || 0),
       ...cats
     }
   })

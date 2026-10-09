@@ -277,10 +277,11 @@ async def sync_smart_faculty_profile(
     name: str,
     institution: Optional[str] = None,
     department: Optional[str] = None,
-    custom_url: Optional[str] = None
+    custom_url: Optional[str] = None,
+    orcid_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Crawls official public pages, runs Gemini 3.6 Flash structured extraction,
+    Crawls official public pages, runs Gemini structured extraction,
     stores rich profile data, experience, education, teaching, mentoring,
     projects, patents, service, and recalculates assessment.
     """
@@ -289,7 +290,18 @@ async def sync_smart_faculty_profile(
     
     tiger = get_tiger_admin()
     supabase = tiger
-    extracted = await search_and_crawl_faculty(name, institution, department, custom_url)
+    
+    # Resolve ORCID ID if not provided
+    resolved_orcid = orcid_id
+    if not resolved_orcid:
+        try:
+            ident_rows = supabase.table("academic_identities").select("external_id").eq("faculty_id", faculty_id).eq("source_type", "orcid").execute()
+            if ident_rows.data and ident_rows.data[0].get("external_id") and ident_rows.data[0]["external_id"] != "auto":
+                resolved_orcid = ident_rows.data[0]["external_id"]
+        except Exception:
+            pass
+
+    extracted = await search_and_crawl_faculty(name, institution, department, custom_url, orcid_id=resolved_orcid)
     
     # Save to unified_profiles
     existing_up = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()

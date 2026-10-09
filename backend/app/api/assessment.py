@@ -122,22 +122,28 @@ async def get_assessment_history(faculty_id: str, user: dict = Depends(get_curre
 @router.post("/api/assessment/gather-all")
 async def gather_all_assessment_data_endpoint(user: dict = Depends(get_current_user)):
     """
-    Pre-gather all 7 assessment parameter data across all profiles before evaluation,
+    Pre-gather all assessment parameter data across all profiles belonging to this user before evaluation,
     including teaching, mentoring, service, innovation, outreach, leadership, and custom framework parameters.
     """
-    from app.core.auth import RequireRole
+    from app.core.tiger import execute_query
     from app.services.auto_ingest import sync_smart_faculty_profile
-    RequireRole(["ADMIN", "REVIEWER", "DEAN"])(user)
-    supabase = get_supabase_admin()
-    
-    fac_res = supabase.table("faculty").select("id, canonical_name, department, institutions(name)").execute()
+    user_id = user.get("sub") or "00000000-0000-0000-0000-000000000000"
+    is_demo = (user_id == "00000000-0000-0000-0000-000000000000" or user.get("email") in ("admin@acadlens.ac.in", "admin@acadlens.local"))
+
+    if is_demo:
+        sql = "SELECT f.id, f.canonical_name, f.department, i.name as institution FROM faculty f LEFT JOIN institutions i ON f.institution_id = i.id WHERE (f.created_by IS NULL OR f.created_by = '00000000-0000-0000-0000-000000000000');"
+        fac_list = execute_query(sql)
+    else:
+        sql = "SELECT f.id, f.canonical_name, f.department, i.name as institution FROM faculty f LEFT JOIN institutions i ON f.institution_id = i.id WHERE f.created_by = %s;"
+        fac_list = execute_query(sql, (user_id,))
+
     synced_count = 0
     results = []
     
-    for fac in (fac_res.data or []):
+    for fac in fac_list:
         fac_id = fac["id"]
         name = fac.get("canonical_name", "Faculty Member")
-        inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
+        inst_name = fac.get("institution") or ""
         dept = fac.get("department", "Computer Science & Engineering")
         try:
             await sync_smart_faculty_profile(fac_id, name, inst_name, dept)
@@ -240,10 +246,35 @@ async def generate_overview(faculty_id: str, user: dict = Depends(get_current_us
 
 @router.get("/api/assessments")
 async def list_assessments(user: dict = Depends(get_current_user)):
-    from app.core.auth import RequireRole
-    RequireRole(["ADMIN", "REVIEWER"])(user)
-    supabase = get_supabase_admin()
-    
-    # We want a summary of assessments combined with faculty info and framework info
-    res = supabase.table("assessments").select("*, faculty(id, canonical_name, department, designation, completeness_score), assessment_frameworks(name, version)").order("created_at", desc=True).execute()
-    return {"items": res.data if res.data else []}
+    from app.core.tiger import execute_query
+    user_id = user.get("sub") or "00000000-0000-0000-0000-000000000000"
+    is_demo = (user_id == "00000000-0000-0000-0000-000000000000" or user.get("email") in ("admin@acadlens.ac.in", "admin@acadlens.local"))
+
+    if is_demo:
+        where_clause = "WHERE (f.created_by IS NULL OR f.created_by = '00000000-0000-0000-0000-000000000000')"
+        params = ()
+    else:
+        where_clause = "WHERE f.created_by = %s"
+        params = (user_id,)
+
+    sql = f"""
+    SELECT a.*, 
+           json_build_object(
+               'id', f.id, 
+               'canonical_name', f.canonical_name, 
+               'department', f.department, 
+               'designation', f.designation, 
+               'completeness_score', f.completeness_score
+           ) as faculty,
+           json_build_object(
+               'name', COALESCE(af.name, 'AcadLens Core Framework'),
+               'version', COALESCE(af.version, '1.0.0')
+           ) as assessment_frameworks
+    FROM assessments a
+    JOIN faculty f ON a.faculty_id = f.id
+    LEFT JOIN assessment_frameworks af ON a.framework_id = af.id
+    {where_clause}
+    ORDER BY a.created_at DESC;
+    """
+    rows = execute_query(sql, params)
+    return {"items": rows, "data": rows}

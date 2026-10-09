@@ -68,10 +68,12 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
         institution_id = inst_res.data[0]["id"] if inst_res.data else "00000000-0000-0000-0000-000000000001"
 
     faculty_id = str(uuid.uuid4())
+    user_id = user.get("sub") or "00000000-0000-0000-0000-000000000000"
     
     # Insert faculty record
     faculty_record = {
         "id": faculty_id,
+        "created_by": user_id,
         "canonical_name": canonical_name,
         "department": department,
         "designation": designation,
@@ -326,22 +328,38 @@ async def resolve_duplicate_publication(
 
 @router.get("")
 async def get_all_faculty(user: dict = Depends(get_current_user)):
-    from app.core.supabase import get_supabase_admin
-    supabase = get_supabase_admin()
-    res = supabase.table("faculty").select("*, unified_profiles(source_coverage), institutions(id, name)").order("created_at", desc=True).execute()
-    
+    from app.core.tiger import execute_query
+    user_id = user.get("sub") or "00000000-0000-0000-0000-000000000000"
+    is_demo = (user_id == "00000000-0000-0000-0000-000000000000" or user.get("email") in ("admin@acadlens.ac.in", "admin@acadlens.local"))
+
+    if is_demo:
+        sql = """
+        SELECT f.*, i.name as institution_name, up.source_coverage
+        FROM faculty f
+        LEFT JOIN institutions i ON f.institution_id = i.id
+        LEFT JOIN unified_profiles up ON f.id = up.faculty_id
+        WHERE f.created_by IS NULL OR f.created_by = '00000000-0000-0000-0000-000000000000'
+        ORDER BY f.created_at DESC;
+        """
+        rows = execute_query(sql)
+    else:
+        sql = """
+        SELECT f.*, i.name as institution_name, up.source_coverage
+        FROM faculty f
+        LEFT JOIN institutions i ON f.institution_id = i.id
+        LEFT JOIN unified_profiles up ON f.id = up.faculty_id
+        WHERE f.created_by = %s
+        ORDER BY f.created_at DESC;
+        """
+        rows = execute_query(sql, (user_id,))
+
     items = []
-    for f in (res.data or []):
-        up = f.get("unified_profiles")
-        if isinstance(up, list) and len(up) > 0:
-            up = up[0]
-        sc = up.get("source_coverage") if isinstance(up, dict) else {}
+    for f in rows:
+        sc = f.get("source_coverage") if isinstance(f.get("source_coverage"), dict) else {}
         f["source_coverage"] = sc or {"google_scholar": False, "orcid": False, "researchgate": False, "institutional": False}
-        # Flatten institution name
-        inst = f.get("institutions") or {}
-        f["institution"] = inst.get("name") or ""
+        f["institution"] = f.get("institution_name") or ""
         items.append(f)
-        
+
     return {"items": items, "data": items}
 
 @router.post("/discover")

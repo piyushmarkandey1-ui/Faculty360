@@ -53,11 +53,17 @@ def execute_query(query: str, params: tuple = None) -> List[Dict[str, Any]]:
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params or ())
+            rows = []
             if cur.description:
-                rows = cur.fetchall()
-                return [dict(r) for r in rows]
+                rows = [dict(r) for r in cur.fetchall()]
             conn.commit()
-            return []
+            return rows
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         db_pool.putconn(conn)
 

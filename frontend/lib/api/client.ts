@@ -45,7 +45,9 @@ export async function getAuthToken(): Promise<string | undefined> {
 export function setLocalAuthToken(token: string) {
   if (typeof window !== "undefined") {
     localStorage.setItem("acadlens_token", token);
-    document.cookie = `acadlens_token=${token}; path=/; max-age=2592000; SameSite=Lax`;
+    const isHttps = window.location.protocol === "https:";
+    const secureFlag = isHttps ? "; Secure" : "";
+    document.cookie = `acadlens_token=${token}; path=/; max-age=2592000; SameSite=Lax${secureFlag}`;
   }
 }
 

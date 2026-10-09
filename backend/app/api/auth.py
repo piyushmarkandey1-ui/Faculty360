@@ -45,7 +45,7 @@ def set_auth_cookie(response: Response, token: str):
         max_age=30 * 24 * 3600,
         httponly=False,  # Allow client JS inspection
         samesite="lax",
-        secure=False,    # Allow localhost & preview
+        secure=True,    # Secure on HTTPS
         path="/"
     )
 

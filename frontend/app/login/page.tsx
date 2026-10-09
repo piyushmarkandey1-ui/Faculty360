@@ -27,8 +27,7 @@ export default function LoginPage() {
 
     try {
       await demoLoginUser()
-      router.refresh()
-      router.push(ROUTES.dashboard)
+      window.location.href = ROUTES.dashboard
     } catch (err: any) {
       setError(err?.message || 'Failed to start demo session. Please try again.')
       setIsDemoLoading(false)
@@ -46,13 +45,14 @@ export default function LoginPage() {
         await registerUser(email, password, fullName)
         setSuccessMsg('Account created successfully! Directing to dashboard...')
         setTimeout(() => {
-          router.refresh()
-          router.push(ROUTES.dashboard)
-        }, 600)
+          window.location.href = ROUTES.dashboard
+        }, 500)
       } else {
         await loginUser(email, password)
-        router.refresh()
-        router.push(ROUTES.dashboard)
+        setSuccessMsg('Signed in successfully! Directing to dashboard...')
+        setTimeout(() => {
+          window.location.href = ROUTES.dashboard
+        }, 300)
       }
     } catch (err: any) {
       setError(err?.message || 'Authentication failed. Please verify credentials.')

@@ -296,16 +296,66 @@ export default function NewFacultyPage() {
                     </span>
                   )}
                 </label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    value={formData.name} 
-                    onChange={e => updateForm('name', e.target.value)}
-                    autoFocus
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border bg-[var(--bg-base)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-blue-600 text-base shadow-xs"
-                    placeholder="e.g., Dilip Singh Sisodia, Shrish Verma, Yann LeCun..."
-                  />
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    if (formData.name.trim().length >= 2) {
+                      handleLiveDiscover(formData.name, formData.institution)
+                    }
+                  }}
+                  className="flex gap-2"
+                >
+                  <div className="relative flex-1">
+                    <input 
+                      type="text" 
+                      value={formData.name} 
+                      onChange={e => updateForm('name', e.target.value)}
+                      autoFocus
+                      className="w-full pl-11 pr-4 py-3 rounded-xl border bg-[var(--bg-base)] border-[var(--border-default)] text-[var(--text-primary)] focus:outline-none focus:border-blue-600 text-base shadow-xs"
+                      placeholder="e.g., Dilip Singh Sisodia, Govardhan Bhatt, Andrew Ng, Yann LeCun..."
+                    />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={searchingAI || !formData.name.trim()}
+                    className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 shrink-0"
+                  >
+                    {searchingAI ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Searching...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search size={16} />
+                        <span>Search</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Quick-Test Suggestion Chips */}
+                <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
+                  <span className="text-[var(--text-muted)] font-medium">Quick Test:</span>
+                  {[
+                    "Govardhan Bhatt",
+                    "Dilip Singh Sisodia",
+                    "Andrew Ng",
+                    "Geoffrey Hinton"
+                  ].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => {
+                        updateForm('name', chip)
+                        handleLiveDiscover(chip, formData.institution)
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all font-medium"
+                    >
+                      {chip}
+                    </button>
+                  ))}
                 </div>
               </div>
 

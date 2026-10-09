@@ -24,7 +24,16 @@ def get_tiger_conn_url() -> str:
         or settings.TIGER_DATABASE_URL
         or settings.DATABASE_URL
     )
-    return str(raw).strip().strip('"').strip("'").strip()
+    url = str(raw).strip().strip('"').strip("'").strip()
+    url = re.sub(r"^[\ufeff\ufffe\s\"']+", "", url)
+    url = re.sub(r"[\s\"']+$", "", url)
+    if "postgresql://" in url:
+        idx = url.find("postgresql://")
+        url = url[idx:]
+    elif "postgres://" in url:
+        idx = url.find("postgres://")
+        url = url[idx:]
+    return url.strip()
 
 def get_db_pool() -> pool.SimpleConnectionPool:
     global _connection_pool

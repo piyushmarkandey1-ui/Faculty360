@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { ROUTES } from '@/lib/constants/routes'
 
 /**
- * Server action: sign the current user out of Tiger Data / Supabase and redirect to /login.
+ * Server action: sign the current user out of Tiger Data and redirect to /login.
  * Called from Client Components via a form action or button.
  */
 export async function signOut() {

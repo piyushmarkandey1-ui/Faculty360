@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Google Scholar APIs
     SERPAPI_API_KEY: str = Field(default="", validation_alias=AliasChoices("SERPAPI_API_KEY", "SERP_API_KEY"))
     APIFY_API_TOKEN: str = Field(default="", validation_alias=AliasChoices("APIFY_API_TOKEN", "APIFY_TOKEN"))
-    APIFY_GOOGLE_SCHOLAR_ACTOR_ID: str = "marco.gullo/google-scholar-scraper"
+    APIFY_GOOGLE_SCHOLAR_ACTOR_ID: str = "biscience/google-scholar-scraper"
 
 
     # CORS — allow Next.js dev server and production domain
@@ -46,10 +46,13 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
-        for field in ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET", "APIFY_API_TOKEN", "GEMINI_API_KEY"]:
+        for field in ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET", "APIFY_API_TOKEN", "GEMINI_API_KEY", "TIGER_DATABASE_URL", "DATABASE_URL"]:
             val = getattr(self, field, "")
             if isinstance(val, str):
-                setattr(self, field, val.strip().strip('"').strip("'").strip())
+                import re
+                val = re.sub(r"^[\ufeff\ufffe\s\"']+", "", val)
+                val = re.sub(r"[\s\"']+$", "", val)
+                setattr(self, field, val.strip())
 
 
 settings = Settings()

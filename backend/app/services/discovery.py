@@ -92,11 +92,27 @@ async def discover_faculty_public_profiles(query: str, institution: Optional[str
     if not clean_q:
         return []
 
+    # Clean query if user pasted a URL (Scholar, ORCID, etc.)
+    scholar_user_id = None
+    if "scholar.google" in clean_q:
+        m = re.search(r'user=([a-zA-Z0-9_-]+)', clean_q)
+        if m:
+            scholar_user_id = m.group(1)
+        m_name = re.search(r'mauthors=([^&]+)', clean_q)
+        if m_name:
+            clean_q = urllib.parse.unquote(m_name.group(1)).replace("+", " ")
+        elif scholar_user_id:
+            clean_q = scholar_user_id
+    elif "orcid.org" in clean_q:
+        m_orcid = re.search(r'(\d{4}-\d{4}-\d{4}-[\dX]{4})', clean_q)
+        if m_orcid:
+            clean_q = m_orcid.group(1)
+
     results: List[Dict[str, Any]] = []
     seen_keys = set()
 
     # Concurrently query OpenAlex, Semantic Scholar, and DBLP in real-time
-    async with httpx.AsyncClient(timeout=8.0) as client:
+    async with httpx.AsyncClient(timeout=12.0) as client:
         oa_task = _fetch_openalex(client, clean_q, institution)
         s2_task = _fetch_semantic_scholar(client, clean_q, institution)
         dblp_task = _fetch_dblp(client, clean_q)
@@ -308,7 +324,7 @@ async def _fetch_dblp(client: httpx.AsyncClient, name: str) -> List[Dict[str, An
     try:
         params = {"q": name, "format": "json", "h": 5}
         resp = await client.get(DBLP_AUTHOR_SEARCH, params=params)
-        if resp.status_code != 200:
+        if resp.status_code != 200 or "json" not in resp.headers.get("content-type", ""):
             return []
 
         data = resp.json()

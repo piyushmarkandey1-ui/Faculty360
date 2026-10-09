@@ -22,19 +22,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
       - name: Deploy to Vercel Production
         run: |
-          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} \
-            --yes \
-            --build-env NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
-            --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
-            --build-env NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
-            2>&1 | tee deploy.log
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes 2>&1 | tee deploy.log
           echo "### Deployment Output" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat deploy.log >> $GITHUB_STEP_SUMMARY

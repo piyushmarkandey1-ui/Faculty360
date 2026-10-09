@@ -62,14 +62,13 @@ export function InstitutionalUploadCard() {
       formData.append('dry_run', dryRun ? 'true' : 'false')
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const { getAuthToken } = await import('@/lib/api/client')
+      const token = await getAuthToken()
       
       const res = await fetch(`${baseUrl}/api/institutional/upload`, {
         method: 'POST',
-        headers: session?.access_token ? {
-          'Authorization': `Bearer ${session.access_token}`
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
         } : {},
         body: formData,
       })

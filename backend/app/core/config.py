@@ -8,10 +8,12 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    # Supabase
+    # Supabase & Tiger Data
+    TIGER_DATABASE_URL: str = "postgresql://tsdbadmin:ihfyu8sqtf18k7ds@tt158v5sae.oc4fcokabh.tsdb.cloud.timescale.com:36613/tsdb?sslmode=require"
+    DATABASE_URL: str = "postgresql://tsdbadmin:ihfyu8sqtf18k7ds@tt158v5sae.oc4fcokabh.tsdb.cloud.timescale.com:36613/tsdb?sslmode=require"
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
-    SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_JWT_SECRET: str = "acadlens_jwt_secret_sih_2026_hackbios_key"
     GEMINI_API_KEY: str = ""
 
     # Google Scholar APIs

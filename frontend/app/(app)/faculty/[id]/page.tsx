@@ -34,6 +34,7 @@ import { SourceBadge } from '@/components/ui/SourceBadge'
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge'
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter'
 import { ROUTES } from '@/lib/constants/routes'
+import { TigerTrajectoryChart } from '@/components/ui/TigerTrajectoryChart'
 import { apiFetch, syncSource, getFacultyConflicts, type SyncScholarResult } from '@/lib/api/client'
 import type { 
   ProfileConflict, 
@@ -500,6 +501,9 @@ export default function FacultyProfilePage() {
                 </>
               )}
             </div>
+
+            {/* ── Tiger Data TimescaleDB Trajectory Chart ── */}
+            <TigerTrajectoryChart facultyId={facultyId} />
 
             {/* ── Gemini Faculty Overview ── */}
             <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>

@@ -1,39 +1,31 @@
 """
-Supabase admin client (uses service_role key — bypasses RLS).
-ONLY used server-side in FastAPI.  Never expose this to the browser.
+Tiger Data / PostgreSQL primary data client.
+Maintains backward compatibility with get_supabase_admin() so existing
+business logic and service calls route directly through Tiger Data.
 """
-from functools import lru_cache
 from typing import Any
-from app.core.config import settings
-
-try:
-    from supabase import create_client, Client
-except ImportError:
-    create_client, Client = None, Any
-
-
 import os
 import re
+from app.core.config import settings
+from app.core.tiger import get_tiger_client, TigerClient
 
-@lru_cache(maxsize=1)
-def get_supabase_admin() -> Client:
-    """Return a cached Supabase admin client with sanitized credentials."""
-    if create_client is None:
-        raise ImportError("supabase package is not installed. Please run 'pip install supabase'.")
-    
-    raw_url = settings.SUPABASE_URL or os.environ.get("SUPABASE_URL", "") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
-    raw_key = (
-        settings.SUPABASE_SERVICE_ROLE_KEY
-        or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-        or os.environ.get("SUPABASE_KEY", "")
-        or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
-    )
-    
-    url = re.sub(r'[\r\n\s"\' ]+', '', str(raw_url)).rstrip('/')
-    key = re.sub(r'[^a-zA-Z0-9_\-\.\+/=]', '', str(raw_key))
-    
-    if not url or not key:
-        raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured in environment.")
-    
-    return create_client(url, key)
-
+def get_supabase_admin():
+    """
+    Returns the Tiger Data client.
+    Routes all database operations directly to Tiger Cloud PostgreSQL.
+    """
+    try:
+        return get_tiger_client()
+    except Exception as e:
+        # Fallback to Supabase client if Tiger connection fails
+        try:
+            from supabase import create_client
+            raw_url = settings.SUPABASE_URL or os.environ.get("SUPABASE_URL", "")
+            raw_key = settings.SUPABASE_SERVICE_ROLE_KEY or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+            url = re.sub(r'[\r\n\s"\' ]+', '', str(raw_url)).rstrip('/')
+            key = re.sub(r'[^a-zA-Z0-9_\-\.\+/=]', '', str(raw_key))
+            if url and key:
+                return create_client(url, key)
+        except Exception:
+            pass
+        raise e

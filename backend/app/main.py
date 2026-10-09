@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import health, faculty, institutional, assessment, dashboard, reports
+from app.api import health, auth, faculty, institutional, assessment, dashboard, reports
 
 app = FastAPI(title="AcadLens Backend")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(faculty.router)
 app.include_router(institutional.router)
 app.include_router(assessment.router)

@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://tsdbadmin:ihfyu8sqtf18k7ds@tt158v5sae.oc4fcokabh.tsdb.cloud.timescale.com:36613/tsdb?sslmode=require"
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
-    SUPABASE_JWT_SECRET: str = "acadlens_jwt_secret_sih_2026_hackbios_key"
+    TIGER_JWT_SECRET: str = "acadlens_tiger_jwt_secret_primary_key"
+    SUPABASE_JWT_SECRET: str = "acadlens_tiger_jwt_secret_primary_key"
     GEMINI_API_KEY: str = ""
 
     # Google Scholar APIs
@@ -46,13 +47,14 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
-        for field in ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET", "APIFY_API_TOKEN", "GEMINI_API_KEY", "TIGER_DATABASE_URL", "DATABASE_URL"]:
-            val = getattr(self, field, "")
-            if isinstance(val, str):
-                import re
-                val = re.sub(r"^[\ufeff\ufffe\s\"']+", "", val)
-                val = re.sub(r"[\s\"']+$", "", val)
-                setattr(self, field, val.strip())
+        for field in ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET", "TIGER_JWT_SECRET", "APIFY_API_TOKEN", "GEMINI_API_KEY", "TIGER_DATABASE_URL", "DATABASE_URL"]:
+            if hasattr(self, field):
+                val = getattr(self, field, "")
+                if isinstance(val, str):
+                    import re
+                    val = re.sub(r"^[\ufeff\ufffe\s\"']+", "", val)
+                    val = re.sub(r"[\s\"']+$", "", val)
+                    setattr(self, field, val.strip())
 
 
 settings = Settings()

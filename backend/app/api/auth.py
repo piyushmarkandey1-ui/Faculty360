@@ -3,7 +3,7 @@ Authentication API Endpoints (Tiger Data PostgreSQL).
 Handles:
 - POST /api/auth/login     (Standard Email + Password sign in)
 - POST /api/auth/register  (User account creation)
-- POST /api/auth/demo      (1-Click Evaluator & Judge Instant Access)
+- POST /api/auth/demo      (1-Click Demo Instant Access)
 - GET  /api/auth/me        (Current session check)
 - POST /api/auth/logout    (Clear session)
 """
@@ -28,7 +28,7 @@ def verify_pw(plain: str, hashed: str) -> bool:
     return hash_pw(plain) == hashed
 
 def create_jwt_token(user_id: str, email: str, role: str, name: str) -> str:
-    secret = (settings.SUPABASE_JWT_SECRET or "acadlens_jwt_secret_sih_2026_hackbios_key").strip()
+    secret = (getattr(settings, "TIGER_JWT_SECRET", None) or getattr(settings, "SUPABASE_JWT_SECRET", None) or "acadlens_tiger_jwt_secret_primary_key").strip()
     payload = {
         "sub": str(user_id),
         "email": email,
@@ -134,7 +134,7 @@ async def demo_login(response: Response):
     user = {
         "id": "00000000-0000-0000-0000-000000000000",
         "email": "admin@acadlens.ac.in",
-        "full_name": "Institutional Admin (Judge Mode)",
+        "full_name": "Institutional Admin (Demo)",
         "role": "ADMIN"
     }
     token = create_jwt_token(user["id"], user["email"], user["role"], user["full_name"])

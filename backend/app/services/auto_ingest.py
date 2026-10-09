@@ -325,57 +325,81 @@ async def sync_smart_faculty_profile(
     try:
         inst_records_to_insert = []
         for t in extracted.get("teaching", []):
+            desc_parts = [p for p in [
+                t.get("course_code"),
+                t.get("level"),
+                f"{t['duration_hours']} hours" if t.get("duration_hours") else None,
+                t.get("term")
+            ] if p]
             inst_records_to_insert.append({
                 "faculty_id": faculty_id,
                 "category": "teaching",
-                "title": t.get("course_name", "Course"),
-                "description": f"{t.get('course_code', '')} • {t.get('level', '')} ({t.get('duration_hours', 40)} hours)",
-                "year": 2024,
+                "title": t.get("course_name") or "Course",
+                "description": " • ".join(desc_parts) if desc_parts else None,
+                "year": t.get("year"),
                 "is_verified": True
             })
         for m in extracted.get("mentoring", []):
+            desc_parts = [p for p in [
+                m.get("description"),
+                f"Count: {m['count']}" if m.get("count") else None,
+                m.get("status")
+            ] if p]
             inst_records_to_insert.append({
                 "faculty_id": faculty_id,
                 "category": "mentoring",
-                "title": m.get("type", "Research Mentoring"),
-                "description": m.get("description", "Student Supervision"),
-                "year": 2024,
+                "title": m.get("type") or m.get("description") or "Student Mentoring",
+                "description": " • ".join(desc_parts) if desc_parts else None,
+                "year": m.get("year"),
                 "is_verified": True
             })
         for p in extracted.get("projects", []):
+            desc_parts = [p for p in [
+                f"Agency: {p['funding_agency']}" if p.get("funding_agency") else None,
+                f"Grant: INR {p['amount_inr_lakhs']}L" if p.get("amount_inr_lakhs") else None,
+                f"Role: {p['role']}" if p.get("role") else None,
+                f"Status: {p['status']}" if p.get("status") else None
+            ] if p]
             inst_records_to_insert.append({
                 "faculty_id": faculty_id,
                 "category": "projects",
-                "title": p.get("title", "Research Project"),
-                "description": f"Funding Agency: {p.get('funding_agency', '')} • Grant: INR {p.get('amount_inr_lakhs', '')}L",
-                "year": 2023,
+                "title": p.get("title") or "Research Project",
+                "description": " • ".join(desc_parts) if desc_parts else None,
+                "year": p.get("year"),
                 "is_verified": True
             })
         for pat in extracted.get("patents", []):
+            desc_parts = [p for p in [
+                f"Patent No: {pat['patent_no']}" if pat.get("patent_no") else None,
+                pat.get("status"),
+                pat.get("country")
+            ] if p]
             inst_records_to_insert.append({
                 "faculty_id": faculty_id,
                 "category": "innovation",
-                "title": pat.get("title", "Patent"),
-                "description": f"Patent No: {pat.get('patent_no', '')} • {pat.get('country', '')}",
-                "year": 2023,
+                "title": pat.get("title") or "Patent",
+                "description": " • ".join(desc_parts) if desc_parts else None,
+                "year": pat.get("filing_year") or pat.get("year"),
                 "is_verified": True
             })
         for s in extracted.get("institutional_service", []):
+            desc_parts = [p for p in [s.get("body_or_committee"), s.get("duration")] if p]
             inst_records_to_insert.append({
                 "faculty_id": faculty_id,
                 "category": "service",
-                "title": s.get("role_name", "Committee Member"),
-                "description": s.get("body_or_committee", ""),
-                "year": 2024,
+                "title": s.get("role_name") or "Committee Member",
+                "description": " • ".join(desc_parts) if desc_parts else None,
+                "year": s.get("year"),
                 "is_verified": True
             })
         for o in extracted.get("outreach", []):
+            desc_parts = [p for p in [o.get("activity_type"), o.get("venue")] if p]
             inst_records_to_insert.append({
                 "faculty_id": faculty_id,
                 "category": "outreach",
-                "title": o.get("title", "Outreach Event"),
-                "description": f"{o.get('activity_type', '')} at {o.get('venue', '')}",
-                "year": 2024,
+                "title": o.get("title") or "Outreach Activity",
+                "description": " • ".join(desc_parts) if desc_parts else None,
+                "year": o.get("year"),
                 "is_verified": True
             })
             

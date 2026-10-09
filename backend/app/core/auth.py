@@ -22,7 +22,7 @@ async def get_current_user(
             "sub": "00000000-0000-0000-0000-000000000000",
             "role": "ADMIN",
             "email": "admin@acadlens.ac.in",
-            "name": "Institutional Admin (Judge Mode)",
+            "name": "Institutional Admin (Demo)",
             "faculty_id": None,
             "is_demo": True
         }
@@ -33,13 +33,13 @@ async def get_current_user(
             "sub": "00000000-0000-0000-0000-000000000000",
             "role": "ADMIN",
             "email": "admin@acadlens.ac.in",
-            "name": "Institutional Admin (Judge Mode)",
+            "name": "Institutional Admin (Demo)",
             "faculty_id": None,
             "is_demo": True
         }
 
     try:
-        secret = (settings.SUPABASE_JWT_SECRET or "acadlens_jwt_secret_sih_2026_hackbios_key").strip().strip('"').strip("'").strip()
+        secret = (getattr(settings, "TIGER_JWT_SECRET", None) or getattr(settings, "SUPABASE_JWT_SECRET", None) or "acadlens_tiger_jwt_secret_primary_key").strip().strip('"').strip("'").strip()
         payload = jwt.decode(
             token,
             secret,
@@ -52,7 +52,7 @@ async def get_current_user(
                 "sub": "00000000-0000-0000-0000-000000000000",
                 "role": "ADMIN",
                 "email": "admin@acadlens.ac.in",
-                "name": "Institutional Admin (Judge Mode)",
+                "name": "Institutional Admin (Demo)",
                 "faculty_id": None,
                 "is_demo": True
             }
@@ -64,7 +64,7 @@ async def get_current_user(
             "sub": "00000000-0000-0000-0000-000000000000",
             "role": "ADMIN",
             "email": "admin@acadlens.ac.in",
-            "name": "Institutional Admin (Judge Mode)",
+            "name": "Institutional Admin (Demo)",
             "faculty_id": None,
             "is_demo": True
         }

@@ -78,16 +78,16 @@ export async function demoLoginUser() {
     }
     return data;
   } catch (err) {
-    // Client fallback: generate instant session so judge is never blocked
-    const fallbackToken = "demo-evaluator-token-" + Date.now();
+    // Client fallback: generate instant demo session
+    const fallbackToken = "demo-admin-token-" + Date.now();
     setLocalAuthToken(fallbackToken);
     return {
       success: true,
       is_demo: true,
       user: {
         id: "00000000-0000-0000-0000-000000000000",
-        email: "evaluator@hackbios.xyz",
-        full_name: "Judge / Evaluator (Demo Mode)",
+        email: "admin@acadlens.ac.in",
+        full_name: "Institutional Admin (Demo)",
         role: "ADMIN"
       },
       token: fallbackToken

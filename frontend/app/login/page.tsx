@@ -135,8 +135,8 @@ export default function LoginPage() {
             <div className="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)]">
               <Zap size={18} className="text-amber-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-semibold text-[var(--text-primary)]">Zero-Roadblock Evaluation</p>
-                <p className="text-[11px] text-[var(--text-muted)]">Built-in 1-Click Judge Mode eliminates external authentication barriers.</p>
+                <p className="text-xs font-semibold text-[var(--text-primary)]">Instant Institutional Access</p>
+                <p className="text-[11px] text-[var(--text-muted)]">Built-in 1-Click Demo Mode provides immediate evaluation access.</p>
               </div>
             </div>
 
@@ -164,7 +164,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel - Auth form & 1-Click Judge Access */}
+      {/* Right panel - Auth form & 1-Click Demo Access */}
       <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-10 lg:p-14 relative">
         <motion.div 
           initial={{ opacity: 0, x: 20 }}

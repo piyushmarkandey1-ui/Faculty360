@@ -342,7 +342,7 @@ async def get_all_faculty(user: dict = Depends(get_current_user)):
         f["institution"] = inst.get("name") or ""
         items.append(f)
         
-    return {"items": items}
+    return {"items": items, "data": items}
 
 @router.post("/discover")
 async def discover_faculty(payload: dict):
@@ -351,10 +351,10 @@ async def discover_faculty(payload: dict):
     synthesizes university webpage URLs, and returns generous preview details for disambiguation.
     """
     from app.services.discovery import discover_faculty_public_profiles
-    query = payload.get("query", "")
-    institution = payload.get("institution")
+    query = payload.get("query") or payload.get("name") or ""
+    institution = payload.get("institution") or payload.get("affiliation")
     results = await discover_faculty_public_profiles(query, institution)
-    return {"items": results}
+    return {"items": results, "candidates": results, "data": results}
 
 @router.get("/discover")
 async def discover_faculty_get(q: str = "", institution: str = None):

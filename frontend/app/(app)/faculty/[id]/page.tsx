@@ -440,7 +440,7 @@ export default function FacultyProfilePage() {
                 variant="secondary" 
                 className="flex-1 justify-center gap-1.5 text-xs font-semibold"
                 disabled={smartSyncing}
-                onClick={handleSmartSync}
+                onClick={() => handleSmartSync()}
                 title="Crawl institutional pages and public APIs to enrich profile"
               >
                 {smartSyncing ? <Loader2 size={13} className="animate-spin text-amber-500" /> : <Sparkles size={13} className="text-amber-500" />}

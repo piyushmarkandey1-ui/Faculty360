@@ -1,0 +1,8 @@
+employee_id,email,title,description,year,hours,feedback_score
+FAC-2805,govardhan.bhatt@nitrr.ac.in,Rahul Sharma - Doctoral Dissertation,Seismic Fragility Modeling and Retrofitting of Heritage Reinforced Concrete Frames in Central India,2026,120,4.90
+FAC-2805,govardhan.bhatt@nitrr.ac.in,Priya Dewangan - M.Tech Thesis,Nonlinear Static Pushover Analysis of Asymmetric Multistory Buildings,2025,90,4.85
+FAC-6053,dilip.sisodia@nitrr.ac.in,Amit Verma - Ph.D. Scholar,Deep Semantic Feature Representations in Multi-Modal Biomedical Imagery,2026,160,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,Neha Chandrakar - Ph.D. Scholar,Explainable Transformer Models for Clinical Diagnostic Reasoning,2025,140,4.95
+FAC-1976,sewan.patle@nitrr.ac.in,Pooja Verma - M.Tech Thesis,Edge AI Consensus Algorithms for Heterogeneous IoT Deployments,2026,80,4.80
+FAC-1976,sewan.patle@nitrr.ac.in,Kavita Sahu - B.Tech Honors Project,Decentralized Ledger Architecture for Educational Credential Verification,2025,60,4.75
+FAC-5080,siddhartha.choubey@academic.edu,Rohan Das - M.Tech Research,Distributed Indexing Optimization for Cloud-Native Spatial Databases,2026,75,4.80

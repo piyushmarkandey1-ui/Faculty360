@@ -1,0 +1,12 @@
+employee_id,email,title,description,year,hours,feedback_score
+FAC-2805,govardhan.bhatt@nitrr.ac.in,Advanced Structural Dynamics & Earthquake Engineering,Undergraduate Core Course for Semester VI with finite element modeling practicals,2026,48,4.85
+FAC-2805,govardhan.bhatt@nitrr.ac.in,Design of Concrete Structures II,Senior undergraduate capstone design course on prestressed concrete,2025,52,4.80
+FAC-6053,dilip.sisodia@nitrr.ac.in,Machine Learning and Pattern Recognition,Core Computer Science undergraduate course covering supervised and unsupervised learning,2026,52,4.92
+FAC-6053,dilip.sisodia@nitrr.ac.in,Soft Computing and Evolutionary Algorithms,Postgraduate elective with hands-on PyTorch and genetic algorithm labs,2025,46,4.88
+FAC-1976,sewan.patle@nitrr.ac.in,Distributed Systems and Cloud Architecture,Postgraduate core curriculum covering consensus protocols and container orchestration,2026,45,4.78
+FAC-1976,sewan.patle@nitrr.ac.in,Object-Oriented Analysis and Design,Undergraduate foundational course with UML and design pattern practicum,2025,48,4.75
+FAC-76C3A1,andrew.ng@academic.edu,Deep Learning Foundations and Multi-Agent AI Systems,Comprehensive lecture course covering transformer architectures and alignment,2026,60,5.00
+FAC-BE3D2D,hinton@cs.toronto.edu,Neural Networks for Machine Perception,Graduate level seminar on biological plausibility in deep learning,2026,45,5.00
+NYU-YLC-001,yann@nyu.edu,Deep Learning Architectures & Joint Embedding Predictive Models,NYU Courant Institute Advanced Graduate Lecture Series,2026,50,5.00
+,vibhuti.chandrakar@biosaline.org,Plant Biotechnology and Molecular Stress Biology,Postgraduate core curriculum on abiotic stress resistance in crops,2026,42,4.85
+FAC-5080,siddhartha.choubey@academic.edu,Database Management Systems & Big Data Engineering,Undergraduate core curriculum with distributed SQL labs,2026,50,4.80

@@ -1,0 +1,6 @@
+employee_id,email,title,description,year,hours,feedback_score
+FAC-6053,dilip.sisodia@nitrr.ac.in,Professor & HoD (Computer Science & Engineering),National Institute of Technology Raipur,2026,0,5.00
+FAC-2805,govardhan.bhatt@nitrr.ac.in,Associate Professor (Civil Engineering),National Institute of Technology Raipur,2026,0,5.00
+FAC-1976,sewan.patle@nitrr.ac.in,Assistant Professor (Grade I - Computer Science),National Institute of Technology Raipur,2026,0,4.80
+FAC-76C3A1,andrew.ng@academic.edu,Adjunct Professor & AI Fund Managing General Partner,Stanford University & AI Fund,2026,0,5.00
+NYU-YLC-001,yann@nyu.edu,Silver Professor of Computer Science & VP Chief AI Scientist,New York University & Meta,2026,0,5.00

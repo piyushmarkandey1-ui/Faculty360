@@ -1,0 +1,45 @@
+employee_id,email,category,title,description,year,hours,feedback_score
+FAC-2805,govardhan.bhatt@nitrr.ac.in,teaching,Advanced Structural Dynamics & Earthquake Engineering,Undergraduate Core Course for Semester VI with finite element modeling practicals,2026,48,4.85
+FAC-2805,govardhan.bhatt@nitrr.ac.in,teaching,Design of Concrete Structures II,Senior undergraduate capstone design course on prestressed concrete,2025,52,4.80
+FAC-2805,govardhan.bhatt@nitrr.ac.in,mentoring,Rahul Sharma - Doctoral Dissertation,Seismic Fragility Modeling and Retrofitting of Heritage Reinforced Concrete Frames in Central India,2026,120,4.90
+FAC-2805,govardhan.bhatt@nitrr.ac.in,mentoring,Priya Dewangan - M.Tech Thesis,Nonlinear Static Pushover Analysis of Asymmetric Multistory Buildings,2025,90,4.85
+FAC-2805,govardhan.bhatt@nitrr.ac.in,service,Chairman - Institute Accreditation & NBA Tier-I Committee,Supervised self-assessment reports and criterion evaluation for all engineering departments,2026,60,4.90
+FAC-2805,govardhan.bhatt@nitrr.ac.in,service,Convener - Departmental Academic Audit Committee,Formulated outcome-based education (OBE) course attainment metrics,2025,45,4.80
+FAC-2805,govardhan.bhatt@nitrr.ac.in,projects,Real-time Vibration Monitoring of High-Rise Structures Using Wireless Sensor Mesh,DST-SERB Core Research Grant (CRG/2024/003819) - Total Outlay: INR 48.5 Lakhs,2026,300,4.95
+FAC-2805,govardhan.bhatt@nitrr.ac.in,innovation,Tunable Liquid Column Mass Damper for Wind & Seismic Attenuation,Indian Patent Application No. 202621045812 (Published),2026,0,5.00
+FAC-2805,govardhan.bhatt@nitrr.ac.in,outreach,Keynote Address: Resilient Smart Infrastructure in Seismic Zones,15th International Conference on Structural Engineering (ICSE 2026),2026,8,5.00
+FAC-2805,govardhan.bhatt@nitrr.ac.in,awards,National Structural Engineering Excellence Medal,Conferred by Indian Concrete Institute & American Society of Civil Engineers (India Section),2025,0,5.00
+FAC-2805,govardhan.bhatt@nitrr.ac.in,career,Associate Professor (Civil Engineering),National Institute of Technology Raipur (Department of Civil Engineering),2026,0,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,teaching,Machine Learning and Pattern Recognition,Core Computer Science undergraduate course covering supervised and unsupervised learning,2026,52,4.92
+FAC-6053,dilip.sisodia@nitrr.ac.in,teaching,Soft Computing and Evolutionary Algorithms,Postgraduate elective with hands-on PyTorch and genetic algorithm labs,2025,46,4.88
+FAC-6053,dilip.sisodia@nitrr.ac.in,mentoring,Amit Verma - Ph.D. Scholar,Deep Semantic Feature Representations in Multi-Modal Biomedical Imagery,2026,160,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,mentoring,Neha Chandrakar - Ph.D. Scholar,Explainable Transformer Models for Clinical Diagnostic Reasoning,2025,140,4.95
+FAC-6053,dilip.sisodia@nitrr.ac.in,service,Head of Department & Academic Senate Member,Steered curriculum modernization aligned with NEP-2020 and AI/ML interdisciplinary minors,2026,85,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,service,Coordinator - Center of Excellence in Artificial Intelligence,Established state-of-the-art GPU computing cluster for research scholars,2025,70,4.90
+FAC-6053,dilip.sisodia@nitrr.ac.in,projects,Federated Learning for Privacy-Preserving Multi-Hospital Healthcare Diagnostics,MeitY Government of India R&D Grant - Total Outlay: INR 62.0 Lakhs,2026,450,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,innovation,Multi-Modal Attention Neural Network for Early Sepsis Detection from EHR Data,Indian Patent Grant No. 492015 (Granted),2026,0,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,outreach,Distinguished Speaker: Trustworthy AI and Algorithmic Fairness in Public Sector,IEEE International Computer Society Conclave 2026,2026,10,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,awards,Best Researcher of the Year Award 2026,Awarded by Institutional Senate for high-impact IEEE Transactions publications,2026,0,5.00
+FAC-6053,dilip.sisodia@nitrr.ac.in,career,Professor & HoD (Computer Science & Engineering),National Institute of Technology Raipur,2026,0,5.00
+FAC-1976,sewan.patle@nitrr.ac.in,teaching,Distributed Systems and Cloud Architecture,Postgraduate core curriculum covering consensus protocols and container orchestration,2026,45,4.78
+FAC-1976,sewan.patle@nitrr.ac.in,teaching,Object-Oriented Analysis and Design,Undergraduate foundational course with UML and design pattern practicum,2025,48,4.75
+FAC-1976,sewan.patle@nitrr.ac.in,mentoring,Pooja Verma - M.Tech Thesis,Edge AI Consensus Algorithms for Heterogeneous IoT Deployments,2026,80,4.80
+FAC-1976,sewan.patle@nitrr.ac.in,service,Faculty Advisor - Student Innovation & Smart India Hackathon Cell,Organized internal university rounds and mentored 3 national winner teams,2026,40,4.85
+FAC-1976,sewan.patle@nitrr.ac.in,projects,Decentralized Edge Intelligence for Smart Precision Agriculture,AICTE Research Promotion Scheme (RPS) - Total Outlay: INR 25.0 Lakhs,2026,250,4.80
+FAC-1976,sewan.patle@nitrr.ac.in,innovation,Adaptive Resource Allocation Framework in Heterogeneous Edge Nodes,Government of India Copyright Registration No. SW-18492/2026,2026,0,4.90
+FAC-1976,sewan.patle@nitrr.ac.in,outreach,Workshop Chair: Hands-on Cloud Native Microservices on Kubernetes,AICTE ATAL Faculty Development Program (FDP),2026,16,4.85
+FAC-1976,sewan.patle@nitrr.ac.in,career,Assistant Professor (Grade I),National Institute of Technology Raipur,2026,0,4.80
+FAC-76C3A1,andrew.ng@academic.edu,teaching,Deep Learning Foundations and Multi-Agent AI Systems,Comprehensive lecture course covering transformer architectures and alignment,2026,60,5.00
+FAC-76C3A1,andrew.ng@academic.edu,projects,Large Language Model Reasoning Verification in Healthcare,National Science Foundation (NSF) Collaborative Grant - USD $850,000,2026,500,5.00
+FAC-76C3A1,andrew.ng@academic.edu,outreach,Keynote: The Next Frontier of Generative AI and Autonomous Agent Systems,World AI Summit 2026,2026,12,5.00
+FAC-BE3D2D,hinton@cs.toronto.edu,teaching,Neural Networks for Machine Perception,Graduate level seminar on biological plausibility in deep learning,2026,45,5.00
+FAC-BE3D2D,hinton@cs.toronto.edu,outreach,Turing Lecture: Forward-Forward Algorithms and Brain-Inspired Computation,International Joint Conference on Artificial Intelligence (IJCAI 2026),2026,15,5.00
+NYU-YLC-001,yann@nyu.edu,teaching,Deep Learning Architectures & Joint Embedding Predictive Models,NYU Courant Institute Advanced Graduate Lecture Series,2026,50,5.00
+NYU-YLC-001,yann@nyu.edu,projects,World Models and Autonomous Machine Intelligence Research,DARPA & Meta AI Collaborative Research Award,2026,600,5.00
+NYU-YLC-001,yann@nyu.edu,outreach,Keynote: Objective-Driven AI and World Models,NeurIPS 2026 Invited Plenary Keynote,2026,14,5.00
+,vibhuti.chandrakar@biosaline.org,teaching,Plant Biotechnology and Molecular Stress Biology,Postgraduate core curriculum on abiotic stress resistance in crops,2026,42,4.85
+,vibhuti.chandrakar@biosaline.org,projects,Genomic Profiling of Halophytic Crops for Saline Soil Restoration,International Center for Biosaline Agriculture (ICBA) Grant,2026,320,4.90
+,vibhuti.chandrakar@biosaline.org,outreach,Invited Talk: Climate-Resilient Agriculture in Arid Zones,Global Food Security Summit 2026,2026,8,4.90
+FAC-5080,siddhartha.choubey@academic.edu,teaching,Database Management Systems & Big Data Engineering,Undergraduate core curriculum with distributed SQL labs,2026,50,4.80
+FAC-5080,siddhartha.choubey@academic.edu,service,Faculty In-Charge: Central Computing Facilities,Managed campus high-speed backbone network and virtualization servers,2026,55,4.75
+FAC-5080,siddhartha.choubey@academic.edu,projects,Intelligent Traffic Signal Coordination Using Reinforcement Learning,State Science and Technology Council Grant (INR 18.0 Lakhs),2026,200,4.80

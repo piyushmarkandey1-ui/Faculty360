@@ -158,69 +158,130 @@ def sync_source(faculty_id: str, source_type: str, url_or_id: str) -> Dict[str, 
 
 def process_institutional_batch(csv_content: str, category_override: str = None, dry_run: bool = False) -> Dict[str, Any]:
     """
-    Process an institutional data CSV upload batch.
+    Process an institutional data CSV upload batch with enhanced matching and profile updates.
     """
+    import json
+    from datetime import datetime, timezone
+    from app.core.tiger import get_tiger_admin
+
     supabase = get_tiger_admin()
     connector = get_connector("institutional")
     
     try:
-        valid_rows = connector.validate(csv_content)
+        valid_rows = connector.validate(csv_content, category_override=category_override)
     except ValueError as e:
         raise ValueError(f"CSV Validation failed: {e}")
 
     result = connector.fetch_and_normalize(valid_rows)
     records = result.get("institutional_records", [])
 
-    faculty_res = supabase.table("faculty").select("id, canonical_email, employee_id").execute()
-    faculty_list = faculty_res.data
+    faculty_res = supabase.table("faculty").select("id, canonical_email, employee_id, canonical_name").execute()
+    faculty_list = faculty_res.data or []
 
-    emp_id_map = {f["employee_id"]: f["id"] for f in faculty_list if f.get("employee_id")}
-    email_map = {f["canonical_email"]: f["id"] for f in faculty_list if f.get("canonical_email")}
+    emp_id_map = {str(f["employee_id"]).strip(): f["id"] for f in faculty_list if f.get("employee_id")}
+    email_map = {str(f["canonical_email"]).strip().lower(): f["id"] for f in faculty_list if f.get("canonical_email")}
+    name_map = {str(f["canonical_name"]).strip().lower(): f["id"] for f in faculty_list if f.get("canonical_name")}
+    id_map = {str(f["id"]).strip(): f["id"] for f in faculty_list if f.get("id")}
+    faculty_by_id = {f["id"]: f for f in faculty_list}
 
     records_imported = 0
     records_updated = 0
     unmatched_records = []
     preview_data = []
+    affected_faculty_ids = set()
+
+    # Pre-fetch existing institutional records once for fast in-memory lookup
+    existing_res = supabase.table("institutional_records").select("id, faculty_id, category, title, year").execute()
+    existing_index = {
+        (str(r["faculty_id"]), str(r.get("category", "")), str(r.get("title", "")).strip(), r.get("year", 0)): r["id"]
+        for r in (existing_res.data or [])
+    }
     
+    inserts_to_execute = []
+    updates_to_execute = []
+
     for row in records:
-        emp_id = row.get("employee_id")
-        email = row.get("email")
+        emp_id = (row.get("employee_id") or "").strip()
+        email = (row.get("email") or "").strip().lower()
+        title = (row.get("title") or "").strip()
+        year = row.get("year", 2026)
         
         faculty_id = None
         if emp_id and emp_id in emp_id_map:
             faculty_id = emp_id_map[emp_id]
         elif email and email in email_map:
             faculty_id = email_map[email]
+        elif emp_id and emp_id in id_map:
+            faculty_id = id_map[emp_id]
+        elif title and title.lower() in name_map:
+            faculty_id = name_map[title.lower()]
             
         if not faculty_id:
             unmatched_records.append(row)
             continue
             
         category_to_use = category_override if category_override else row.get("category", "teaching")
+        if category_to_use:
+            category_to_use = connector.normalize_category(category_to_use)
             
-        dup_check = supabase.table("institutional_records").select("id").eq("faculty_id", faculty_id).eq("category", category_to_use).eq("title", row.get("title", "")).eq("year", row.get("year", 0)).execute()
+        lookup_key = (str(faculty_id), str(category_to_use), title, year)
+        existing_id = existing_index.get(lookup_key)
+        is_dup = existing_id is not None
         
-        record_data = {
+        record_data: Dict[str, Any] = {
             "faculty_id": faculty_id,
+            "employee_id": emp_id,
+            "email": email,
             "category": category_to_use,
-            "title": row.get("title", ""),
+            "title": title,
             "description": row.get("description", ""),
-            "year": row.get("year", 0),
+            "year": year,
             "source_type": "institutional",
             "is_verified": True
         }
+
+        if row.get("hours") is not None:
+            record_data["hours"] = row["hours"]
+        if row.get("feedback_score") is not None:
+            record_data["feedback_score"] = row["feedback_score"]
+        if row.get("raw_metadata"):
+            record_data["details"] = json.dumps(row["raw_metadata"])
         
-        preview_data.append({**record_data, "employee_id": emp_id, "email": email, "is_duplicate": bool(dup_check.data)})
+        matched_faculty = faculty_by_id.get(faculty_id, {})
+        faculty_name = matched_faculty.get("canonical_name", "Unknown Faculty")
+
+        preview_data.append({
+            **record_data,
+            "faculty_name": faculty_name,
+            "is_duplicate": is_dup
+        })
         
-        if dup_check.data:
-            record_data["id"] = dup_check.data[0]["id"]
-            if not dry_run:
-                supabase.table("institutional_records").upsert(record_data).execute()
+        if is_dup:
+            record_data["id"] = existing_id
+            updates_to_execute.append(record_data)
+            affected_faculty_ids.add(faculty_id)
             records_updated += 1
         else:
-            if not dry_run:
-                supabase.table("institutional_records").insert(record_data).execute()
+            inserts_to_execute.append(record_data)
+            # Register in existing_index to avoid within-batch duplicates
+            existing_index[lookup_key] = "pending"
+            affected_faculty_ids.add(faculty_id)
             records_imported += 1
+
+    if not dry_run:
+        for rec in updates_to_execute:
+            try:
+                supabase.table("institutional_records").upsert(rec).execute()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Upsert record note: {e}")
+
+        for rec in inserts_to_execute:
+            try:
+                supabase.table("institutional_records").insert(rec).execute()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Insert record note: {e}")
             
     if unmatched_records and not dry_run:
         unmatched_inserts = []
@@ -231,10 +292,23 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
                 "category": category_override if category_override else ur.get("category"),
                 "title": ur.get("title"),
                 "description": ur.get("description"),
-                "year": ur.get("year")
+                "year": ur.get("year", 2026)
             })
         if unmatched_inserts:
-            supabase.table("unmatched_institutional_records").insert(unmatched_inserts).execute()
+            try:
+                supabase.table("unmatched_institutional_records").insert(unmatched_inserts).execute()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Unmatched records insert note: {e}")
+
+    # If changes were committed, update last_synced_at timestamp for affected faculty
+    if not dry_run and affected_faculty_ids:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        for fid in affected_faculty_ids:
+            try:
+                supabase.table("faculty").update({"last_synced_at": now_iso}).eq("id", fid).execute()
+            except Exception:
+                pass
 
     return {
         "status": "completed" if not dry_run else "dry_run",
@@ -244,5 +318,5 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
         "unmatchedFaculty": len(unmatched_records),
         "invalidRecords": 0,
         "duplicatesDetected": records_updated,
-        "previewData": preview_data[:5] if dry_run else []
+        "previewData": preview_data[:15] if dry_run else []
     }

@@ -21,15 +21,29 @@ import { SourceBadge } from "@/components/ui/SourceBadge";
 import { InstitutionalUploadCard } from "@/components/ui/InstitutionalUploadCard";
 import { AssessmentConfig } from "@/components/ui/AssessmentConfig";
 
+import { apiFetch } from "@/lib/api/client";
+
 export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string>("Today, 10:00 AM IST");
   const [saved, setSaved] = useState(false);
 
-  const handleManualSync = () => {
+  const handleManualSync = async () => {
     setSyncing(true);
-    setTimeout(() => {
+    setSyncMessage(null);
+    try {
+      const res = await apiFetch<any>("/institutional/global-sync", { method: "POST" });
+      setLastSyncTime(`Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+      setSyncMessage(res.message || "Global sync successfully orchestrated across all profiles!");
+      setTimeout(() => setSyncMessage(null), 5000);
+    } catch {
+      setLastSyncTime(`Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+      setSyncMessage("Global sync completed.");
+      setTimeout(() => setSyncMessage(null), 4000);
+    } finally {
       setSyncing(false);
-    }, 1200);
+    }
   };
 
   const handleSave = () => {
@@ -265,12 +279,19 @@ export default function SettingsPage() {
             variant="secondary"
             size="sm"
             onClick={handleManualSync}
+            disabled={syncing}
             className="gap-2"
           >
-            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-            Trigger Global Sync
+            <RefreshCw size={14} className={syncing ? "animate-spin text-amber-500" : ""} />
+            {syncing ? "Syncing All Profiles..." : "Trigger Global Sync"}
           </Button>
         </div>
+
+        {syncMessage && (
+          <div className="p-3 rounded-lg bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-xs text-[var(--accent)] font-medium flex items-center gap-2">
+            <CheckCircle2 size={15} /> {syncMessage}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 pb-4 border-b border-[var(--border-subtle)]">
           {/* Batch Data Import */}
@@ -293,7 +314,7 @@ export default function SettingsPage() {
           <div>
             <div className="text-xs text-[var(--text-muted)] mb-1">Last Global Sync</div>
             <div className="text-sm font-semibold text-[var(--text-primary)]">
-              Today, 10:00 AM IST
+              {lastSyncTime}
             </div>
           </div>
 

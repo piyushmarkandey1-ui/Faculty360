@@ -200,107 +200,120 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
     inserts_to_execute = []
     updates_to_execute = []
 
-    from app.services.smart_name_matcher import smart_match_faculty_name
+    from app.services.smart_name_matcher import (
+        smart_match_faculty_name,
+        split_multiple_faculty_names,
+        split_identifiers
+    )
 
     for row in records:
-        emp_id = (row.get("employee_id") or "").strip()
-        email = (row.get("email") or "").strip().lower()
-        faculty_name_input = (row.get("faculty_name") or "").strip()
+        raw_emp_id = (row.get("employee_id") or "").strip()
+        raw_email = (row.get("email") or "").strip().lower()
+        raw_name = (row.get("faculty_name") or "").strip()
         title = (row.get("title") or "").strip()
         year = row.get("year", 2026)
         
-        faculty_id = None
-        # 1. Exact Employee ID match
-        if emp_id and emp_id in emp_id_map:
-            faculty_id = emp_id_map[emp_id]
-        # 2. Exact Email match
-        elif email and email in email_map:
-            faculty_id = email_map[email]
-        # 3. Direct UUID match
-        elif emp_id and emp_id in id_map:
-            faculty_id = id_map[emp_id]
-        
-        # 4. Smart Name Matching (handles 'Last, First', permutations, initials, honorifics)
-        if not faculty_id and faculty_name_input:
-            match_res = smart_match_faculty_name(faculty_name_input, faculty_list)
-            if match_res:
-                faculty_id = match_res[0]["id"]
+        target_faculty_ids: List[str] = []
 
-        # 5. Fallback: Check if emp_id actually holds a name string (e.g. 'Bhatt, Govardhan' in first column)
-        if not faculty_id and emp_id and not re.match(r'^(fac|emp|nit|iit|prof)[-_]?\d+', emp_id.lower()):
-            match_res = smart_match_faculty_name(emp_id, faculty_list)
-            if match_res:
-                faculty_id = match_res[0]["id"]
+        # 1. Match multiple employee IDs (e.g. 'FAC-2805; FAC-6053' or 'FAC-2805, FAC-6053')
+        if raw_emp_id:
+            for eid in split_identifiers(raw_emp_id):
+                if eid in emp_id_map:
+                    target_faculty_ids.append(emp_id_map[eid])
+                elif eid in id_map:
+                    target_faculty_ids.append(id_map[eid])
 
-        # 6. Fallback: Check if email prefix holds a recognizable faculty name
-        if not faculty_id and email and "@" in email:
-            local_part = email.split("@")[0].replace(".", " ").replace("_", " ")
-            match_res = smart_match_faculty_name(local_part, faculty_list)
-            if match_res:
-                faculty_id = match_res[0]["id"]
+        # 2. Match multiple emails (e.g. 'a@nitrr.ac.in; b@nitrr.ac.in')
+        if raw_email:
+            for em in split_identifiers(raw_email):
+                if em in email_map:
+                    target_faculty_ids.append(email_map[em])
 
-        # 7. Fallback: Check if title matched a faculty name
-        if not faculty_id and title:
-            match_res = smart_match_faculty_name(title, faculty_list)
-            if match_res:
-                faculty_id = match_res[0]["id"]
+        # 3. Match multiple faculty names (e.g. 'Dr. Govardhan Bhatt; Dr. Dilip Singh Sisodia' or 'Bhatt & Sisodia')
+        if raw_name:
+            for np in split_multiple_faculty_names(raw_name):
+                m = smart_match_faculty_name(np, faculty_list)
+                if m:
+                    target_faculty_ids.append(m[0]["id"])
+
+        # 4. Fallback: check if raw_emp_id actually contains name strings
+        if not target_faculty_ids and raw_emp_id and not re.match(r'^(fac|emp|nit|iit|prof)[-_]?\d+', raw_emp_id.lower()):
+            for np in split_multiple_faculty_names(raw_emp_id):
+                m = smart_match_faculty_name(np, faculty_list)
+                if m:
+                    target_faculty_ids.append(m[0]["id"])
+
+        # 5. Fallback: check email prefix
+        if not target_faculty_ids and raw_email and "@" in raw_email:
+            for em in split_identifiers(raw_email):
+                local_part = em.split("@")[0].replace(".", " ").replace("_", " ")
+                m = smart_match_faculty_name(local_part, faculty_list)
+                if m:
+                    target_faculty_ids.append(m[0]["id"])
+
+        # 6. Fallback: check if title matched a faculty name
+        if not target_faculty_ids and title:
+            m = smart_match_faculty_name(title, faculty_list)
+            if m:
+                target_faculty_ids.append(m[0]["id"])
+
+        # Deduplicate while preserving order
+        unique_faculty_ids = list(dict.fromkeys(target_faculty_ids))
             
-        if not faculty_id:
+        if not unique_faculty_ids:
             unmatched_records.append(row)
             continue
             
-        matched_faculty = faculty_by_id.get(faculty_id, {})
-        faculty_name = matched_faculty.get("canonical_name", "Unknown Faculty")
-        effective_emp_id = emp_id or matched_faculty.get("employee_id") or ""
-        effective_email = email or (matched_faculty.get("canonical_email") or "").lower()
-
         category_to_use = category_override if category_override else row.get("category", "teaching")
         if category_to_use:
             category_to_use = connector.normalize_category(category_to_use)
+
+        for faculty_id in unique_faculty_ids:
+            matched_faculty = faculty_by_id.get(faculty_id, {})
+            faculty_name = matched_faculty.get("canonical_name", "Unknown Faculty")
+            effective_emp_id = matched_faculty.get("employee_id") or raw_emp_id
+            effective_email = (matched_faculty.get("canonical_email") or raw_email).lower()
+
+            lookup_key = (str(faculty_id), str(category_to_use), title, year)
+            existing_id = existing_index.get(lookup_key)
+            is_dup = existing_id is not None
             
-        lookup_key = (str(faculty_id), str(category_to_use), title, year)
-        existing_id = existing_index.get(lookup_key)
-        is_dup = existing_id is not None
-        
-        record_data: Dict[str, Any] = {
-            "faculty_id": faculty_id,
-            "employee_id": effective_emp_id,
-            "email": effective_email,
-            "category": category_to_use,
-            "title": title,
-            "description": row.get("description", ""),
-            "year": year,
-            "source_type": "institutional",
-            "is_verified": True
-        }
+            record_data: Dict[str, Any] = {
+                "faculty_id": faculty_id,
+                "employee_id": effective_emp_id,
+                "email": effective_email,
+                "category": category_to_use,
+                "title": title,
+                "description": row.get("description", ""),
+                "year": year,
+                "source_type": "institutional",
+                "is_verified": True
+            }
 
-        if row.get("hours") is not None:
-            record_data["hours"] = row["hours"]
-        if row.get("feedback_score") is not None:
-            record_data["feedback_score"] = row["feedback_score"]
-        if row.get("raw_metadata"):
-            record_data["details"] = json.dumps(row["raw_metadata"])
-        
-        matched_faculty = faculty_by_id.get(faculty_id, {})
-        faculty_name = matched_faculty.get("canonical_name", "Unknown Faculty")
+            if row.get("hours") is not None:
+                record_data["hours"] = row["hours"]
+            if row.get("feedback_score") is not None:
+                record_data["feedback_score"] = row["feedback_score"]
+            if row.get("raw_metadata"):
+                record_data["details"] = json.dumps(row["raw_metadata"])
 
-        preview_data.append({
-            **record_data,
-            "faculty_name": faculty_name,
-            "is_duplicate": is_dup
-        })
-        
-        if is_dup:
-            record_data["id"] = existing_id
-            updates_to_execute.append(record_data)
-            affected_faculty_ids.add(faculty_id)
-            records_updated += 1
-        else:
-            inserts_to_execute.append(record_data)
-            # Register in existing_index to avoid within-batch duplicates
-            existing_index[lookup_key] = "pending"
-            affected_faculty_ids.add(faculty_id)
-            records_imported += 1
+            preview_data.append({
+                **record_data,
+                "faculty_name": faculty_name,
+                "is_duplicate": is_dup
+            })
+            
+            if is_dup:
+                record_data["id"] = existing_id
+                updates_to_execute.append(record_data)
+                affected_faculty_ids.add(faculty_id)
+                records_updated += 1
+            else:
+                inserts_to_execute.append(record_data)
+                # Register in existing_index to avoid within-batch duplicates
+                existing_index[lookup_key] = "pending"
+                affected_faculty_ids.add(faculty_id)
+                records_imported += 1
 
     if not dry_run:
         for rec in updates_to_execute:

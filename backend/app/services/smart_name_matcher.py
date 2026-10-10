@@ -148,3 +148,36 @@ def smart_match_faculty_name(
         return (best_fuzzy, best_fuzzy_score, "fuzzy_sequence_match")
         
     return None
+
+
+def split_multiple_faculty_names(raw: Optional[str]) -> List[str]:
+    """
+    Splits multi-faculty string representations:
+    Supports delimiters: ';', '|', ' / ', ' and ', ' & '
+    E.g.: 'Dr. Govardhan Bhatt; Dr. Dilip Singh Sisodia' -> ['Dr. Govardhan Bhatt', 'Dr. Dilip Singh Sisodia']
+    'Govardhan Bhatt and Dilip Singh Sisodia' -> ['Govardhan Bhatt', 'Dilip Singh Sisodia']
+    'Bhatt, Govardhan / Sisodia, Dilip' -> ['Bhatt, Govardhan', 'Sisodia, Dilip']
+    """
+    if not raw or not raw.strip():
+        return []
+    s = raw.strip()
+    if ";" in s:
+        return [p.strip() for p in s.split(";") if p.strip()]
+    if "|" in s:
+        return [p.strip() for p in s.split("|") if p.strip()]
+    if " / " in s:
+        return [p.strip() for p in s.split(" / ") if p.strip()]
+    if re.search(r'\s+and\s+', s, flags=re.IGNORECASE):
+        return [p.strip() for p in re.split(r'\s+and\s+', s, flags=re.IGNORECASE) if p.strip()]
+    if " & " in s:
+        return [p.strip() for p in s.split(" & ") if p.strip()]
+    return [s]
+
+
+def split_identifiers(raw: Optional[str]) -> List[str]:
+    """Splits multiple comma or semicolon separated IDs/emails."""
+    if not raw or not raw.strip():
+        return []
+    parts = re.split(r'[;,|]', raw.strip())
+    return [p.strip() for p in parts if p.strip()]
+

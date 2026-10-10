@@ -19,6 +19,7 @@ interface ImportSummary {
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories (Multi-Category CSV)' },
+  { value: 'collaborative', label: 'Collaborative / Joint Multi-Faculty (Co-PI, Co-Authors)' },
   { value: 'inverted', label: 'Inverted Name Sequence ("Last, First" & Shuffled Columns)' },
   { value: 'teaching', label: 'Teaching & Course Instruction' },
   { value: 'mentoring', label: 'Research Scholars & Mentoring' },
@@ -31,6 +32,12 @@ const CATEGORIES = [
 ]
 
 const SAMPLE_CSV_PRESETS: Record<string, string> = {
+  collaborative: `faculty_name,title,year,category,description,hours,feedback_score
+"Govardhan Bhatt; Dilip Singh Sisodia",Collaborative AI-Driven Structural Health Monitoring for Urban Bridges,2026,projects,Joint DST-SERB Core Research Grant (INR 75.0 Lakhs),400,4.95
+"Sewan Das Patle; Siddhartha Choubey",Edge Computing Infrastructure and Distributed Analytics for Smart Campuses,2026,projects,AICTE Collaborative Research Promotion Scheme (INR 35.0 Lakhs),300,4.85
+"Bhatt, Govardhan / Sisodia, Dilip Singh",Intelligent Seismic Attenuation and Structural Vibration Control Device,2026,innovation,Joint Indian Patent Application No. 202621049921,0,5.00
+"Dilip Singh Sisodia and Sewan Das Patle",Advanced Deep Learning and Cloud Orchestration Workshop,2026,outreach,National Joint Faculty Development Program (ATAL Academy),24,4.90`,
+
   inverted: `faculty_name,title,year,category,description,hours,feedback_score
 "Bhatt, Govardhan",Advanced Structural Dynamics & Earthquake Engineering,2026,teaching,Undergraduate Core Course for Semester VI,48,4.85
 "Sisodia Dilip Singh",Machine Learning and Pattern Recognition,2026,teaching,Core CS undergraduate course covering supervised learning,52,4.92
@@ -146,7 +153,7 @@ export function InstitutionalUploadCard() {
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
-      if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== 'inverted') {
+      if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== 'inverted' && selectedCategory !== 'collaborative') {
         formData.append('category', selectedCategory)
       }
       formData.append('dry_run', dryRun ? 'true' : 'false')

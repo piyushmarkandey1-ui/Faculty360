@@ -223,9 +223,13 @@ export default function NewFacultyPage() {
     setLoading(true)
     setErrorMsg(null)
     try {
+      const payload = {
+        ...formData,
+        institution_url: formData.institutionUrl
+      }
       const res: any = await apiFetch('/faculty', {
         method: 'POST',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
       if (res && res.id) {
         setCreatedFacultyId(res.id)
@@ -637,6 +641,15 @@ export default function NewFacultyPage() {
                     onChange={e => updateForm('orcidId', e.target.value)}
                     placeholder="e.g. 0000-0001-8555-1773"
                     className="w-full px-3 py-2 rounded-lg border bg-[var(--bg-base)] border-[var(--border-default)] text-sm font-mono"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-semibold text-[var(--text-muted)]">Institutional Website / Faculty Profile URL</label>
+                  <input 
+                    value={formData.institutionUrl} 
+                    onChange={e => updateForm('institutionUrl', e.target.value)}
+                    placeholder="e.g. https://profiles.stanford.edu/... or https://university.edu/faculty/..."
+                    className="w-full px-3 py-2 rounded-lg border bg-[var(--bg-base)] border-[var(--border-default)] text-sm"
                   />
                 </div>
               </div>

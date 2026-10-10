@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -12,17 +13,20 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # ── Current Gemini models (updated October 2026) ──────────────────────────────
-# Primary model for fast, cheap extraction. Falls back down the list.
+# ── Current Gemini models ──────────────────────────────────────────────────────
+# Primary model for fast, reliable extraction. Falls back down the list.
 GEMINI_MODELS_FLASH = [
+    "gemini-flash-latest",
+    "gemini-pro-latest",
     "gemini-3.5-flash-lite",
     "gemini-3.6-flash",
     "gemini-3.7-flash",
-    "gemini-flash-latest",
 ]
 GEMINI_MODELS_PRO = [
+    "gemini-pro-latest",
+    "gemini-flash-latest",
     "gemini-3.5-flash-lite",
     "gemini-3.6-flash",
-    "gemini-pro-latest",
 ]
 
 
@@ -35,7 +39,7 @@ def _clean_gemini_key() -> Optional[str]:
 
 
 def _get_apify_token() -> Optional[str]:
-    raw = os.environ.get("APIFY_API_TOKEN") or os.environ.get("APIFY_TOKEN") or os.environ.get("APIFY_KEY") or ""
+    raw = os.environ.get("APIFY_API_TOKEN") or os.environ.get("APIFY_TOKEN") or os.environ.get("APIFY_KEY") or getattr(settings, "APIFY_API_TOKEN", "") or ""
     token = str(raw).replace("\\n", "").replace("\\r", "").strip().strip('"').strip("'")
     if not token or token.lower() in ("demo", "undefined", "null", "none", ""):
         return None
@@ -43,24 +47,120 @@ def _get_apify_token() -> Optional[str]:
 
 
 async def _crawl_with_apify(url: str, token: str) -> Optional[str]:
-    """Crawl a webpage via Apify Web Scraper Actor if token is configured."""
+    """Crawl a webpage via Apify Web Scraper / Cheerio / RAG actors."""
+    if not token or token.lower() in ("demo", "undefined", "null", "none", ""):
+        return None
+    clean_token = token.strip().strip('"').strip("'")
+    headers = {"Authorization": f"Bearer {clean_token}", "Content-Type": "application/json"}
+
+    # 1. Try modern Apify RAG Web Browser / Website Content Crawler
+    try:
+        run_input_rag = {
+            "query": url,
+            "maxResults": 1,
+            "outputFormat": "markdown"
+        }
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(
+                "https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items?timeout=20",
+                headers=headers,
+                json=run_input_rag
+            )
+            if resp.status_code in (200, 201):
+                items = resp.json()
+                if isinstance(items, list) and items:
+                    txt = items[0].get("text") or items[0].get("markdown") or items[0].get("content") or ""
+                    if len(txt.strip()) > 100:
+                        logger.info(f"Apify RAG Web Browser extracted {len(txt)} chars from {url}")
+                        return txt[:20000]
+    except Exception as e:
+        logger.debug(f"Apify RAG Web Browser attempt note: {e}")
+
+    # 2. Try Cheerio Scraper with proper pageFunction
+    try:
+        page_func = "async function pageFunction(context) { const { $, request } = context; $('script, style, nav, footer, noscript, svg, header').remove(); return { url: request.url, title: $('title').text(), text: $('body').text().replace(/\\s+/g, ' ').trim() }; }"
+        run_input_cheerio = {
+            "startUrls": [{"url": url}],
+            "maxRequestsPerCrawl": 3,
+            "pageFunction": page_func
+        }
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(
+                "https://api.apify.com/v2/acts/apify~cheerio-scraper/run-sync-get-dataset-items?timeout=20",
+                headers=headers,
+                json=run_input_cheerio
+            )
+            if resp.status_code in (200, 201):
+                items = resp.json()
+                if isinstance(items, list) and items:
+                    extracted_texts = [item.get("text", "") or item.get("body", "") for item in items if isinstance(item, dict)]
+                    text = " ".join(extracted_texts).strip()
+                    if len(text) > 100:
+                        logger.info(f"Apify Cheerio Scraper extracted {len(text)} chars from {url}")
+                        return text[:20000]
+    except Exception as e:
+        logger.debug(f"Apify Cheerio Scraper attempt note: {e}")
+
+    # 3. Try with ApifyClient SDK if available
     try:
         from apify_client import ApifyClient
-        client = ApifyClient(token)
-        run_input = {
-            "startUrls": [{"url": url}],
-            "maxRequestsPerCrawl": 2,
-            "maxCrawlingDepth": 1,
-        }
-        run = client.actor("apify/cheerio-scraper").call(run_input=run_input, timeout_secs=15)
+        ap_client = ApifyClient(clean_token)
+        run = ap_client.actor("apify/cheerio-scraper").call(
+            run_input={
+                "startUrls": [{"url": url}],
+                "maxRequestsPerCrawl": 2,
+                "pageFunction": "async function pageFunction(context) { const { $ } = context; $('script, style, nav, footer').remove(); return { text: $('body').text().trim() }; }"
+            },
+            timeout_secs=20
+        )
         if run and run.get("defaultDatasetId"):
-            dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
+            dataset_items = ap_client.dataset(run["defaultDatasetId"]).list_items().items
             if dataset_items:
-                extracted_texts = [item.get("text", "") or item.get("body", "") for item in dataset_items]
-                return " ".join(extracted_texts)[:15000]
+                extracted = [it.get("text", "") for it in dataset_items if it.get("text")]
+                joined = " ".join(extracted).strip()
+                if joined:
+                    return joined[:20000]
     except Exception as e:
-        logger.warning(f"Apify crawl attempt failed: {e}")
+        logger.debug(f"ApifyClient SDK call note: {e}")
+
     return None
+
+
+async def _search_with_apify_google(query: str, token: str) -> Tuple[List[str], List[str]]:
+    """Search Google via Apify Google Search Scraper actor if token is configured."""
+    if not token or token.lower() in ("demo", "undefined", "null", "none", ""):
+        return [], []
+    results: List[str] = []
+    snippets: List[str] = []
+    try:
+        clean_token = token.strip().strip('"').strip("'")
+        headers = {"Authorization": f"Bearer {clean_token}", "Content-Type": "application/json"}
+        run_input = {
+            "queries": query,
+            "maxPagesPerQuery": 1,
+            "resultsPerPage": 10
+        }
+        async with httpx.AsyncClient(timeout=35.0) as http_client:
+            resp = await http_client.post(
+                "https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items?timeout=30",
+                headers=headers,
+                json=run_input
+            )
+            if resp.status_code in (200, 201):
+                items = resp.json()
+                if isinstance(items, list):
+                    for it in items:
+                        for org in it.get("organicResults", []):
+                            u = org.get("url")
+                            desc = org.get("description") or org.get("snippet")
+                            if u and u.startswith("http") and u not in results:
+                                results.append(u)
+                            if desc and desc not in snippets:
+                                snippets.append(desc)
+    except Exception as e:
+        logger.warning(f"Apify Google Search actor call note: {e}")
+    return results, snippets
+
 
 
 async def _lookup_institution_domain(institution: str) -> Optional[str]:
@@ -526,86 +626,139 @@ Return ONLY a valid JSON list of strings (e.g. ["https://..."]). Do not include 
     return []
 
 
+def _decode_bing_url(bing_url: str) -> str:
+    """Decode base64 target url from Bing redirect links (u=a1...)."""
+    m = re.search(r'[?&]u=a1([a-zA-Z0-9_\-=]+)', bing_url)
+    if m:
+        raw_b64 = m.group(1).replace('-', '+').replace('_', '/')
+        padding = 4 - (len(raw_b64) % 4)
+        if padding < 4:
+            raw_b64 += '=' * padding
+        try:
+            return base64.b64decode(raw_b64).decode('utf-8', errors='ignore')
+        except Exception:
+            pass
+    return bing_url
+
+
 async def _search_institutional_page(
     name: str, institution: str, department: str
 ) -> Tuple[List[str], List[str]]:
     """
-    Search for official faculty profile, research web pages, and CV links worldwide.
+    General purpose search for official faculty profile, research web pages,
+    and CV links worldwide across all institutions.
+    Uses Bing search + DuckDuckGo + OpenAlex institutional resolution.
     Returns a tuple of (discovered_urls, search_snippets).
     """
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9"
     }
     clean_name = re.sub(r"^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+", "", name.strip(), flags=re.IGNORECASE)
-    inst_tokens = [t.lower() for t in re.findall(r"[a-zA-Z0-9]+", institution) if len(t) > 2]
+    inst_clean = institution.strip() if institution else ""
+    inst_tokens = [t.lower() for t in re.findall(r"[a-zA-Z0-9]+", inst_clean) if len(t) > 2]
 
-    # Discover official institutional domain
-    inst_domain_url = await _lookup_institution_domain(institution)
+    # 1. Discover official institutional domain worldwide via OpenAlex
     domain_host = ""
-    if inst_domain_url:
-        domain_host = urllib.parse.urlparse(inst_domain_url).netloc.replace("www.", "")
+    if inst_clean:
+        inst_domain_url = await _lookup_institution_domain(inst_clean)
+        if inst_domain_url:
+            domain_host = urllib.parse.urlparse(inst_domain_url).netloc.replace("www.", "").lower()
 
     queries = []
     if domain_host:
-        queries.append(f"site:{domain_host} {clean_name}")
+        queries.append(f"site:{domain_host} \"{clean_name}\"")
         queries.append(f"site:{domain_host} {clean_name} faculty profile")
-    queries.extend([
-        f"{clean_name} {institution} faculty profile",
-        f"{clean_name} {institution} experience education",
-        f"{clean_name} {institution} research",
-        f"{clean_name} {institution}"
-    ])
+    if inst_clean:
+        queries.append(f"\"{clean_name}\" \"{inst_clean}\" faculty profile")
+        queries.append(f"\"{clean_name}\" \"{inst_clean}\" {department or ''} curriculum vitae")
+        queries.append(f"\"{clean_name}\" \"{inst_clean}\" research courses")
+    else:
+        queries.append(f"\"{clean_name}\" faculty profile curriculum vitae")
+        queries.append(f"\"{clean_name}\" university professor")
 
     results: List[str] = []
     snippets: List[str] = []
     seen_snippets = set()
 
+    def is_valid_academic_target(url_str: str) -> bool:
+        url_lower = url_str.lower()
+        if any(bad in url_lower for bad in [
+            "duckduckgo.com", "bing.com", "google.com", "yahoo.com",
+            "facebook.com", "twitter.com", "x.com", "instagram.com",
+            "linkedin.com/pulse", "tiktok.com", "youtube.com", "pinterest.com"
+        ]):
+            return False
+        is_academic_tld = any(tld in url_lower for tld in [
+            ".edu", ".ac.", ".edu.", ".org", ".gov", ".res.in", ".int",
+            ".univ-", ".sch.", "university", "institute", "college", "polytechnic"
+        ])
+        matches_domain = domain_host and (domain_host in url_lower)
+        matches_inst_token = any(tok in url_lower for tok in inst_tokens)
+        has_academic_path = any(w in url_lower for w in [
+            "faculty", "profile", "people", "staff", "researcher", "scholar",
+            "author", "prof", "dept", "department", "lab", "cv", "directory"
+        ])
+        return bool((is_academic_tld or matches_domain or matches_inst_token) and (matches_domain or matches_inst_token or has_academic_path))
+
     async with httpx.AsyncClient(verify=False, timeout=12.0, follow_redirects=True, headers=headers) as client:
         for q in queries[:4]:
+            # ── A. Bing Search (High-Quality Worldwide Organic Results) ──
             try:
-                # Primary: DuckDuckGo HTML endpoint which provides full results and snippets
-                resp = await client.post("https://html.duckduckgo.com/html/", data={"q": q})
-                if resp.status_code != 200:
-                    resp = await client.post("https://lite.duckduckgo.com/lite/", data={"q": q})
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, "html.parser")
-                    # Collect authentic search snippets
-                    for snip_el in soup.find_all(["a", "td", "div"], class_=lambda c: c and ("snippet" in str(c) or "result__snippet" in str(c))):
+                bing_req_url = f"https://www.bing.com/search?q={urllib.parse.quote_plus(q)}"
+                b_resp = await client.get(bing_req_url)
+                if b_resp.status_code == 200:
+                    b_soup = BeautifulSoup(b_resp.text, "html.parser")
+                    for li in b_soup.find_all("li", class_="b_algo"):
+                        a_tag = li.find("a", href=True)
+                        if a_tag:
+                            target_link = _decode_bing_url(a_tag["href"].strip())
+                            if target_link.startswith("http") and target_link not in results:
+                                if is_valid_academic_target(target_link):
+                                    results.append(target_link)
+                        p_snip = li.find("p")
+                        if p_snip:
+                            snip_txt = p_snip.get_text(separator=" ", strip=True)
+                            if snip_txt and len(snip_txt) > 20 and snip_txt.lower() not in seen_snippets:
+                                seen_snippets.add(snip_txt.lower())
+                                snippets.append(snip_txt)
+            except Exception as e:
+                logger.debug(f"Bing search notice for '{q}': {e}")
+
+            # ── B. DuckDuckGo Search (HTML / Lite Endpoints, accepting 200 & 202) ──
+            try:
+                ddg_resp = await client.post("https://duckduckgo.com/html/", data={"q": q})
+                if ddg_resp.status_code not in (200, 202):
+                    ddg_resp = await client.post("https://html.duckduckgo.com/html/", data={"q": q})
+                if ddg_resp.status_code not in (200, 202):
+                    ddg_resp = await client.get(f"https://html.duckduckgo.com/html/?q={urllib.parse.quote_plus(q)}")
+                if ddg_resp.status_code in (200, 202):
+                    d_soup = BeautifulSoup(ddg_resp.text, "html.parser")
+                    for snip_el in d_soup.find_all(["a", "td", "div"], class_=lambda c: c and ("snippet" in str(c) or "result__snippet" in str(c))):
                         txt = snip_el.get_text(separator=" ", strip=True)
                         if txt and len(txt) > 20 and txt.lower() not in seen_snippets:
                             seen_snippets.add(txt.lower())
                             snippets.append(txt)
 
-                    # Collect candidate URLs
-                    for a in soup.find_all("a"):
-                        href = a.get("href", "")
+                    for a in d_soup.find_all("a", href=True):
+                        href = a["href"].strip()
                         target = ""
                         if "uddg=" in href:
                             target = urllib.parse.unquote(href.split("uddg=")[1].split("&")[0])
                         elif href.startswith("http"):
                             target = href
 
-                        if target and target not in results:
-                            target_lower = target.lower()
-                            if any(bad in target_lower for bad in ["duckduckgo.com", "facebook.com", "twitter.com", "instagram.com"]):
-                                continue
-                            is_academic_or_org = any(tld in target_lower for tld in [
-                                ".edu", ".ac.in", ".ernet.in", ".ac.uk", ".edu.au", ".edu.sg",
-                                ".org", ".gov", ".res.in", ".int", ".univ-", ".ac.", ".edu."
-                            ])
-                            matches_domain = domain_host and domain_host in target_lower
-                            matches_inst = any(tok in target_lower for tok in inst_tokens)
-                            if (is_academic_or_org or matches_domain) and (
-                                matches_domain or matches_inst or
-                                any(w in target_lower for w in ["faculty", "profile", "people", "staff", "researcher", "scholar", "author", "viewdetails"])
-                            ):
+                        if target and target.startswith("http") and target not in results:
+                            if is_valid_academic_target(target):
                                 results.append(target)
-                                if len(results) >= 5:
-                                    break
             except Exception as e:
-                logger.warning(f"Universal search engine note for '{q}': {e}")
+                logger.debug(f"DuckDuckGo search notice for '{q}': {e}")
 
-    return results, snippets
+            if len(results) >= 6:
+                break
+
+    return results[:6], snippets[:12]
 
 
 async def _fetch_orcid_activities(orcid_url_or_id: Optional[str]) -> Dict[str, List[Dict[str, Any]]]:
@@ -1140,11 +1293,13 @@ async def search_and_crawl_faculty(
     department: Optional[str] = None,
     custom_url: Optional[str] = None,
     custom_parameters: Optional[List[Dict[str, Any]]] = None,
-    orcid_id: Optional[str] = None
+    orcid_id: Optional[str] = None,
+    apify_token: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Intelligently discover and crawl official institutional websites, academic directories,
     and search records for a faculty member.
+    Supports Apify (Google Search & RAG Web Browser actors) and native multi-engine fallback.
     Zero placeholders, zero mock data — only authentic verified records.
     """
     clean_name = re.sub(r"^(dr\.?|prof\.?|mr\.?|ms\.?|mrs\.?)\s+", "", name.strip(), flags=re.IGNORECASE)
@@ -1154,6 +1309,8 @@ async def search_and_crawl_faculty(
     target_urls: List[str] = []
     if custom_url:
         target_urls.append(custom_url)
+
+    effective_apify_token = apify_token or _get_apify_token()
 
     # 1. Use Gemini to identify official institutional URLs if key is present
     gemini_key = _clean_gemini_key()
@@ -1165,6 +1322,17 @@ async def search_and_crawl_faculty(
                     target_urls.append(u)
         except Exception as e:
             logger.warning(f"Gemini URL discovery notice: {e}")
+
+    # 1b. If Apify token is provided, run Apify Google Search Scraper
+    if effective_apify_token:
+        try:
+            ap_query = f"\"{clean_name}\" \"{inst_name}\" faculty profile" if inst_name else f"\"{clean_name}\" faculty profile curriculum vitae"
+            ap_urls, ap_snippets = await _search_with_apify_google(ap_query, effective_apify_token)
+            for u in ap_urls:
+                if u not in target_urls:
+                    target_urls.append(u)
+        except Exception as e:
+            logger.warning(f"Apify Google Search attempt notice: {e}")
 
     # 2. Universal Web Search: Collect authoritative profile URLs AND search snippets
     search_urls, search_snippets = await _search_institutional_page(clean_name, inst_name, dept_name)
@@ -1240,13 +1408,14 @@ async def search_and_crawl_faculty(
             except Exception as e:
                 logger.warning(f"ORCID activities processing notice: {e}")
 
-        # 5. Check Apify Web Scraper if configured
-        apify_token = _get_apify_token()
-        if apify_token and target_urls:
-            apify_text = await _crawl_with_apify(target_urls[0], apify_token)
-            if apify_text:
-                scraped_text += "\n" + apify_text
-                source_label = f"{inst_name} (via Apify)"
+        # 5. Check Apify Web Scraper / RAG Web Browser if configured
+        if effective_apify_token and target_urls:
+            for crawl_target in target_urls[:2]:
+                apify_text = await _crawl_with_apify(crawl_target, effective_apify_token)
+                if apify_text:
+                    scraped_text += f"\n=== Crawled via Apify ({crawl_target}) ===\n" + apify_text
+                    source_label = f"{inst_name} (via Apify)" if inst_name else "Apify Academic Portal"
+
 
         # Special Stanford Profiles CAP proxy check if present
         for u in list(target_urls):

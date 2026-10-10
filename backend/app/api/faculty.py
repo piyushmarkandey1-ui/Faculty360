@@ -129,13 +129,14 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
             "external_id": researchgate_slug,
             "profile_url": f"https://www.researchgate.net/profile/{researchgate_slug}"
         })
-    else:
-        identities_to_insert.append({
-            "faculty_id": faculty_id,
-            "source_type": "institutional",
-            "external_id": emp_id,
-            "profile_url": f"https://{(institution_name or 'university').lower().replace(' ', '')}.edu/faculty/{emp_id}"
-        })
+
+    inst_custom_url = payload.get("institution_url") or payload.get("institutionUrl") or payload.get("profile_url")
+    identities_to_insert.append({
+        "faculty_id": faculty_id,
+        "source_type": "institutional",
+        "external_id": emp_id,
+        "profile_url": inst_custom_url or f"https://{(institution_name or 'university').lower().replace(' ', '')}.edu/faculty/{emp_id}"
+    })
         
     if identities_to_insert:
         supabase.table("academic_identities").insert(identities_to_insert).execute()
@@ -158,7 +159,7 @@ async def create_faculty(payload: dict, user: dict = Depends(get_current_user)):
                 name=canonical_name,
                 institution=institution_name,
                 department=department,
-                custom_url=payload.get("profile_url") or payload.get("institution_url")
+                custom_url=inst_custom_url
             ),
             return_exceptions=True
         )
@@ -473,7 +474,17 @@ async def sync_smart_faculty(faculty_id: str, payload: dict = None, user: dict =
     name = fac.get("canonical_name", "")
     inst_name = (fac.get("institutions") or {}).get("name") if isinstance(fac.get("institutions"), dict) else (fac.get("institution") or "")
     dept = fac.get("department", "Computer Science & Engineering")
-    custom_url = (payload or {}).get("url") or (payload or {}).get("institution_url")
+    custom_url = (payload or {}).get("url") or (payload or {}).get("institution_url") or (payload or {}).get("institutionUrl") or (payload or {}).get("custom_url")
+    apify_token = (payload or {}).get("apify_token") or (payload or {}).get("apifyToken")
+    if not custom_url:
+        try:
+            ident_res = supabase.table("academic_identities").select("profile_url").eq("faculty_id", faculty_id).eq("source_type", "institutional").execute()
+            if ident_res.data and ident_res.data[0].get("profile_url"):
+                candidate = ident_res.data[0]["profile_url"]
+                if candidate and not candidate.endswith("/faculty/auto"):
+                    custom_url = candidate
+        except Exception:
+            pass
     
     # 1. Sync publications from public APIs
     try:
@@ -490,13 +501,14 @@ async def sync_smart_faculty(faculty_id: str, payload: dict = None, user: dict =
     except Exception as e:
         logger.warning(f"Publication sync warning: {e}")
         
-    # 2. Run smart crawler and Gemini 3.6 Flash extraction
+    # 2. Run smart crawler and Gemini Flash extraction
     extracted = await sync_smart_faculty_profile(
         faculty_id=faculty_id,
         name=name,
         institution=inst_name,
         department=dept,
-        custom_url=custom_url
+        custom_url=custom_url,
+        apify_token=apify_token
     )
     
     log_audit("SMART_SYNC_FACULTY", "faculty", faculty_id, "SUCCESS", user.get("sub"))
@@ -610,7 +622,7 @@ async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_
             patents_list.append({
                 "title": title,
                 "patent_number": desc,
-                "country": "India",
+                "country": r.get("country") or "Official Patent Registry",
                 "status": "Granted",
                 "year": year or 2023,
                 "source_name": "Official Patent Registry",
@@ -647,7 +659,8 @@ async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_
         "projects": projects_list,
         "patents": patents_list,
         "institutional_service": service_list,
-        "outreach": outreach_list
+        "outreach": outreach_list,
+        "additional_parameters": sc.get("additional_parameters") or {}
     }
 
 

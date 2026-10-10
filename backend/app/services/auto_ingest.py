@@ -278,7 +278,8 @@ async def sync_smart_faculty_profile(
     institution: Optional[str] = None,
     department: Optional[str] = None,
     custom_url: Optional[str] = None,
-    orcid_id: Optional[str] = None
+    orcid_id: Optional[str] = None,
+    apify_token: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Crawls official public pages, runs Gemini structured extraction,
@@ -301,7 +302,14 @@ async def sync_smart_faculty_profile(
         except Exception:
             pass
 
-    extracted = await search_and_crawl_faculty(name, institution, department, custom_url, orcid_id=resolved_orcid)
+    extracted = await search_and_crawl_faculty(
+        name,
+        institution,
+        department,
+        custom_url,
+        orcid_id=resolved_orcid,
+        apify_token=apify_token
+    )
     
     # Save to unified_profiles
     existing_up = supabase.table("unified_profiles").select("*").eq("faculty_id", faculty_id).execute()
@@ -323,6 +331,7 @@ async def sync_smart_faculty_profile(
             "patents": extracted.get("patents", []),
             "institutional_service": extracted.get("institutional_service", []),
             "outreach": extracted.get("outreach", []),
+            "additional_parameters": extracted.get("additional_parameters", {}),
             "google_scholar": True,
             "orcid": True,
             "institutional": True,
@@ -462,5 +471,21 @@ async def sync_smart_faculty_profile(
         calculate_assessment(faculty_id)
     except Exception as e:
         logger.warning(f"Auto assessment calculation error: {e}")
+
+    # Persist the active institutional URL in academic_identities
+    if extracted.get("source_url"):
+        try:
+            existing_inst = supabase.table("academic_identities").select("id").eq("faculty_id", faculty_id).eq("source_type", "institutional").execute()
+            if existing_inst.data:
+                supabase.table("academic_identities").update({"profile_url": extracted["source_url"]}).eq("id", existing_inst.data[0]["id"]).execute()
+            else:
+                supabase.table("academic_identities").insert({
+                    "faculty_id": faculty_id,
+                    "source_type": "institutional",
+                    "external_id": "auto",
+                    "profile_url": extracted["source_url"]
+                }).execute()
+        except Exception as e:
+            logger.debug(f"Academic identity update notice: {e}")
         
     return extracted

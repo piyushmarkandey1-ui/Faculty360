@@ -19,6 +19,7 @@ interface ImportSummary {
 
 const CATEGORIES = [
   { value: 'all', label: 'All Categories (Multi-Category CSV)' },
+  { value: 'inverted', label: 'Inverted Name Sequence ("Last, First" & Shuffled Columns)' },
   { value: 'teaching', label: 'Teaching & Course Instruction' },
   { value: 'mentoring', label: 'Research Scholars & Mentoring' },
   { value: 'service', label: 'Institutional Service & Governance' },
@@ -30,6 +31,15 @@ const CATEGORIES = [
 ]
 
 const SAMPLE_CSV_PRESETS: Record<string, string> = {
+  inverted: `faculty_name,title,year,category,description,hours,feedback_score
+"Bhatt, Govardhan",Advanced Structural Dynamics & Earthquake Engineering,2026,teaching,Undergraduate Core Course for Semester VI,48,4.85
+"Sisodia Dilip Singh",Machine Learning and Pattern Recognition,2026,teaching,Core CS undergraduate course covering supervised learning,52,4.92
+"Patle, Sewan Das",Distributed Systems and Cloud Architecture,2026,teaching,Postgraduate core curriculum on consensus protocols,45,4.78
+"LeCun, Yann",Deep Learning Architectures & Joint Embedding Predictive Models,2026,teaching,NYU Courant Institute Advanced Graduate Series,50,5.00
+"Ng, Andrew",Deep Learning Foundations and Multi-Agent AI Systems,2026,teaching,Comprehensive lecture course covering transformer architectures,60,5.00
+"Dr. Vibhuti Chandrakar",Plant Biotechnology and Molecular Stress Biology,2026,teaching,Postgraduate core curriculum on abiotic stress resistance,42,4.85
+"Choubey, Siddhartha",Database Management Systems & Big Data Engineering,2026,teaching,Undergraduate core curriculum with distributed SQL labs,50,4.80`,
+
   all: `employee_id,email,category,title,description,year,hours,feedback_score
 FAC-2805,govardhan.bhatt@nitrr.ac.in,teaching,Advanced Structural Dynamics & Earthquake Engineering,Undergraduate Core Course for Semester VI,2026,48,4.85
 FAC-6053,dilip.sisodia@nitrr.ac.in,teaching,Machine Learning and Pattern Recognition,Core CS undergraduate course covering supervised/unsupervised learning,2026,52,4.92
@@ -136,7 +146,7 @@ export function InstitutionalUploadCard() {
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
-      if (selectedCategory && selectedCategory !== 'all') {
+      if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== 'inverted') {
         formData.append('category', selectedCategory)
       }
       formData.append('dry_run', dryRun ? 'true' : 'false')

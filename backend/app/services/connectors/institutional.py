@@ -103,16 +103,33 @@ class InstitutionalDataConnector(AcademicSourceConnector):
 
         emp_col = find_field(["employee_id", "emp_id", "empid", "faculty_employee_id", "faculty_id", "id"])
         email_col = find_field(["email", "canonical_email", "mail", "faculty_email", "user_email"])
+        name_col = find_field([
+            "faculty_name", "faculty", "professor", "professor_name",
+            "instructor", "teacher", "author", "faculty_member",
+            "member_name", "full_name", "faculty_full_name", "name"
+        ])
+
+        # Ensure title candidate list does not collide with name_col if 'name' was used for faculty
+        title_candidates = [
+            "title", "course_name", "course_title", "project_title",
+            "award_name", "award_title", "activity", "topic", "event",
+            "role", "subject", "work_title", "record_title"
+        ]
+        if not name_col or normalized_headers.get(name_col) != "name":
+            title_candidates.append("name")
+        title_col = find_field(title_candidates)
+
         cat_col = find_field(["category", "data_category", "type", "record_type", "section"])
-        title_col = find_field(["title", "name", "course_name", "course_title", "project_title", "award_name", "activity", "topic", "event", "role"])
         year_col = find_field(["year", "academic_year", "period", "session", "date"])
         desc_col = find_field(["description", "details", "desc", "summary", "organization", "venue", "agency", "funding_agency"])
         hours_col = find_field(["hours", "credits", "credit_hours", "contact_hours"])
         score_col = find_field(["feedback_score", "feedback", "rating", "score", "student_rating"])
 
-        # Verification: We must have at least an identifier (emp_id or email) and a title
-        if not emp_col and not email_col:
-            raise ValueError("CSV must include an 'employee_id' or 'email' column to match faculty records.")
+        # Verification: We must have at least one identifier (emp_id, email, or faculty_name) and a title
+        if not emp_col and not email_col and not name_col:
+            raise ValueError(
+                "CSV must include at least one faculty identifier column: 'faculty_name', 'employee_id', or 'email'."
+            )
 
         if not title_col:
             raise ValueError("CSV must include a 'title' column (e.g., Course Name, Project Title, Award Title).")
@@ -127,12 +144,13 @@ class InstitutionalDataConnector(AcademicSourceConnector):
         for idx, row in enumerate(reader, start=2):
             emp_id = (row.get(emp_col) or "").strip() if emp_col else ""
             email = (row.get(email_col) or "").strip().lower() if email_col else ""
+            faculty_name = (row.get(name_col) or "").strip() if name_col else ""
             title = (row.get(title_col) or "").strip() if title_col else ""
             raw_cat = (row.get(cat_col) or "").strip() if cat_col else ""
             cat = self.normalize_category(raw_cat) or effective_category_override
 
-            if not emp_id and not email:
-                errors.append(f"Row {idx}: Missing both employee_id and email.")
+            if not emp_id and not email and not faculty_name:
+                errors.append(f"Row {idx}: Missing employee_id, email, and faculty_name.")
                 continue
 
             if not title:
@@ -183,6 +201,7 @@ class InstitutionalDataConnector(AcademicSourceConnector):
             valid_rows.append({
                 "employee_id": emp_id,
                 "email": email,
+                "faculty_name": faculty_name,
                 "category": cat,
                 "title": title,
                 "description": desc,

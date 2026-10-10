@@ -200,26 +200,60 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
     inserts_to_execute = []
     updates_to_execute = []
 
+    from app.services.smart_name_matcher import smart_match_faculty_name
+
     for row in records:
         emp_id = (row.get("employee_id") or "").strip()
         email = (row.get("email") or "").strip().lower()
+        faculty_name_input = (row.get("faculty_name") or "").strip()
         title = (row.get("title") or "").strip()
         year = row.get("year", 2026)
         
         faculty_id = None
+        # 1. Exact Employee ID match
         if emp_id and emp_id in emp_id_map:
             faculty_id = emp_id_map[emp_id]
+        # 2. Exact Email match
         elif email and email in email_map:
             faculty_id = email_map[email]
+        # 3. Direct UUID match
         elif emp_id and emp_id in id_map:
             faculty_id = id_map[emp_id]
-        elif title and title.lower() in name_map:
-            faculty_id = name_map[title.lower()]
+        
+        # 4. Smart Name Matching (handles 'Last, First', permutations, initials, honorifics)
+        if not faculty_id and faculty_name_input:
+            match_res = smart_match_faculty_name(faculty_name_input, faculty_list)
+            if match_res:
+                faculty_id = match_res[0]["id"]
+
+        # 5. Fallback: Check if emp_id actually holds a name string (e.g. 'Bhatt, Govardhan' in first column)
+        if not faculty_id and emp_id and not re.match(r'^(fac|emp|nit|iit|prof)[-_]?\d+', emp_id.lower()):
+            match_res = smart_match_faculty_name(emp_id, faculty_list)
+            if match_res:
+                faculty_id = match_res[0]["id"]
+
+        # 6. Fallback: Check if email prefix holds a recognizable faculty name
+        if not faculty_id and email and "@" in email:
+            local_part = email.split("@")[0].replace(".", " ").replace("_", " ")
+            match_res = smart_match_faculty_name(local_part, faculty_list)
+            if match_res:
+                faculty_id = match_res[0]["id"]
+
+        # 7. Fallback: Check if title matched a faculty name
+        if not faculty_id and title:
+            match_res = smart_match_faculty_name(title, faculty_list)
+            if match_res:
+                faculty_id = match_res[0]["id"]
             
         if not faculty_id:
             unmatched_records.append(row)
             continue
             
+        matched_faculty = faculty_by_id.get(faculty_id, {})
+        faculty_name = matched_faculty.get("canonical_name", "Unknown Faculty")
+        effective_emp_id = emp_id or matched_faculty.get("employee_id") or ""
+        effective_email = email or (matched_faculty.get("canonical_email") or "").lower()
+
         category_to_use = category_override if category_override else row.get("category", "teaching")
         if category_to_use:
             category_to_use = connector.normalize_category(category_to_use)
@@ -230,8 +264,8 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
         
         record_data: Dict[str, Any] = {
             "faculty_id": faculty_id,
-            "employee_id": emp_id,
-            "email": email,
+            "employee_id": effective_emp_id,
+            "email": effective_email,
             "category": category_to_use,
             "title": title,
             "description": row.get("description", ""),

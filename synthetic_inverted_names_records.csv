@@ -1,0 +1,18 @@
+faculty_name,title,year,category,description,hours,feedback_score
+"Bhatt, Govardhan",Advanced Structural Dynamics & Earthquake Engineering,2026,teaching,Undergraduate Core Course for Semester VI,48,4.85
+"Sisodia Dilip Singh",Machine Learning and Pattern Recognition,2026,teaching,Core CS undergraduate course covering supervised learning,52,4.92
+"Patle, Sewan Das",Distributed Systems and Cloud Architecture,2026,teaching,Postgraduate core curriculum on consensus protocols,45,4.78
+"LeCun, Yann",Deep Learning Architectures & Joint Embedding Predictive Models,2026,teaching,NYU Courant Institute Advanced Graduate Series,50,5.00
+"Ng, Andrew",Deep Learning Foundations and Multi-Agent AI Systems,2026,teaching,Comprehensive lecture course covering transformer architectures,60,5.00
+"Dr. Vibhuti Chandrakar",Plant Biotechnology and Molecular Stress Biology,2026,teaching,Postgraduate core curriculum on abiotic stress resistance,42,4.85
+"Choubey, Siddhartha",Database Management Systems & Big Data Engineering,2026,teaching,Undergraduate core curriculum with distributed SQL labs,50,4.80
+"Bhatt, Dr. Govardhan",Chairman - Institute Accreditation & NBA Tier-I Committee,2026,service,Supervised self-assessment reports and criterion evaluation,60,4.90
+"Prof. Dilip S. Sisodia",Head of Department & Academic Senate Member,2026,service,Steered curriculum modernization aligned with NEP-2020,85,5.00
+"Patle Sewan Das",Faculty Advisor - Student Innovation & Smart India Hackathon Cell,2026,service,Organized internal university rounds and mentored teams,40,4.85
+"Govardhan Bhatt",Real-time Vibration Monitoring of High-Rise Structures Using Wireless Sensor Mesh,2026,projects,DST-SERB Core Research Grant (INR 48.5 Lakhs),300,4.95
+"Dilip Singh Sisodia",Federated Learning for Privacy-Preserving Multi-Hospital Healthcare Diagnostics,2026,projects,MeitY Government of India R&D Grant (INR 62.0 Lakhs),450,5.00
+"Bhatt, Govardhan",Tunable Liquid Column Mass Damper for Wind & Seismic Attenuation,2026,innovation,Indian Patent Application No. 202621045812 (Published),0,5.00
+"Sisodia, Dilip Singh",Multi-Modal Attention Neural Network for Early Sepsis Detection,2026,innovation,Indian Patent Grant No. 492015 (Granted),0,5.00
+"Bhatt, Govardhan",Keynote Address: Resilient Smart Infrastructure in Seismic Zones,2026,outreach,15th International Conference on Structural Engineering,8,5.00
+"Sisodia Dilip Singh",Distinguished Speaker: Trustworthy AI and Algorithmic Fairness in Public Sector,2026,outreach,IEEE International Computer Society Conclave 2026,10,5.00
+"Patle, Sewan Das",Workshop Chair: Hands-on Cloud Native Microservices on Kubernetes,2026,outreach,AICTE ATAL Faculty Development Program (FDP),16,4.85

@@ -10,11 +10,18 @@ HONORIFIC_PREFIXES = {
     "padma", "padmashri", "sir"
 }
 
+# Suffixes to strip from the end of names so they don't interfere with matching
+NAME_SUFFIXES = {
+    "jr", "sr", "ii", "iii", "iv", "phd", "ph", "d",
+    "dsc", "dphil", "mtech", "msc", "mba",
+    "ias", "ips", "ifs", "iFS",
+}
+
 
 def clean_name_tokens(name: Optional[str]) -> List[str]:
     """
     Cleans and tokenizes a faculty name string:
-    - Strips honorifics and academic titles
+    - Strips honorifics (Dr., Prof.) and trailing suffixes (Jr., PhD, III)
     - Replaces punctuation and special characters with spaces
     - Returns lower-cased list of non-empty alphabetic tokens
     """
@@ -25,8 +32,11 @@ def clean_name_tokens(name: Optional[str]) -> List[str]:
     cleaned = re.sub(r'[^a-zA-Z\s]', ' ', str(name).lower())
     raw_tokens = [t.strip() for t in cleaned.split() if t.strip()]
     
-    # Filter out known honorifics
+    # Filter out known honorifics from the start
     filtered = [t for t in raw_tokens if t not in HONORIFIC_PREFIXES]
+    # Filter out known suffixes from the end (only remove if they are at the tail)
+    while filtered and filtered[-1] in NAME_SUFFIXES:
+        filtered.pop()
     return filtered if filtered else raw_tokens
 
 

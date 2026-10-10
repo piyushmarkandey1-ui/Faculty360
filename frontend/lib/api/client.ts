@@ -104,6 +104,58 @@ export async function logoutUser() {
   }
 }
 
+export interface ImportSummary {
+  recordsReceived: number;
+  recordsImported: number;
+  recordsUpdated: number;
+  unmatchedFaculty: number;
+  invalidRecords: number;
+  duplicatesDetected: number;
+  previewData?: any[];
+}
+
+export function getApiUrl(path: string): string {
+  const rawBase = (process.env.NEXT_PUBLIC_API_URL || API_BASE_URL || "/api").trim();
+  const baseUrl = rawBase.replace(/[\r\n\s]+/g, "").replace(/\/+$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  if (baseUrl.endsWith("/api") && cleanPath.startsWith("/api")) {
+    return `${baseUrl}${cleanPath.slice(4)}`;
+  }
+  if (!baseUrl.endsWith("/api") && !cleanPath.startsWith("/api")) {
+    return `${baseUrl}/api${cleanPath}`;
+  }
+  return `${baseUrl}${cleanPath}`;
+}
+
+export async function uploadInstitutionalBatch(
+  file: File,
+  category?: string,
+  dryRun: boolean = false
+): Promise<ImportSummary> {
+  const token = await getAuthToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  if (category && category !== "all" && category !== "inverted" && category !== "collaborative") {
+    formData.append("category", category);
+  }
+  formData.append("dry_run", dryRun ? "true" : "false");
+
+  const uploadUrl = getApiUrl("/institutional/upload");
+  const res = await fetch(uploadUrl, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: `Upload failed on ${file.name} (HTTP ${res.status})` }));
+    throw new Error(errorData.detail || `Upload failed on ${file.name} (HTTP ${res.status})`);
+  }
+
+  return res.json() as Promise<ImportSummary>;
+}
+
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getAuthToken();
   const headers: Record<string, string> = {
@@ -115,12 +167,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const rawBase = (process.env.NEXT_PUBLIC_API_URL || API_BASE_URL || "/api").trim();
-  const baseUrl = rawBase.replace(/[\r\n\s]+/g, "").replace(/\/+$/, "");
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const targetUrl = baseUrl.endsWith("/api") && cleanPath.startsWith("/api")
-    ? `${baseUrl}${cleanPath.slice(4)}`
-    : `${baseUrl}${cleanPath}`;
+  const targetUrl = getApiUrl(path);
 
   const res = await fetch(targetUrl, {
     ...options,

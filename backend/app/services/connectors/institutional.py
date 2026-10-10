@@ -161,40 +161,52 @@ class InstitutionalDataConnector(AcademicSourceConnector):
                 errors.append(f"Row {idx}: Missing or invalid category.")
                 continue
 
-            # Year parsing
+            # Year parsing — handles: "2026", "2024-25", "FY2025", "AY 2025-26", "Spring 2025"
             raw_year = (row.get(year_col) or "").strip() if year_col else ""
             year: Optional[int] = None
             if raw_year:
-                # Extract 4-digit year
-                match = re.search(r'\b(19\d\d|20\d\d)\b', raw_year)
-                if match:
-                    year = int(match.group(1))
+                # 1. Direct 4-digit year anywhere in the string (most reliable)
+                m4 = re.search(r'\b(19\d\d|20[0-3]\d)\b', raw_year)
+                if m4:
+                    year = int(m4.group(1))
                 else:
-                    try:
-                        year = int(raw_year)
-                    except ValueError:
-                        pass
-            if year is None:
-                # Default to current year
+                    # 2. "24-25" or "2024-25" range → take the start year
+                    m_range = re.match(r'(\d{2,4})[/\-](\d{2,4})', raw_year.strip())
+                    if m_range:
+                        y = m_range.group(1)
+                        year = int("20" + y) if len(y) == 2 else int(y)
+                    else:
+                        # 3. bare 2-digit year "24" → expand to 2024
+                        m2 = re.fullmatch(r'\d{2}', raw_year.strip())
+                        if m2:
+                            year = int("20" + raw_year.strip())
+            if year is None or year < 1970 or year > 2099:
                 year = 2026
 
-            # Optional Hours parsing
+            # Optional Hours parsing — handles "45", "45.5", "45 hrs", "45 hrs/week", "3 credits"
             raw_hours = (row.get(hours_col) or "").strip() if hours_col else ""
             hours: Optional[float] = None
             if raw_hours:
-                try:
-                    hours = float(re.sub(r'[^0-9.]', '', raw_hours))
-                except ValueError:
-                    pass
+                m_h = re.match(r'(\d+(?:\.\d+)?)', raw_hours)
+                if m_h:
+                    try:
+                        hours = float(m_h.group(1))
+                    except ValueError:
+                        pass
 
-            # Optional Feedback Score parsing
+            # Optional Feedback Score parsing — handles "4.8", "4.8/5", "4.8/5.0", "96/100"
             raw_score = (row.get(score_col) or "").strip() if score_col else ""
             score: Optional[float] = None
             if raw_score:
-                try:
-                    score = float(re.sub(r'[^0-9.]', '', raw_score))
-                except ValueError:
-                    pass
+                m_s = re.match(r'(\d+(?:\.\d+)?)', raw_score)
+                if m_s:
+                    try:
+                        score = float(m_s.group(1))
+                        # Normalize: percentages like 96 → 4.8 out of 5
+                        if score > 10:
+                            score = round(score / 100.0 * 5.0, 2)
+                    except ValueError:
+                        pass
 
             desc = (row.get(desc_col) or "").strip() if desc_col else ""
 

@@ -170,11 +170,7 @@ export function InstitutionalUploadCard() {
     }
 
     try {
-      const rawBase = (process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '')
-      const uploadUrl = rawBase ? `${rawBase}/api/institutional/upload` : '/api/institutional/upload'
-
-      const { getAuthToken } = await import('@/lib/api/client')
-      const token = await getAuthToken()
+      const { uploadInstitutionalBatch } = await import('@/lib/api/client')
 
       const aggregated: ImportSummary = {
         recordsReceived: 0,
@@ -190,25 +186,8 @@ export function InstitutionalUploadCard() {
         const file = selectedFiles[idx]
         setBatchProgress(`Processing batch ${idx + 1} of ${selectedFiles.length}: ${file.name}...`)
 
-        const formData = new FormData()
-        formData.append('file', file)
-        if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== 'inverted' && selectedCategory !== 'collaborative') {
-          formData.append('category', selectedCategory)
-        }
-        formData.append('dry_run', dryRun ? 'true' : 'false')
+        const data = await uploadInstitutionalBatch(file, selectedCategory, dryRun)
 
-        const res = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-          body: formData,
-        })
-
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({ detail: `Upload failed on ${file.name}` }))
-          throw new Error(errorData.detail || `Upload failed on ${file.name}`)
-        }
-
-        const data: ImportSummary = await res.json()
         aggregated.recordsReceived += data.recordsReceived || 0
         aggregated.recordsImported += data.recordsImported || 0
         aggregated.recordsUpdated += data.recordsUpdated || 0

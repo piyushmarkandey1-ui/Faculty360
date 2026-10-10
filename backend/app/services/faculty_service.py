@@ -316,19 +316,32 @@ def process_institutional_batch(csv_content: str, category_override: str = None,
                 records_imported += 1
 
     if not dry_run:
-        for rec in updates_to_execute:
+        CHUNK_SIZE = 100
+        # 1. Batch upserts in chunks
+        for i in range(0, len(updates_to_execute), CHUNK_SIZE):
+            chunk = updates_to_execute[i:i + CHUNK_SIZE]
             try:
-                supabase.table("institutional_records").upsert(rec).execute()
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Upsert record note: {e}")
+                supabase.table("institutional_records").upsert(chunk).execute()
+            except Exception:
+                for rec in chunk:
+                    try:
+                        supabase.table("institutional_records").upsert(rec).execute()
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Upsert record note: {e}")
 
-        for rec in inserts_to_execute:
+        # 2. Batch inserts in chunks
+        for i in range(0, len(inserts_to_execute), CHUNK_SIZE):
+            chunk = inserts_to_execute[i:i + CHUNK_SIZE]
             try:
-                supabase.table("institutional_records").insert(rec).execute()
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Insert record note: {e}")
+                supabase.table("institutional_records").insert(chunk).execute()
+            except Exception:
+                for rec in chunk:
+                    try:
+                        supabase.table("institutional_records").insert(rec).execute()
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Insert record note: {e}")
             
     if unmatched_records and not dry_run:
         unmatched_inserts = []

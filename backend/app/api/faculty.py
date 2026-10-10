@@ -573,7 +573,7 @@ async def get_profile_details(faculty_id: str, user: dict = Depends(get_current_
         desc = r.get("description") or ""
         year = r.get("year")
         
-        if cat == "experience" and not any(e.get("role") == title and e.get("organization") == desc for e in experience_list):
+        if cat in ("experience", "leadership", "role", "roles") and not any(e.get("role") == title and e.get("organization") == desc for e in experience_list):
             experience_list.append({
                 "role": title,
                 "organization": desc,

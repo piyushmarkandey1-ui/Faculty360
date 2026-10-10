@@ -101,33 +101,51 @@ export function InstitutionalUploadCard() {
   const [status, setStatus] = useState<UploadStatus>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [summary, setSummary] = useState<ImportSummary | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('teaching')
+  const [batchProgress, setBatchProgress] = useState<string | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0])
+      const filesArray = Array.from(e.target.files)
+      setSelectedFiles(filesArray)
       setStatus('idle')
       setErrorMsg(null)
       setSummary(null)
+      setBatchProgress(null)
     }
   }
 
   const handleLoadSampleData = () => {
     const csvContent = SAMPLE_CSV_PRESETS[selectedCategory] || SAMPLE_CSV_PRESETS.teaching
-    const fileName = selectedCategory === 'all' ? 'synthetic_institutional_records.csv' : `synthetic_${selectedCategory}.csv`
+    const fileName = selectedCategory === 'all' 
+      ? 'synthetic_institutional_records.csv' 
+      : selectedCategory === 'collaborative'
+      ? 'synthetic_collaborative_records.csv'
+      : selectedCategory === 'inverted'
+      ? 'synthetic_inverted_names_records.csv'
+      : `synthetic_${selectedCategory}.csv`
+
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const sampleFile = new File([blob], fileName, { type: 'text/csv' })
     
-    setSelectedFile(sampleFile)
+    setSelectedFiles([sampleFile])
     setStatus('idle')
     setErrorMsg(null)
     setSummary(null)
+    setBatchProgress(null)
   }
 
   const handleDownloadTemplate = () => {
     const csvContent = SAMPLE_CSV_PRESETS[selectedCategory] || SAMPLE_CSV_PRESETS.teaching
-    const fileName = selectedCategory === 'all' ? 'synthetic_institutional_records.csv' : `synthetic_${selectedCategory}.csv`
+    const fileName = selectedCategory === 'all' 
+      ? 'synthetic_institutional_records.csv' 
+      : selectedCategory === 'collaborative'
+      ? 'synthetic_collaborative_records.csv'
+      : selectedCategory === 'inverted'
+      ? 'synthetic_inverted_names_records.csv'
+      : `synthetic_${selectedCategory}.csv`
+
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -140,49 +158,75 @@ export function InstitutionalUploadCard() {
   }
 
   const handleUpload = async (dryRun: boolean) => {
-    if (!selectedFile) return
+    if (!selectedFiles || selectedFiles.length === 0) return
     setStatus(dryRun ? 'validating' : 'processing')
     setErrorMsg(null)
-    
-    if (!selectedFile.name.endsWith('.csv')) {
+
+    const invalid = selectedFiles.filter(f => !f.name.endsWith('.csv'))
+    if (invalid.length > 0) {
       setStatus('error')
-      setErrorMsg('Only CSV files are supported')
+      setErrorMsg(`Only CSV files are supported (${invalid.map(f => f.name).join(', ')})`)
       return
     }
 
     try {
-      const formData = new FormData()
-      formData.append('file', selectedFile)
-      if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== 'inverted' && selectedCategory !== 'collaborative') {
-        formData.append('category', selectedCategory)
-      }
-      formData.append('dry_run', dryRun ? 'true' : 'false')
-
       const rawBase = (process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '')
       const uploadUrl = rawBase ? `${rawBase}/api/institutional/upload` : '/api/institutional/upload'
 
       const { getAuthToken } = await import('@/lib/api/client')
       const token = await getAuthToken()
-      
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? {
-          'Authorization': `Bearer ${token}`
-        } : {},
-        body: formData,
-      })
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ detail: 'Upload failed' }))
-        throw new Error(errorData.detail || 'Upload failed')
+      const aggregated: ImportSummary = {
+        recordsReceived: 0,
+        recordsImported: 0,
+        recordsUpdated: 0,
+        unmatchedFaculty: 0,
+        invalidRecords: 0,
+        duplicatesDetected: 0,
+        previewData: []
       }
 
-      const data = await res.json()
-      setSummary(data)
+      for (let idx = 0; idx < selectedFiles.length; idx++) {
+        const file = selectedFiles[idx]
+        setBatchProgress(`Processing batch ${idx + 1} of ${selectedFiles.length}: ${file.name}...`)
+
+        const formData = new FormData()
+        formData.append('file', file)
+        if (selectedCategory && selectedCategory !== 'all' && selectedCategory !== 'inverted' && selectedCategory !== 'collaborative') {
+          formData.append('category', selectedCategory)
+        }
+        formData.append('dry_run', dryRun ? 'true' : 'false')
+
+        const res = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          body: formData,
+        })
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({ detail: `Upload failed on ${file.name}` }))
+          throw new Error(errorData.detail || `Upload failed on ${file.name}`)
+        }
+
+        const data: ImportSummary = await res.json()
+        aggregated.recordsReceived += data.recordsReceived || 0
+        aggregated.recordsImported += data.recordsImported || 0
+        aggregated.recordsUpdated += data.recordsUpdated || 0
+        aggregated.unmatchedFaculty += data.unmatchedFaculty || 0
+        aggregated.invalidRecords += data.invalidRecords || 0
+        aggregated.duplicatesDetected += data.duplicatesDetected || 0
+        if (data.previewData && Array.isArray(data.previewData)) {
+          aggregated.previewData = [...(aggregated.previewData || []), ...data.previewData]
+        }
+      }
+
+      setSummary(aggregated)
+      setBatchProgress(null)
       setStatus(dryRun ? 'preview' : 'success')
     } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during upload')
+      setErrorMsg(err.message || 'An error occurred during batch upload')
       setStatus('error')
+      setBatchProgress(null)
     }
   }
 
@@ -223,6 +267,7 @@ export function InstitutionalUploadCard() {
             <div className="flex items-center gap-3">
               <input
                 type="file"
+                multiple
                 accept=".csv"
                 onChange={handleFileChange}
                 disabled={status === 'processing' || status === 'validating'}
@@ -237,9 +282,22 @@ export function InstitutionalUploadCard() {
               />
             </div>
             
-            {selectedFile && (
-              <div className="text-[11px] text-[var(--accent)] flex items-center gap-1.5 font-medium">
-                <FileText size={12} /> Ready: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+            {selectedFiles && selectedFiles.length > 0 && (
+              <div className="text-[11px] text-[var(--accent)] flex flex-wrap items-center gap-1.5 font-medium bg-[var(--accent)]/5 p-2 rounded-lg border border-[var(--accent)]/15">
+                <FileText size={12} />
+                <span>
+                  {selectedFiles.length === 1 
+                    ? `Ready: ${selectedFiles[0].name} (${(selectedFiles[0].size / 1024).toFixed(1)} KB)`
+                    : `Batch Queue (${selectedFiles.length} files): ${(selectedFiles.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(1)} KB total — [${selectedFiles.map(f => f.name).join(', ')}]`
+                  }
+                </span>
+              </div>
+            )}
+
+            {batchProgress && (
+              <div className="text-[11px] text-amber-500 flex items-center gap-1.5 font-medium animate-pulse">
+                <Loader2 size={12} className="animate-spin" />
+                <span>{batchProgress}</span>
               </div>
             )}
           </div>
@@ -282,7 +340,7 @@ export function InstitutionalUploadCard() {
               variant="secondary"
               size="sm"
               onClick={() => handleUpload(true)}
-              disabled={!selectedFile || status === 'processing' || status === 'validating'}
+              disabled={selectedFiles.length === 0 || status === 'processing' || status === 'validating'}
               className="gap-2"
             >
               {(status === 'processing' || status === 'validating') ? (
@@ -396,7 +454,7 @@ export function InstitutionalUploadCard() {
           </div>
           
           <div className="flex justify-end pt-2">
-            <Button variant="secondary" size="sm" onClick={() => { setSummary(null); setSelectedFile(null); setStatus('idle'); }}>
+            <Button variant="secondary" size="sm" onClick={() => { setSummary(null); setSelectedFiles([]); setStatus('idle'); }}>
               Upload Another Batch
             </Button>
           </div>
